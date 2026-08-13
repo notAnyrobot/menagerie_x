@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Robot Menagerie Workbench</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="workbench">
+    <aside id="robot-menagerie" class="menagerie" aria-label="Robot menagerie">
+      <div class="menagerie-heading">
+        <div>
+          <span class="eyebrow">Asset browser</span>
+          <h1>robot_menagerie</h1>
+        </div>
+        <button id="collapse-menagerie" class="icon-button" aria-label="Collapse robot menagerie" title="Collapse robot menagerie">‹</button>
+      </div>
+      <p class="sidebar-copy">Select a robot description to inspect its visual assets and joint configuration.</p>
+      <div id="robot-list" class="robot-list" aria-live="polite"></div>
+      <section class="simulation-panel" aria-label="Simulation controls">
+        <span class="eyebrow">Simulation</span>
+        <div class="simulation-row">
+          <span>Physics</span>
+          <button id="physics-toggle" class="state-toggle" aria-pressed="false">OFF</button>
+          <button id="physics-reset" class="reset-simulation" aria-label="Reset simulation" title="Reset simulation">↺</button>
+        </div>
+        <div class="simulation-row">
+          <span>Camera follow</span>
+          <button id="follow-toggle" class="state-toggle" aria-pressed="false">OFF</button>
+        </div>
+        <p id="simulation-state" class="simulation-state">Model ready for interactive inspection.</p>
+      </section>
+    </aside>
+
+    <main class="workspace">
+      <header class="toolbar">
+        <button id="expand-menagerie" class="icon-button hidden" aria-label="Expand robot menagerie" title="Expand robot menagerie">›</button>
+        <div class="robot-title">
+          <span id="robot-status" class="status-dot" aria-hidden="true"></span>
+          <div><span class="eyebrow">MuJoCo WASM workbench</span><h2 id="selected-title">Loading robot catalog…</h2></div>
+        </div>
+        <div class="toolbar-actions">
+          <button id="reset-camera">Reset view</button>
+        </div>
+      </header>
+
+      <section class="viewer-panel">
+        <canvas id="robot-canvas" aria-label="Interactive robot viewer"></canvas>
+        <div class="viewer-overlay top"><span id="engine-state">Preparing MuJoCo WASM…</span></div>
+        <div class="viewer-overlay bottom legend" aria-label="Keyboard and mouse controls">
+          <span><kbd>P</kbd> Physics</span><span><kbd>R</kbd> Reset</span><span><kbd>F</kbd> Follow</span><span>◉ Drag to orbit</span><span>✥ Drag robot to push</span>
+        </div>
+        <div id="viewer-empty" class="viewer-empty">Loading robot assets…</div>
+      </section>
+
+      <section class="details-bar">
+        <div><span class="eyebrow">Selected element</span><strong id="selected-element">None</strong></div>
+        <div><span class="eyebrow">Source</span><span id="selected-source">—</span></div>
+        <div><span class="eyebrow">Backend</span><span>MuJoCo WASM + Three.js</span></div>
+      </section>
+    </main>
+
+    <aside class="inspector" aria-label="Robot inspector">
+      <div class="inspector-tabs" role="tablist">
+        <button class="tab active" data-tab="joints" role="tab">Joints <span id="joint-count"></span></button>
+        <button class="tab" data-tab="elements" role="tab">Elements</button>
+      </div>
+      <section id="joints-panel" class="tab-panel active">
+        <div id="joint-detail" class="joint-detail" aria-live="polite">Loading MuJoCo joint state…</div>
+        <div id="joint-list" class="joint-list" aria-label="Robot joints"></div>
+      </section>
+      <section id="elements-panel" class="tab-panel">
+        <label class="search-label" for="element-search">Filter links and joints</label>
+        <input id="element-search" type="search" placeholder="e.g. left_knee">
+        <div id="element-list" class="element-list"></div>
+      </section>
+    </aside>
+  </div>
+  <script type="importmap">
+    {"imports":{"three":"/vendor/three.module.js"}}
+  </script>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

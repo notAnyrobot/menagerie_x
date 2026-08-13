@@ -66,6 +66,26 @@ For headless systems or fast CI checks, use:
 uv run astro mujoco --check
 ```
 
+## Robot Menagerie Workbench
+
+`menagerie_workbench` is the local browser UI for selecting, visualizing, and validating packaged robot descriptions. It discovers every variant declared in the asset manifest, keeps the `robot_menagerie` panel collapsible, and links validation findings to the corresponding link or joint where possible.
+
+Install its browser-only dependencies once:
+
+```bash
+npm install --prefix src/astro_description/menagerie_workbench/web
+```
+
+Then launch the workbench:
+
+```bash
+uv run astro menagerie
+```
+
+The workbench loads each selected model into the official MuJoCo WASM bindings in the browser. Three.js renders the mesh scene and provides the orbit/click interaction layer; Viser is not required. The workbench uses authored MJCF when available and otherwise compiles the declared URDF in MuJoCo WASM.
+
+Use the Simulation panel or press `P` to toggle physics, `R` to reset the model, and `F` to toggle camera follow. Drag empty space to orbit; drag a robot link to apply a push.
+
 ## Repository Layout
 
 Robot assets are grouped first by Astro version. This lets one package release expose both robot generations without making a Git branch part of the runtime interface.

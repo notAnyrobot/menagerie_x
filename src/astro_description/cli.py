@@ -8,6 +8,7 @@ from .assets import AssetError, get_asset_paths, load_manifest, validate_assets,
 from .commands.mujoco import check_mujoco, launch_mujoco
 from .commands.urdf_capsules import CapsuleError, convert_mjcf_capsules_to_urdf
 from .commands.viser import launch_viser
+from .menagerie_workbench import main as menagerie_main
 from .tools import calc_heights, pd_params_tool
 
 
@@ -32,6 +33,11 @@ def main(argv: list[str] | None = None) -> None:
     viser_parser = subparsers.add_parser("viser", help="Launch a Viser mesh browser")
     viser_parser.add_argument("--host", default="127.0.0.1")
     viser_parser.add_argument("--port", type=int, default=8080)
+
+    menagerie_parser = subparsers.add_parser("menagerie", help="Launch the browser robot asset workbench")
+    menagerie_parser.add_argument("--host", default="127.0.0.1")
+    menagerie_parser.add_argument("--port", type=int, default=0)
+    menagerie_parser.add_argument("--no-browser", action="store_true")
 
     capsules_parser = subparsers.add_parser("urdf-capsules", help="Generate URDF extension capsule collisions from MJCF capsules")
     capsules_parser.add_argument("--urdf", type=Path, default=None)
@@ -77,6 +83,13 @@ def main(argv: list[str] | None = None) -> None:
                 launch_mujoco(args.variant, args.root, args.seconds)
         elif args.command == "viser":
             launch_viser(args.root, args.host, args.port)
+        elif args.command == "menagerie":
+            menagerie_args = ["--host", args.host, "--port", str(args.port)]
+            if args.root is not None:
+                menagerie_args.extend(["--root", str(args.root)])
+            if args.no_browser:
+                menagerie_args.append("--no-browser")
+            raise SystemExit(menagerie_main(menagerie_args))
         elif args.command == "urdf-capsules":
             paths = get_asset_paths(args.root)
             urdf_path = args.urdf or paths.urdf_dir / "astro_v1.urdf"

@@ -1,0 +1,9 @@
+{
+  "name": "astro-menagerie-workbench-web",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@mujoco/mujoco": "3.11.0",
+    "three": "0.180.0"
+  }
+}
