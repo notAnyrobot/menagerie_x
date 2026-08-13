@@ -2,7 +2,7 @@ import pathlib
 import unittest
 import xml.etree.ElementTree as ET
 
-from astro_description.urdf_capsules import (
+from astro_description.commands.urdf_capsules import (
     add_capsule_extension_collisions,
     convert_mjcf_capsules_to_urdf,
     extract_capsules_from_mjcf,
@@ -10,12 +10,12 @@ from astro_description.urdf_capsules import (
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-ROBOT_ROOT = ROOT / "src" / "astro_description" / "robots" / "astro"
+ROBOT_ROOT = ROOT / "src" / "astro_description" / "assets" / "astro_v1"
 
 
 class UrdfCapsuleTests(unittest.TestCase):
     def test_extracts_capsule_collisions_from_mjcf_body_tree(self):
-        capsules = extract_capsules_from_mjcf(ROBOT_ROOT / "mjcf" / "astro_v1.xml")
+        capsules = extract_capsules_from_mjcf(ROBOT_ROOT / "legacy" / "mjcf" / "astro_v1.xml")
 
         names = {capsule.name for capsule in capsules}
         self.assertIn("left_knee_collision", names)
@@ -23,7 +23,7 @@ class UrdfCapsuleTests(unittest.TestCase):
 
     def test_adds_extension_capsules_to_matching_urdf_links(self):
         urdf_text = '<robot name="astro"><link name="left_knee_link"/></robot>'
-        capsules = [extract_capsules_from_mjcf(ROBOT_ROOT / "mjcf" / "astro_v1.xml")[1]]
+        capsules = [extract_capsules_from_mjcf(ROBOT_ROOT / "legacy" / "mjcf" / "astro_v1.xml")[1]]
 
         updated = add_capsule_extension_collisions(urdf_text, capsules)
         root = ET.fromstring(updated)
@@ -34,7 +34,7 @@ class UrdfCapsuleTests(unittest.TestCase):
         self.assertIn(" ", capsule.attrib["fromto"])
 
     def test_converts_current_astro_urdf_with_capsule_extension_tags(self):
-        updated = convert_mjcf_capsules_to_urdf(ROBOT_ROOT / "urdf" / "astro_v1.urdf", ROBOT_ROOT / "mjcf" / "astro_v1.xml")
+        updated = convert_mjcf_capsules_to_urdf(ROBOT_ROOT / "urdf" / "astro_v1.urdf", ROBOT_ROOT / "legacy" / "mjcf" / "astro_v1.xml")
 
         self.assertIn('<capsule radius="0.055"', updated)
         self.assertIn('format="astro-extension-v1"', updated)

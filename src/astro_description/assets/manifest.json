@@ -1,0 +1,44 @@
+{
+  "name": "Astro",
+  "package_version": "0.1.0",
+  "default_version": "astro_v1",
+  "default_variant": "astro_v1",
+  "robot_versions": {
+    "astro_v1": {
+      "source_format": "urdf",
+      "status": "legacy",
+      "legacy_formats": ["mjcf", "isaac"]
+    },
+    "astro_v2": {
+      "source_format": "urdf",
+      "status": "current",
+      "legacy_formats": []
+    }
+  },
+  "variants": {
+    "astro_v1": {
+      "robot_version": "astro_v1",
+      "dof": 30,
+      "urdf": "urdf/astro_v1.urdf",
+      "mjcf": "legacy/mjcf/astro_v1.xml",
+      "status": "legacy",
+      "notes": "Full Astro V1 model with head yaw."
+    },
+    "astro_v1_27dof": {
+      "robot_version": "astro_v1",
+      "dof": 27,
+      "urdf": "urdf/astro_v1_27dof.urdf",
+      "mjcf": "legacy/mjcf/astro_v1_27dof.xml",
+      "status": "legacy",
+      "notes": "Reduced-DOF description kept for consumers that require the legacy joint set."
+    },
+    "astro_with_racket": {
+      "robot_version": "astro_v1",
+      "dof": 30,
+      "urdf": "urdf/astro_with_racket.urdf",
+      "mjcf": null,
+      "status": "variant",
+      "notes": "URDF-only racket attachment variant."
+    }
+  }
+}

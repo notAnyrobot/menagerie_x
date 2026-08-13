@@ -1,1 +1,0 @@
-"""Packaged robot-description assets."""

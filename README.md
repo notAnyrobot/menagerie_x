@@ -1,6 +1,6 @@
 # Astro Robot Description
 
-This repository packages the Dobot **Astro** humanoid robot description as a `uv`-managed Python project. It includes packaged URDF, MJCF, STL meshes, version metadata, validation commands, and MuJoCo/Viser visualization entrypoints.
+This repository packages the Dobot **Astro** humanoid robot descriptions as a `uv`-managed Python project. URDF is the maintained source format. Astro V1 retains MJCF and Isaac assets for legacy tooling; Astro V2 is URDF-only.
 
 For detailed robot configuration, joint order, actuator constants, PD gains, default poses, body mapping, and simulator settings, see [Robot Configuration](docs/robot_configuration.md).
 
@@ -68,24 +68,28 @@ uv run astro mujoco --check
 
 ## Repository Layout
 
-The robot description is packaged under `src/astro_description/robots/astro/` so the URDF, MJCF, meshes, constants, and simulator-specific config travel with the Python package.
+Robot assets are grouped first by Astro version. This lets one package release expose both robot generations without making a Git branch part of the runtime interface.
 
 ```text
 src/astro_description/
-  tools/                  # importable tools exposed by `uv run astro ...`
-  robots/astro/
-    manifest.json         # variant registry and version metadata
-    constants.py          # Astro keyframes and control constants
-    config.yaml           # deployment/control config
-    mjcf/                 # MuJoCo descriptions
-    urdf/                 # URDF descriptions
-    meshes/               # STL visual/collision meshes
-    isaac/                # Isaac-specific integration config
+  assets/
+    manifest.json         # catalog across robot versions
+    astro_v1/
+      urdf/               # maintained V1 source descriptions
+      meshes/             # V1 STL visual/collision meshes
+      legacy/
+        mjcf/             # V1 MuJoCo descriptions
+        isaac/            # V1 Isaac integration
+    astro_v2/
+      urdf/               # V2 maintained source descriptions
+      meshes/             # V2 URDF-referenced geometry
+  commands/               # implementations behind `uv run astro ...`
+  tools/                  # reusable utilities
 docs/
   robot_configuration.md  # detailed robot configuration reference
 ```
 
-There is intentionally no top-level `scripts/`, `mjcf/`, `urdf/`, or `meshes/` directory. Use the `astro` CLI and the manifest rather than hard-coded checkout-root paths.
+There is intentionally no top-level `scripts/`, `mjcf/`, `urdf/`, or `meshes/` directory. Use the `astro` CLI and the manifest rather than hard-coded checkout-root paths. V2's directories are prepared for its URDF and meshes; no V2 model variant is registered until those source files are added.
 
 ## Common Commands
 
@@ -109,15 +113,15 @@ uv run astro urdf-capsules --output /tmp/astro_v1_capsules.urdf
 
 ## Asset Variants
 
-Robot-description variants are declared in `src/astro_description/robots/astro/manifest.json`.
+Robot-description variants are declared in `src/astro_description/assets/manifest.json`.
 
 | Variant | DOFs | URDF | MJCF | Status |
 |---|---:|---|---|---|
-| `astro_v1` | 30 | `urdf/astro_v1.urdf` | `mjcf/astro_v1.xml` | current |
-| `astro_v1_27dof` | 27 | `urdf/astro_v1_27dof.urdf` | `mjcf/astro_v1_27dof.xml` | current |
-| `astro_with_racket` | 30 | `urdf/astro_with_racket.urdf` | - | variant |
+| `astro_v1` | 30 | `astro_v1/urdf/astro_v1.urdf` | `astro_v1/legacy/mjcf/astro_v1.xml` | legacy |
+| `astro_v1_27dof` | 27 | `astro_v1/urdf/astro_v1_27dof.urdf` | `astro_v1/legacy/mjcf/astro_v1_27dof.xml` | legacy |
+| `astro_with_racket` | 30 | `astro_v1/urdf/astro_with_racket.urdf` | - | variant |
 
-Add or retire URDF/MJCF files by updating the manifest first, then run:
+Add or retire a version's URDF files by updating the manifest first, then run:
 
 ```bash
 uv run astro validate

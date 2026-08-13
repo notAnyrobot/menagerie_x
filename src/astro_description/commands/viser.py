@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-from .assets import AssetError, get_asset_paths
+from ..assets import AssetError, get_asset_paths
 
 
 def _import_viz_deps():

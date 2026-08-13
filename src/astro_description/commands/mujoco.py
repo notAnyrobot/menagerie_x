@@ -5,7 +5,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
-from .assets import AssetError, Variant, get_asset_paths, get_variant
+from ..assets import AssetError, Variant, get_variant
 
 
 def _import_mujoco() -> Any:
@@ -23,12 +23,11 @@ def load_model(variant: Variant):
     try:
         return mujoco.MjModel.from_xml_path(str(variant.mjcf))
     except ValueError as exc:
-        paths = get_asset_paths(variant.mjcf.parents[1])
         root = ET.fromstring(variant.mjcf.read_text(encoding="utf-8"))
         compiler = root.find("compiler")
         if compiler is None:
             raise AssetError(f"could not load MJCF and no compiler element exists: {variant.mjcf}") from exc
-        compiler.set("meshdir", str(paths.meshes_dir.resolve()))
+        compiler.set("meshdir", str(variant.meshes_dir.resolve()))
         return mujoco.MjModel.from_xml_string(ET.tostring(root, encoding="unicode"))
 
 

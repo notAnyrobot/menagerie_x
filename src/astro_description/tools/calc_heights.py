@@ -130,10 +130,11 @@ def create_astro_embodiment_config(robot_root: Path | None = None) -> Embodiment
         for side in ("left", "right")
         for i in range(1, 13)
     )
-    constants_path = paths.root / "constants.py"
+    robot_root = paths.default_robot_dir
+    constants_path = robot_root / "constants.py"
     return EmbodimentConfig(
         name="astro",
-        mjcf_path=paths.mjcf_dir / "astro_v1.xml",
+        mjcf_path=robot_root / "legacy" / "mjcf" / "astro_v1.xml",
         constants_path=constants_path,
         floating_base_joint="floating_base_joint",
         foot_collision_geom_names=foot_geoms,
@@ -266,8 +267,8 @@ def _load_mujoco_model(mujoco: Any, config: EmbodimentConfig) -> Any:
     try:
         return mujoco.MjModel.from_xml_path(str(config.mjcf_path))
     except ValueError as exc:
-        asset_root = config.mjcf_path.parents[1]
-        mesh_dir = asset_root / "meshes"
+        robot_root = config.mjcf_path.parents[2]
+        mesh_dir = robot_root / "meshes"
         if not mesh_dir.is_dir():
             raise HeightToolError(f"could not load MJCF and fallback mesh dir does not exist: {mesh_dir}") from exc
         root = ET.fromstring(config.mjcf_path.read_text(encoding="utf-8"))

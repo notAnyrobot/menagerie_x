@@ -5,10 +5,10 @@ import json
 from pathlib import Path
 
 from .assets import AssetError, get_asset_paths, load_manifest, validate_assets, variants
-from .mujoco_tools import check_mujoco, launch_mujoco
+from .commands.mujoco import check_mujoco, launch_mujoco
+from .commands.urdf_capsules import CapsuleError, convert_mjcf_capsules_to_urdf
+from .commands.viser import launch_viser
 from .tools import calc_heights, pd_params_tool
-from .urdf_capsules import CapsuleError, convert_mjcf_capsules_to_urdf
-from .viser_tools import launch_viser
 
 
 def _print_json(data: object) -> None:
