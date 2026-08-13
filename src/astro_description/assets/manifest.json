@@ -39,6 +39,14 @@
       "mjcf": null,
       "status": "variant",
       "notes": "URDF-only racket attachment variant."
+    },
+    "astro_v2": {
+      "robot_version": "astro_v2",
+      "dof": 30,
+      "urdf": "urdf/astro_v2.urdf",
+      "mjcf": null,
+      "status": "current",
+      "notes": "Astro V2 URDF source description."
     }
   }
 }

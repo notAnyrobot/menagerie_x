@@ -14,12 +14,16 @@ class AssetManifestTests(unittest.TestCase):
     def test_manifest_lists_expected_variants(self):
         parsed = variants(ROOT)
 
-        self.assertEqual(sorted(parsed), ["astro_v1", "astro_v1_27dof", "astro_with_racket"])
+        self.assertEqual(sorted(parsed), ["astro_v1", "astro_v1_27dof", "astro_v2", "astro_with_racket"])
         self.assertEqual(get_variant(root=ROOT).name, "astro_v1")
         self.assertEqual(parsed["astro_v1"].dof, 30)
         self.assertTrue(parsed["astro_v1"].urdf.exists())
         self.assertTrue(parsed["astro_v1"].mjcf.exists())
         self.assertEqual(parsed["astro_v1"].robot_version, "astro_v1")
+        self.assertEqual(parsed["astro_v2"].robot_version, "astro_v2")
+        self.assertEqual(parsed["astro_v2"].dof, 30)
+        self.assertTrue(parsed["astro_v2"].urdf.exists())
+        self.assertIsNone(parsed["astro_v2"].mjcf)
         self.assertTrue((ASSET_ROOT / "astro_v2" / "urdf").is_dir())
         self.assertTrue((ASSET_ROOT / "astro_v2" / "meshes").is_dir())
 

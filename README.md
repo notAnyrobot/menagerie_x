@@ -89,7 +89,7 @@ docs/
   robot_configuration.md  # detailed robot configuration reference
 ```
 
-There is intentionally no top-level `scripts/`, `mjcf/`, `urdf/`, or `meshes/` directory. Use the `astro` CLI and the manifest rather than hard-coded checkout-root paths. V2's directories are prepared for its URDF and meshes; no V2 model variant is registered until those source files are added.
+There is intentionally no top-level `scripts/`, `mjcf/`, `urdf/`, or `meshes/` directory. Use the `astro` CLI and the manifest rather than hard-coded checkout-root paths. V2 ships as a URDF-only description with its referenced meshes.
 
 ## Common Commands
 
@@ -120,6 +120,7 @@ Robot-description variants are declared in `src/astro_description/assets/manifes
 | `astro_v1` | 30 | `astro_v1/urdf/astro_v1.urdf` | `astro_v1/legacy/mjcf/astro_v1.xml` | legacy |
 | `astro_v1_27dof` | 27 | `astro_v1/urdf/astro_v1_27dof.urdf` | `astro_v1/legacy/mjcf/astro_v1_27dof.xml` | legacy |
 | `astro_with_racket` | 30 | `astro_v1/urdf/astro_with_racket.urdf` | - | variant |
+| `astro_v2` | 30 | `astro_v2/urdf/astro_v2.urdf` | - | current |
 
 Add or retire a version's URDF files by updating the manifest first, then run:
 
