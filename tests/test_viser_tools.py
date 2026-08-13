@@ -2,11 +2,11 @@ import pathlib
 import unittest
 from unittest import mock
 
-from astro_description.commands.viser import launch_viser
+from menagerie_x.commands.viser import launch_viser
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-ROBOT_ROOT = ROOT / "src" / "astro_description" / "assets" / "astro_v1"
+ROBOT_ROOT = ROOT / "src" / "menagerie_x" / "assets" / "astro_v1"
 
 
 class ViserLaunchTests(unittest.TestCase):
@@ -36,8 +36,8 @@ class ViserLaunchTests(unittest.TestCase):
         fake_viser.ViserServer.return_value = FakeServer()
 
         with (
-            mock.patch("astro_description.commands.viser._import_viz_deps", return_value=(fake_trimesh, fake_viser)),
-            mock.patch("astro_description.commands.viser.time.sleep", side_effect=KeyboardInterrupt),
+            mock.patch("menagerie_x.commands.viser._import_viz_deps", return_value=(fake_trimesh, fake_viser)),
+            mock.patch("menagerie_x.commands.viser.time.sleep", side_effect=KeyboardInterrupt),
         ):
             launch_viser(ROBOT_ROOT, port=42178)
 

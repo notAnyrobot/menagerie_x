@@ -1,5 +1,5 @@
 {
-  "name": "astro-menagerie-workbench-web",
+  "name": "menagerie_x-workbench-web",
   "private": true,
   "type": "module",
   "dependencies": {

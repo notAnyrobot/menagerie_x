@@ -92,18 +92,18 @@ where $\omega = 2\pi \times f$ (angular frequency), $f$ is the natural frequency
 This checkout includes a browser tool for tuning PD parameters and inspecting preset keyframe heights.
 
 ```bash
-uv run astro pd-tool
+uv run menagerie_x pd-tool
 ```
 
 For a terminal-only launch that prints the URL without opening a browser:
 
 ```bash
-uv run astro pd-tool --no-browser
+uv run menagerie_x pd-tool --no-browser
 ```
 
 The PD table panel loads the `Joint Parameters` table below. Adjust natural frequency `f` and damping ratio per joint group, then preview and apply changes to this document.
 
-The `Keyframe Heights` panel loads preset poses from `src/astro_description/assets/astro_v1/constants.py` and uses the legacy V1 MuJoCo model to compute ground-aligned heights for:
+The `Keyframe Heights` panel loads preset poses from `src/menagerie_x/assets/astro_v1/constants.py` and uses the legacy V1 MuJoCo model to compute ground-aligned heights for:
 
 | Body | Source link |
 |---|---|
@@ -117,7 +117,7 @@ The panel also renders a MuJoCo snapshot for the selected keyframe. Available ke
 For command-line height checks:
 
 ```bash
-uv run astro heights --config knees_bent
+uv run menagerie_x heights --config knees_bent
 ```
 
 ### Joint Parameters
@@ -191,9 +191,9 @@ Default root height: **0.75 m**
 
 | Purpose | File |
 |---|---|
-| Simulation (legacy MJCF) | `src/astro_description/assets/astro_v1/legacy/mjcf/astro_v1.xml` |
-| Retargeting (URDF) | `src/astro_description/assets/astro_v1/urdf/astro_v1.urdf` |
-| Racket variant (URDF) | `src/astro_description/assets/astro_v1/urdf/astro_with_racket.urdf` |
+| Simulation (legacy MJCF) | `src/menagerie_x/assets/astro_v1/legacy/mjcf/astro_v1.xml` |
+| Retargeting (URDF) | `src/menagerie_x/assets/astro_v1/urdf/astro_v1.urdf` |
+| Racket variant (URDF) | `src/menagerie_x/assets/astro_v1/urdf/astro_with_racket.urdf` |
 
 ## URDF Capsule Collision Extension
 
@@ -210,10 +210,10 @@ Standard URDF geometry does not define a capsule primitive. This package support
 Generate an extended URDF from the MJCF capsule geoms:
 
 ```bash
-uv run astro urdf-capsules --output /tmp/astro_v1_capsules.urdf
+uv run menagerie_x urdf-capsules --output /tmp/astro_v1_capsules.urdf
 ```
 
-The generator keeps the existing URDF content and appends extension capsule collision elements to matching links. Use the generated file only with tools that explicitly support `format="astro-extension-v1"`; keep `src/astro_description/assets/astro_v1/urdf/astro_v1.urdf` as the standard mesh-collision URDF.
+The generator keeps the existing URDF content and appends extension capsule collision elements to matching links. Use the generated file only with tools that explicitly support `format="astro-extension-v1"`; keep `src/menagerie_x/assets/astro_v1/urdf/astro_v1.urdf` as the standard mesh-collision URDF.
 
 ## Simulator Parameters
 

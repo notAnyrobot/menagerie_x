@@ -31,6 +31,17 @@
         </div>
         <p id="simulation-state" class="simulation-state">Model ready for interactive inspection.</p>
       </section>
+      <section class="display-panel" aria-label="Display controls">
+        <span class="eyebrow">Display</span>
+        <div class="simulation-row">
+          <span>Visual meshes</span>
+          <button id="visual-mesh-toggle" class="state-toggle" aria-pressed="true">ON</button>
+        </div>
+        <div class="simulation-row">
+          <span>Collision shapes</span>
+          <button id="collision-shape-toggle" class="state-toggle" aria-pressed="false">OFF</button>
+        </div>
+      </section>
     </aside>
 
     <main class="workspace">
@@ -67,7 +78,6 @@
         <button class="tab" data-tab="elements" role="tab">Elements</button>
       </div>
       <section id="joints-panel" class="tab-panel active">
-        <div id="joint-detail" class="joint-detail" aria-live="polite">Loading MuJoCo joint state…</div>
         <div id="joint-list" class="joint-list" aria-label="Robot joints"></div>
       </section>
       <section id="elements-panel" class="tab-panel">

@@ -2,7 +2,7 @@ import pathlib
 import unittest
 import xml.etree.ElementTree as ET
 
-from astro_description.commands.urdf_capsules import (
+from menagerie_x.commands.urdf_capsules import (
     add_capsule_extension_collisions,
     convert_mjcf_capsules_to_urdf,
     extract_capsules_from_mjcf,
@@ -10,7 +10,7 @@ from astro_description.commands.urdf_capsules import (
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-ROBOT_ROOT = ROOT / "src" / "astro_description" / "assets" / "astro_v1"
+ROBOT_ROOT = ROOT / "src" / "menagerie_x" / "assets" / "astro_v1"
 
 
 class UrdfCapsuleTests(unittest.TestCase):

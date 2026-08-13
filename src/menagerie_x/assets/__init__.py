@@ -7,7 +7,7 @@ from typing import Any
 
 
 class AssetError(ValueError):
-    """Raised when an Astro description asset or manifest entry is invalid."""
+    """Raised when a robot-description asset or manifest entry is invalid."""
 
 
 @dataclasses.dataclass(frozen=True)
@@ -62,7 +62,7 @@ def _resolve_asset_root(root: Path | None = None) -> Path:
     resolved = root.resolve()
     if (resolved / "manifest.json").is_file():
         return resolved
-    packaged_asset_root = resolved / "src" / "astro_description" / "assets"
+    packaged_asset_root = resolved / "src" / "menagerie_x" / "assets"
     if (packaged_asset_root / "manifest.json").is_file():
         return packaged_asset_root.resolve()
     for candidate in resolved.parents:
@@ -153,3 +153,23 @@ def validate_assets(root: Path | None = None) -> list[str]:
             if mesh.stat().st_size == 0:
                 errors.append(f"empty mesh file: {mesh}")
     return errors
+
+
+from .inspection import RobotDescription, RobotInspection, ValidationIssue, inspect_variant
+
+__all__ = [
+    "AssetError",
+    "AssetPaths",
+    "RobotDescription",
+    "RobotInspection",
+    "ValidationIssue",
+    "Variant",
+    "default_robot_root",
+    "get_asset_paths",
+    "get_variant",
+    "inspect_variant",
+    "load_manifest",
+    "package_root",
+    "validate_assets",
+    "variants",
+]

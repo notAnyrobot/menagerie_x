@@ -1,4 +1,4 @@
-"""Python entrypoints for the Dobot Astro robot-description package."""
+"""Robot-description asset menagerie and workbench."""
 
 from .assets import AssetPaths, get_asset_paths, get_variant
 

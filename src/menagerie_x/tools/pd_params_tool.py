@@ -15,7 +15,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
-from astro_description.assets import get_asset_paths
+from menagerie_x.assets import get_asset_paths
 
 
 ARMATURE_BY_MOTOR = {

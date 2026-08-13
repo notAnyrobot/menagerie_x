@@ -1,10 +1,10 @@
 import pathlib
 import unittest
 
-from astro_description.tools import calc_heights
+from menagerie_x.tools import calc_heights
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-ROBOT_ROOT = ROOT / "src" / "astro_description" / "assets" / "astro_v1"
+ROBOT_ROOT = ROOT / "src" / "menagerie_x" / "assets" / "astro_v1"
 
 
 class KeyframeParserTests(unittest.TestCase):

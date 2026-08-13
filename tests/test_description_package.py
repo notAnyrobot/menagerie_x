@@ -1,12 +1,12 @@
 import pathlib
 import unittest
 
-from astro_description.assets import get_variant, validate_assets, variants
-from astro_description.commands.mujoco import check_mujoco
+from menagerie_x.assets import get_variant, validate_assets, variants
+from menagerie_x.commands.mujoco import check_mujoco
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-ASSET_ROOT = ROOT / "src" / "astro_description" / "assets"
+ASSET_ROOT = ROOT / "src" / "menagerie_x" / "assets"
 ROBOT_ROOT = ASSET_ROOT / "astro_v1"
 
 

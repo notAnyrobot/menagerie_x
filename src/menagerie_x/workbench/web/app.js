@@ -13,12 +13,13 @@ const robotStatus = document.querySelector("#robot-status");
 const robotList = document.querySelector("#robot-list");
 const jointCount = document.querySelector("#joint-count");
 const jointList = document.querySelector("#joint-list");
-const jointDetail = document.querySelector("#joint-detail");
 const elementList = document.querySelector("#element-list");
 const elementSearch = document.querySelector("#element-search");
 const physicsToggle = document.querySelector("#physics-toggle");
 const physicsReset = document.querySelector("#physics-reset");
 const followToggle = document.querySelector("#follow-toggle");
+const visualMeshToggle = document.querySelector("#visual-mesh-toggle");
+const collisionShapeToggle = document.querySelector("#collision-shape-toggle");
 const simulationState = document.querySelector("#simulation-state");
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -56,6 +57,8 @@ let simulationModel = null;
 let simulationData = null;
 let physicsEnabled = false;
 let followEnabled = false;
+let visualMeshesVisible = true;
+let collisionShapesVisible = false;
 let physicsAccumulator = 0;
 let pointerGesture = null;
 let dragForce = null;
@@ -91,7 +94,6 @@ function disposeWasm() {
   jointStates = [];
   activeJointId = null;
   jointList.replaceChildren();
-  jointDetail.textContent = "Loading MuJoCo joint state…";
   jointCount.textContent = "";
   mujocoBodyIds.clear();
   physicsAccumulator = 0;
@@ -128,6 +130,31 @@ function updateSimulationControls(message = null) {
   followToggle.textContent = followEnabled ? "ON" : "OFF";
   followToggle.setAttribute("aria-pressed", String(followEnabled));
   if (message) simulationState.textContent = message;
+}
+
+function updateDisplayControls() {
+  visualMeshToggle.textContent = visualMeshesVisible ? "ON" : "OFF";
+  visualMeshToggle.setAttribute("aria-pressed", String(visualMeshesVisible));
+  collisionShapeToggle.textContent = collisionShapesVisible ? "ON" : "OFF";
+  collisionShapeToggle.setAttribute("aria-pressed", String(collisionShapesVisible));
+}
+
+function setLayerVisibility(layer, visible) {
+  robotGroup.traverse(node => {
+    if (node.userData.layer === layer) node.visible = visible;
+  });
+}
+
+function toggleVisualMeshes() {
+  visualMeshesVisible = !visualMeshesVisible;
+  setLayerVisibility("visual-mesh", visualMeshesVisible);
+  updateDisplayControls();
+}
+
+function toggleCollisionShapes() {
+  collisionShapesVisible = !collisionShapesVisible;
+  setLayerVisibility("collision-overlay", collisionShapesVisible);
+  updateDisplayControls();
 }
 
 function resetSimulation() {
@@ -296,10 +323,6 @@ function renderRobotList() {
   }
 }
 
-function jointTypeName(type) {
-  return type === 2 ? "slide" : type === 3 ? "hinge" : "other";
-}
-
 function jointUnit(joint) {
   return joint.type === 2 ? "m" : "rad";
 }
@@ -341,18 +364,29 @@ function jointValue(joint) {
   return simulationData ? Number(simulationData.qpos[joint.qposAddress]) : NaN;
 }
 
+function sliderRange(joint) {
+  if (joint.limited && Number.isFinite(joint.lower) && Number.isFinite(joint.upper) && joint.lower < joint.upper) {
+    return [joint.lower, joint.upper];
+  }
+  return joint.type === 2 ? [-1, 1] : [-Math.PI, Math.PI];
+}
+
 function renderJointInspector() {
   jointList.replaceChildren();
   jointCount.textContent = jointStates.length ? `${jointStates.length}` : "";
   if (!jointStates.length) {
-    jointDetail.textContent = simulationModel ? "This model has no hinge or slide joints." : "Loading MuJoCo joint state…";
+    const empty = document.createElement("p");
+    empty.className = "joint-empty";
+    empty.textContent = simulationModel ? "This model has no hinge or slide joints." : "Loading MuJoCo joint state…";
+    jointList.append(empty);
     return;
   }
-  if (!jointStates.some(joint => joint.id === activeJointId)) activeJointId = jointStates[0].id;
   for (const joint of jointStates) {
-    const button = document.createElement("button");
-    button.className = `joint-row ${joint.id === activeJointId ? "active" : ""}`;
-    button.dataset.jointId = String(joint.id);
+    const row = document.createElement("div");
+    row.className = "joint-row";
+    row.dataset.jointId = String(joint.id);
+    const heading = document.createElement("div");
+    heading.className = "joint-row-heading";
     const name = document.createElement("span");
     name.className = "joint-row-name";
     name.textContent = joint.name;
@@ -360,44 +394,24 @@ function renderJointInspector() {
     value.className = "joint-row-value";
     value.dataset.jointValue = String(joint.id);
     value.textContent = `${formatJointValue(jointValue(joint))} ${jointUnit(joint)}`;
-    button.append(name, value);
-    button.addEventListener("click", () => selectJoint(joint.id));
-    jointList.append(button);
-  }
-  renderJointDetail();
-}
-
-function renderJointDetail() {
-  const joint = jointStates.find(item => item.id === activeJointId);
-  if (!joint) return;
-  jointDetail.replaceChildren();
-  const name = document.createElement("strong");
-  name.textContent = joint.name;
-  const value = document.createElement("div");
-  value.className = "joint-detail-value";
-  value.dataset.activeJointValue = "true";
-  value.textContent = `${formatJointValue(jointValue(joint))} ${jointUnit(joint)}`;
-  const description = document.createElement("div");
-  description.textContent = `${jointTypeName(joint.type)} joint · ${joint.limited ? "limited" : "unlimited"}`;
-  jointDetail.append(name, value, description);
-  if (joint.limited && Number.isFinite(joint.lower) && Number.isFinite(joint.upper) && joint.lower < joint.upper) {
+    heading.append(name, value);
+    const [lower, upper] = sliderRange(joint);
     const slider = document.createElement("input");
     slider.type = "range";
-    slider.min = String(joint.lower);
-    slider.max = String(joint.upper);
-    slider.step = String(Math.max((joint.upper - joint.lower) / 1000, 0.0001));
-    slider.value = String(Math.min(joint.upper, Math.max(joint.lower, jointValue(joint))));
+    slider.className = "joint-slider";
+    slider.dataset.jointSlider = String(joint.id);
+    slider.min = String(lower);
+    slider.max = String(upper);
+    slider.step = String(Math.max((upper - lower) / 1000, 0.0001));
+    slider.value = String(Math.min(upper, Math.max(lower, jointValue(joint))));
     slider.setAttribute("aria-label", `Set ${joint.name} position`);
+    slider.addEventListener("pointerdown", () => selectElement(joint.name, "joint"));
     slider.addEventListener("input", () => setJointPosition(joint.id, Number(slider.value)));
     const limits = document.createElement("div");
-    limits.className = "joint-detail-meta";
-    limits.innerHTML = `<span>${formatJointValue(joint.lower)}</span><span>${formatJointValue(joint.upper)} ${jointUnit(joint)}</span>`;
-    jointDetail.append(slider, limits);
-  } else {
-    const note = document.createElement("div");
-    note.className = "joint-detail-meta";
-    note.textContent = "No finite position limits are declared for this joint.";
-    jointDetail.append(note);
+    limits.className = "joint-row-limits";
+    limits.innerHTML = `<span>${formatJointValue(lower)}</span><span>${formatJointValue(upper)} ${jointUnit(joint)}</span>`;
+    row.append(heading, slider, limits);
+    jointList.append(row);
   }
 }
 
@@ -407,12 +421,8 @@ function updateJointValues() {
     const value = `${formatJointValue(jointValue(joint))} ${jointUnit(joint)}`;
     const rowValue = jointList.querySelector(`[data-joint-value="${joint.id}"]`);
     if (rowValue) rowValue.textContent = value;
-    if (joint.id === activeJointId) {
-      const activeValue = jointDetail.querySelector("[data-active-joint-value]");
-      if (activeValue) activeValue.textContent = value;
-      const slider = jointDetail.querySelector("input[type='range']");
-      if (slider && document.activeElement !== slider) slider.value = String(jointValue(joint));
-    }
+    const slider = jointList.querySelector(`[data-joint-slider="${joint.id}"]`);
+    if (slider && document.activeElement !== slider) slider.value = String(Math.min(Number(slider.max), Math.max(Number(slider.min), jointValue(joint))));
   }
 }
 
@@ -421,7 +431,6 @@ function selectJoint(id) {
   if (!joint) return;
   activeJointId = id;
   selectElement(joint.name, "joint");
-  renderJointInspector();
 }
 
 function setJointPosition(id, value) {
@@ -475,6 +484,34 @@ function setTransform(object, origin) {
   object.rotation.set(...origin.rpy, "XYZ");
 }
 
+function collisionGeometry(collision) {
+  if (collision.type === "box") return new THREE.BoxGeometry(...collision.size);
+  if (collision.type === "sphere") return new THREE.SphereGeometry(collision.radius, 16, 10);
+  if (collision.type === "cylinder") return new THREE.CylinderGeometry(collision.radius, collision.radius, collision.length, 16);
+  return null;
+}
+
+async function addCollisionOverlay(collision, group, robot, token, controller) {
+  let geometry = collisionGeometry(collision);
+  if (collision.type === "mesh") {
+    const filename = collision.filename.split("/").pop();
+    const response = await fetch(`/api/robots/${encodeURIComponent(robot.id)}/files/${encodeURIComponent(filename)}`, { signal: controller.signal });
+    if (!response.ok) throw new Error(`Could not load collision mesh ${filename}`);
+    geometry = stlLoader.parse(await response.arrayBuffer());
+    assertCurrentLoad(token, controller);
+  }
+  if (!geometry) return;
+  const overlay = new THREE.LineSegments(
+    new THREE.EdgesGeometry(geometry),
+    new THREE.LineBasicMaterial({ color: 0xffb84d, transparent: true, opacity: 0.86 }),
+  );
+  overlay.userData = { link: group.name, layer: "collision-overlay" };
+  overlay.visible = collisionShapesVisible;
+  setTransform(overlay, collision.origin);
+  if (collision.scale) overlay.scale.fromArray(collision.scale);
+  group.add(overlay);
+}
+
 async function renderRobotMeshes(robot, token, controller) {
   clearRobot();
   const links = new Map();
@@ -526,7 +563,8 @@ async function renderRobotMeshes(robot, token, controller) {
       const material = new THREE.MeshStandardMaterial({ color: 0xbfc9d3, metalness: .18, roughness: .58 });
       const mesh = new THREE.Mesh(geometry, material);
       mesh.castShadow = true;
-      mesh.userData = { link: link.name, originalColor: material.color.clone(), filename };
+      mesh.userData = { link: link.name, layer: "visual-mesh", originalColor: material.color.clone(), filename };
+      mesh.visible = visualMeshesVisible;
       setTransform(mesh, visual.origin);
       mesh.scale.fromArray(visual.scale);
       group.add(mesh);
@@ -534,6 +572,14 @@ async function renderRobotMeshes(robot, token, controller) {
         frameRobot();
       }
       await new Promise(resolve => requestAnimationFrame(resolve));
+    }
+    for (const collision of link.collisions || []) {
+      try {
+        await addCollisionOverlay(collision, group, robot, token, controller);
+      } catch (error) {
+        if (error?.name === "AbortError") throw error;
+        console.warn(`Skipping collision overlay for ${link.name}: ${error.message}`);
+      }
     }
   }
   if (isCurrentLoad(token, controller)) {
@@ -738,10 +784,7 @@ function selectElement(name, kind) {
   selectedSource.textContent = source || kind || "robot";
   if (kind === "joint") {
     const joint = jointStates.find(item => item.name === name);
-    if (joint && activeJointId !== joint.id) {
-      activeJointId = joint.id;
-      renderJointInspector();
-    }
+    if (joint) activeJointId = joint.id;
   }
   robotGroup.traverse(node => {
     if (!node.isMesh) return;
@@ -868,6 +911,8 @@ document.querySelector("#reset-camera").addEventListener("click", frameRobot);
 physicsToggle.addEventListener("click", togglePhysics);
 physicsReset.addEventListener("click", resetSimulation);
 followToggle.addEventListener("click", toggleFollow);
+visualMeshToggle.addEventListener("click", toggleVisualMeshes);
+collisionShapeToggle.addEventListener("click", toggleCollisionShapes);
 elementSearch.addEventListener("input", renderElements);
 document.querySelector("#collapse-menagerie").addEventListener("click", () => {
   document.querySelector(".workbench").classList.add("collapsed");
@@ -886,6 +931,7 @@ for (const tab of document.querySelectorAll(".tab")) tab.addEventListener("click
 });
 new ResizeObserver(resize).observe(canvas);
 resize();
+updateDisplayControls();
 animate();
 
 try {
