@@ -76,6 +76,7 @@
       <div class="inspector-tabs" role="tablist">
         <button class="tab active" data-tab="joints" role="tab">Joints <span id="joint-count"></span></button>
         <button class="tab" data-tab="elements" role="tab">Elements</button>
+        <button class="tab" data-tab="collisions" role="tab">Collisions</button>
       </div>
       <section id="joints-panel" class="tab-panel active">
         <div id="joint-list" class="joint-list" aria-label="Robot joints"></div>
@@ -84,6 +85,23 @@
         <label class="search-label" for="element-search">Filter links and joints</label>
         <input id="element-search" type="search" placeholder="e.g. left_knee">
         <div id="element-list" class="element-list"></div>
+      </section>
+      <section id="collisions-panel" class="tab-panel">
+        <div class="collision-panel-heading">
+          <div><span class="eyebrow">Collision editor</span><strong>Primitive draft</strong></div>
+          <button id="collision-reset" title="Discard local collision edits">Reset</button>
+        </div>
+        <label class="search-label" for="collision-link">Link</label>
+        <select id="collision-link" aria-label="Collision link"></select>
+        <div id="collision-add" class="collision-add" aria-label="Add collision shape">
+          <button data-collision-add="box">+ Box</button>
+          <button data-collision-add="sphere">+ Sphere</button>
+          <button data-collision-add="cylinder">+ Cylinder</button>
+        </div>
+        <div id="collision-list" class="collision-list" aria-label="Collisions on selected link"></div>
+        <div id="collision-detail" class="collision-detail"></div>
+        <button id="collision-export" class="primary collision-export">Export URDF Copy</button>
+        <p id="collision-status" class="collision-status">Open this panel to begin a local collision draft.</p>
       </section>
     </aside>
   </div>

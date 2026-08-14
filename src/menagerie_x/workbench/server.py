@@ -13,6 +13,12 @@ from pathlib import Path
 from typing import Any
 
 from menagerie_x.assets import AssetError, RobotInspection, Variant, get_asset_paths, inspect_variant, variants
+from menagerie_x.workbench.collisions import (
+    CollisionDocumentError,
+    StaleCollisionDocumentError,
+    export_collision_copy,
+    load_collision_document,
+)
 
 
 class WorkbenchError(ValueError):
@@ -66,6 +72,21 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
     def _json(self, status: HTTPStatus, payload: dict[str, Any]) -> None:
         self._send(status, json.dumps(payload).encode("utf-8"), "application/json; charset=utf-8")
 
+    def _body_json(self) -> dict[str, Any]:
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError as exc:
+            raise WorkbenchError("invalid request length") from exc
+        if length <= 0 or length > 2_000_000:
+            raise WorkbenchError("request body must be a JSON object smaller than 2 MB")
+        try:
+            payload = json.loads(self.rfile.read(length))
+        except json.JSONDecodeError as exc:
+            raise WorkbenchError("request body is not valid JSON") from exc
+        if not isinstance(payload, dict):
+            raise WorkbenchError("request body must be a JSON object")
+        return payload
+
     def _variant(self, name: str) -> Variant:
         try:
             return variants(self.asset_root)[name]
@@ -102,7 +123,7 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
             if parsed.path == "/":
                 self._serve_web_file("index.html")
                 return
-            if parsed.path in {"/app.js", "/styles.css"}:
+            if parsed.path in {"/app.js", "/collision-editor.js", "/styles.css"}:
                 self._serve_web_file(parsed.path.lstrip("/"))
                 return
             if parsed.path.startswith("/vendor/"):
@@ -124,6 +145,9 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
                         raise WorkbenchError(f"{variant.name} has no {fmt.upper()} source")
                     self._send(HTTPStatus.OK, source.read_bytes(), "application/xml; charset=utf-8")
                     return
+                if len(path_parts) == 4 and path_parts[3] == "collisions":
+                    self._json(HTTPStatus.OK, {"ok": True, **load_collision_document(variant.urdf).as_dict()})
+                    return
                 if len(path_parts) == 5 and path_parts[3] == "files":
                     requested = urllib.parse.unquote(path_parts[4])
                     candidate = (variant.meshes_dir / requested).resolve()
@@ -134,6 +158,28 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
             raise WorkbenchError("not found")
         except (WorkbenchError, AssetError) as exc:
             self._json(HTTPStatus.NOT_FOUND, {"ok": False, "error": str(exc)})
+        except Exception as exc:
+            self._json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
+
+    def do_POST(self) -> None:
+        try:
+            parsed = urllib.parse.urlparse(self.path)
+            path_parts = [part for part in parsed.path.split("/") if part]
+            if len(path_parts) != 4 or path_parts[:2] != ["api", "robots"] or path_parts[3] != "collision-exports":
+                raise WorkbenchError("not found")
+            variant = self._variant(urllib.parse.unquote(path_parts[2]))
+            payload = self._body_json()
+            revision = payload.get("revision")
+            if not isinstance(revision, str):
+                raise CollisionDocumentError("revision is required")
+            output = export_collision_copy(variant.urdf, revision, payload.get("collisions"))
+            self._json(HTTPStatus.CREATED, {"ok": True, "output_path": str(output)})
+        except StaleCollisionDocumentError as exc:
+            self._json(HTTPStatus.CONFLICT, {"ok": False, "error": str(exc)})
+        except (WorkbenchError, AssetError) as exc:
+            self._json(HTTPStatus.NOT_FOUND, {"ok": False, "error": str(exc)})
+        except CollisionDocumentError as exc:
+            self._json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
         except Exception as exc:
             self._json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
 

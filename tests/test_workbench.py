@@ -31,6 +31,19 @@ class WorkbenchTests(unittest.TestCase):
         with urllib.request.urlopen(f"{self.base_url}{path}") as response:
             return json.loads(response.read())
 
+    def _post_json(self, path: str, payload: dict) -> tuple[int, dict]:
+        request = urllib.request.Request(
+            f"{self.base_url}{path}",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request) as response:
+                return response.status, json.loads(response.read())
+        except urllib.error.HTTPError as error:
+            return error.code, json.loads(error.read())
+
     def test_catalog_endpoint_preserves_robot_payload(self):
         catalog = self._get_json("/api/robots")
 
@@ -71,6 +84,10 @@ class WorkbenchTests(unittest.TestCase):
         self.assertIn("syncVisualJointTransforms", app)
         self.assertIn("workbench_root_collision", app)
         self.assertNotIn("robotGroup.position.addScaledVector", app)
+        self.assertIn("new THREE.ArrowHelper", app)
+        self.assertIn("updateDragForceIndicator", app)
+        self.assertIn("setForceLinkHighlight", app)
+        self.assertIn("forceMagnitude", app)
 
     def test_workbench_exposes_joint_inspector_and_limit_slider(self):
         page = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
@@ -94,6 +111,30 @@ class WorkbenchTests(unittest.TestCase):
         self.assertIn("toggleVisualMeshes", app)
         self.assertIn("toggleCollisionShapes", app)
         self.assertIn("collision-overlay", app)
+
+    def test_collision_editor_endpoints_and_controls_are_exposed(self):
+        document = self._get_json("/api/robots/astro_v2/collisions")
+        page = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+        app = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+
+        self.assertEqual(document["primitive_types"], ["box", "cylinder", "sphere"])
+        self.assertEqual(len(document["revision"]), 64)
+        self.assertTrue(document["new_id_prefix"].startswith("new-"))
+        self.assertTrue(any(not item["editable"] and item["geometry"]["type"] == "mesh" for item in document["collisions"]))
+        status, error = self._post_json(
+            "/api/robots/astro_v2/collision-exports",
+            {"revision": "stale", "collisions": []},
+        )
+        self.assertEqual(status, 409)
+        self.assertFalse(error["ok"])
+        self.assertIn('data-tab="collisions"', page)
+        self.assertIn('id="collision-export"', page)
+        self.assertIn("enterCollisionMode", app)
+        self.assertNotIn("nearestSnap", app)
+        self.assertNotIn("collisionGesture", app)
+        self.assertNotIn("Snap collision", page)
+        self.assertIn("collision-exports", app)
+        self.assertIn("collisionMode", app)
 
 
 if __name__ == "__main__":

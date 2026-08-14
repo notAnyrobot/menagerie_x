@@ -2,6 +2,14 @@ import * as THREE from "/vendor/three.module.js";
 import { OrbitControls } from "/vendor/OrbitControls.js";
 import { STLLoader } from "/vendor/STLLoader.js";
 import loadMujoco from "/vendor/mujoco.js";
+import {
+  PRIMITIVE_TYPES,
+  defaultCollision,
+  degreesToRadians,
+  isPickableSceneObject,
+  primitiveGeometry,
+  radiansToDegrees,
+} from "/collision-editor.js";
 
 const canvas = document.querySelector("#robot-canvas");
 const viewerEmpty = document.querySelector("#viewer-empty");
@@ -21,6 +29,11 @@ const followToggle = document.querySelector("#follow-toggle");
 const visualMeshToggle = document.querySelector("#visual-mesh-toggle");
 const collisionShapeToggle = document.querySelector("#collision-shape-toggle");
 const simulationState = document.querySelector("#simulation-state");
+const collisionLink = document.querySelector("#collision-link");
+const collisionList = document.querySelector("#collision-list");
+const collisionDetail = document.querySelector("#collision-detail");
+const collisionStatus = document.querySelector("#collision-status");
+const collisionExport = document.querySelector("#collision-export");
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -41,6 +54,10 @@ scene.add(keyLight);
 const grid = new THREE.GridHelper(4, 16, 0x3b4652, 0x222a31);
 grid.rotateX(Math.PI / 2);
 scene.add(grid);
+const forceIndicator = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(), 0.001, 0xff6b4a, 0.08, 0.045);
+forceIndicator.visible = false;
+forceIndicator.renderOrder = 2;
+scene.add(forceIndicator);
 
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
@@ -62,15 +79,21 @@ let collisionShapesVisible = false;
 let physicsAccumulator = 0;
 let pointerGesture = null;
 let dragForce = null;
+let forceHighlightedLink = null;
 let simulationRootJoint = null;
 let jointStates = [];
 let activeJointId = null;
 let lastJointStatusUpdate = 0;
+let collisionDocument = null;
+let collisionDraft = [];
+let selectedCollisionId = null;
+let collisionMode = false;
 const visualLinkGroups = new Map();
 const initialLinkTransforms = new Map();
 const visualJoints = new Map();
 const visualRootLinks = new Set();
 const mujocoBodyIds = new Map();
+const collisionObjects = new Map();
 const simulationClock = new THREE.Clock();
 
 function api(path) {
@@ -109,7 +132,7 @@ function assertCurrentLoad(token, controller) {
 
 function handleSimulationError(error) {
   physicsEnabled = false;
-  dragForce = null;
+  clearDragForce();
   pointerGesture = null;
   controls.enabled = true;
   canvas.classList.remove("pushing");
@@ -125,8 +148,8 @@ function setEngineState(message, state = "loading") {
 function updateSimulationControls(message = null) {
   physicsToggle.textContent = physicsEnabled ? "ON" : "OFF";
   physicsToggle.setAttribute("aria-pressed", String(physicsEnabled));
-  physicsToggle.disabled = !simulationModel;
-  physicsReset.disabled = !simulationModel;
+  physicsToggle.disabled = !simulationModel || collisionMode;
+  physicsReset.disabled = !simulationModel || collisionMode;
   followToggle.textContent = followEnabled ? "ON" : "OFF";
   followToggle.setAttribute("aria-pressed", String(followEnabled));
   if (message) simulationState.textContent = message;
@@ -137,6 +160,7 @@ function updateDisplayControls() {
   visualMeshToggle.setAttribute("aria-pressed", String(visualMeshesVisible));
   collisionShapeToggle.textContent = collisionShapesVisible ? "ON" : "OFF";
   collisionShapeToggle.setAttribute("aria-pressed", String(collisionShapesVisible));
+  collisionShapeToggle.disabled = collisionMode;
 }
 
 function setLayerVisibility(layer, visible) {
@@ -154,6 +178,7 @@ function toggleVisualMeshes() {
 function toggleCollisionShapes() {
   collisionShapesVisible = !collisionShapesVisible;
   setLayerVisibility("collision-overlay", collisionShapesVisible);
+  setLayerVisibility("collision-editor", collisionShapesVisible || collisionMode);
   updateDisplayControls();
 }
 
@@ -180,7 +205,7 @@ function resetSimulation() {
 }
 
 function togglePhysics() {
-  if (!simulationModel) return;
+  if (!simulationModel || collisionMode) return;
   physicsEnabled = !physicsEnabled;
   updateSimulationControls(physicsEnabled ? "Physics is running in MuJoCo WASM." : "Physics paused. Drag the robot to apply a push.");
 }
@@ -270,20 +295,30 @@ function restoreInitialVisualTransforms() {
   }
 }
 
-function clearDragForce() {
-  if (dragForce && simulationData?.xfrc_applied) {
-    simulationData.xfrc_applied.fill(0, dragForce.bodyId * 6, dragForce.bodyId * 6 + 6);
-  }
-  dragForce = null;
+function setForceLinkHighlight(link) {
+  if (forceHighlightedLink === link) return;
+  forceHighlightedLink = link;
+  robotGroup.traverse(node => {
+    if (!node.isMesh || node.userData.layer !== "visual-mesh" || !node.material?.emissive) return;
+    const material = node.material;
+    node.userData.originalEmissive ??= material.emissive.clone();
+    node.userData.originalEmissiveIntensity ??= material.emissiveIntensity;
+    if (node.userData.link === link) {
+      material.emissive.set(0xff4b28);
+      material.emissiveIntensity = 0.8;
+    } else {
+      material.emissive.copy(node.userData.originalEmissive);
+      material.emissiveIntensity = node.userData.originalEmissiveIntensity;
+    }
+  });
 }
 
-function applyDragForce() {
-  if (!dragForce || !simulationData) return;
+function dragForceValues() {
+  if (!dragForce || !simulationData) return null;
   const { bodyId, localAnchor, target } = dragForce;
   const position = bodyId * 3;
   const rotation = bodyId * 9;
-  const forceOffset = bodyId * 6;
-  const { xpos, xmat, xipos, xfrc_applied } = simulationData;
+  const { xpos, xmat, xipos } = simulationData;
   const anchor = new THREE.Vector3(
     xpos[position] + xmat[rotation] * localAnchor.x + xmat[rotation + 1] * localAnchor.y + xmat[rotation + 2] * localAnchor.z,
     xpos[position + 1] + xmat[rotation + 3] * localAnchor.x + xmat[rotation + 4] * localAnchor.y + xmat[rotation + 5] * localAnchor.z,
@@ -291,13 +326,52 @@ function applyDragForce() {
   );
   const force = target.clone().sub(anchor).multiplyScalar(50);
   const centerOfMass = new THREE.Vector3(xipos[position], xipos[position + 1], xipos[position + 2]);
-  const torque = anchor.sub(centerOfMass).cross(force);
-  xfrc_applied[forceOffset] = force.x;
-  xfrc_applied[forceOffset + 1] = force.y;
-  xfrc_applied[forceOffset + 2] = force.z;
-  xfrc_applied[forceOffset + 3] = torque.x;
-  xfrc_applied[forceOffset + 4] = torque.y;
-  xfrc_applied[forceOffset + 5] = torque.z;
+  return { anchor, force, torque: anchor.clone().sub(centerOfMass).cross(force) };
+}
+
+function updateDragForceIndicator() {
+  const values = dragForceValues();
+  if (!values) {
+    forceIndicator.visible = false;
+    return;
+  }
+  const magnitude = values.force.length();
+  if (magnitude < 1e-5) {
+    forceIndicator.visible = false;
+    return;
+  }
+  // One metre represents 100 N; cap the visual so an extreme drag stays in frame.
+  const length = Math.min(Math.max(magnitude / 100, 0.025), 0.8);
+  forceIndicator.position.copy(values.anchor);
+  forceIndicator.setDirection(values.force.clone().normalize());
+  forceIndicator.setLength(length, Math.min(length * 0.28, 0.12), Math.min(length * 0.16, 0.07));
+  forceIndicator.userData.forceMagnitude = magnitude;
+  forceIndicator.visible = true;
+}
+
+function clearDragForce() {
+  if (dragForce && simulationData?.xfrc_applied) {
+    simulationData.xfrc_applied.fill(0, dragForce.bodyId * 6, dragForce.bodyId * 6 + 6);
+  }
+  dragForce = null;
+  forceIndicator.visible = false;
+  setForceLinkHighlight(null);
+}
+
+function applyDragForce() {
+  if (!dragForce || !simulationData) return;
+  const { bodyId } = dragForce;
+  const forceOffset = bodyId * 6;
+  const values = dragForceValues();
+  if (!values) return;
+  const { force, torque } = values;
+  simulationData.xfrc_applied[forceOffset] = force.x;
+  simulationData.xfrc_applied[forceOffset + 1] = force.y;
+  simulationData.xfrc_applied[forceOffset + 2] = force.z;
+  simulationData.xfrc_applied[forceOffset + 3] = torque.x;
+  simulationData.xfrc_applied[forceOffset + 4] = torque.y;
+  simulationData.xfrc_applied[forceOffset + 5] = torque.z;
+  updateDragForceIndicator();
 }
 
 function displayName(robot) {
@@ -404,6 +478,7 @@ function renderJointInspector() {
     slider.max = String(upper);
     slider.step = String(Math.max((upper - lower) / 1000, 0.0001));
     slider.value = String(Math.min(upper, Math.max(lower, jointValue(joint))));
+    slider.disabled = collisionMode;
     slider.setAttribute("aria-label", `Set ${joint.name} position`);
     slider.addEventListener("pointerdown", () => selectElement(joint.name, "joint"));
     slider.addEventListener("input", () => setJointPosition(joint.id, Number(slider.value)));
@@ -434,6 +509,7 @@ function selectJoint(id) {
 }
 
 function setJointPosition(id, value) {
+  if (collisionMode) return;
   const joint = jointStates.find(item => item.id === id);
   if (!joint || !simulationData || !simulationModel || !mujoco) return;
   const position = joint.limited ? Math.min(joint.upper, Math.max(joint.lower, value)) : value;
@@ -466,6 +542,7 @@ function renderElements() {
 }
 
 function clearRobot() {
+  collisionObjects.clear();
   visualLinkGroups.clear();
   initialLinkTransforms.clear();
   visualJoints.clear();
@@ -485,13 +562,11 @@ function setTransform(object, origin) {
 }
 
 function collisionGeometry(collision) {
-  if (collision.type === "box") return new THREE.BoxGeometry(...collision.size);
-  if (collision.type === "sphere") return new THREE.SphereGeometry(collision.radius, 16, 10);
-  if (collision.type === "cylinder") return new THREE.CylinderGeometry(collision.radius, collision.radius, collision.length, 16);
+  if (PRIMITIVE_TYPES.includes(collision.type)) return primitiveGeometry(THREE, collision);
   return null;
 }
 
-async function addCollisionOverlay(collision, group, robot, token, controller) {
+async function addCollisionOverlay(collision, group, robot, token, controller, sourceCollisionId = null) {
   let geometry = collisionGeometry(collision);
   if (collision.type === "mesh") {
     const filename = collision.filename.split("/").pop();
@@ -505,11 +580,397 @@ async function addCollisionOverlay(collision, group, robot, token, controller) {
     new THREE.EdgesGeometry(geometry),
     new THREE.LineBasicMaterial({ color: 0xffb84d, transparent: true, opacity: 0.86 }),
   );
-  overlay.userData = { link: group.name, layer: "collision-overlay" };
-  overlay.visible = collisionShapesVisible;
+  overlay.userData = { link: group.name, layer: "collision-overlay", collisionName: collision.name || "", sourceCollisionId, editable: collision.type !== "mesh" };
+  overlay.visible = collisionShapesVisible || (collisionMode && collision.type === "mesh");
   setTransform(overlay, collision.origin);
   if (collision.scale) overlay.scale.fromArray(collision.scale);
+  overlay.updateMatrix();
   group.add(overlay);
+}
+
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function setCollisionStatus(message, error = false) {
+  collisionStatus.textContent = message;
+  collisionStatus.classList.toggle("error", error);
+}
+
+function draftCollision(id) {
+  return collisionDraft.find(collision => collision.id === id) || null;
+}
+
+function disposeObject(object) {
+  object.traverse(node => {
+    node.geometry?.dispose?.();
+    if (Array.isArray(node.material)) node.material.forEach(material => material.dispose?.());
+    else node.material?.dispose?.();
+  });
+}
+
+function clearDraftCollisionObjects() {
+  for (const object of collisionObjects.values()) {
+    object.parent?.remove(object);
+    disposeObject(object);
+  }
+  collisionObjects.clear();
+  robotGroup.traverse(node => {
+    if (node.userData.layer === "collision-overlay" && node.userData.editable) node.visible = collisionShapesVisible;
+  });
+}
+
+function paintCollisionObject(id) {
+  const object = collisionObjects.get(id);
+  if (!object) return;
+  const selected = id === selectedCollisionId;
+  object.traverse(node => {
+    if (!node.material?.color) return;
+    node.material.color.set(selected ? 0xd5ff4c : 0xff7a59);
+    if (node.isMesh) node.material.opacity = selected ? 0.34 : 0.22;
+  });
+}
+
+function refreshCollisionObjectStyles() {
+  for (const id of collisionObjects.keys()) paintCollisionObject(id);
+}
+
+function updateCollisionObject(collision) {
+  const object = collisionObjects.get(collision.id);
+  if (!object) return;
+  setTransform(object, collision.origin);
+  object.updateMatrixWorld(true);
+  paintCollisionObject(collision.id);
+}
+
+function addDraftCollisionObject(collision) {
+  const link = visualLinkGroups.get(collision.link);
+  if (!link) return;
+  const object = new THREE.Group();
+  object.userData = { layer: "collision-editor", collisionId: collision.id, link: collision.link };
+  const geometry = primitiveGeometry(THREE, collision.geometry);
+  const fill = new THREE.Mesh(
+    geometry,
+    new THREE.MeshBasicMaterial({ color: 0xff7a59, transparent: true, opacity: 0.22, depthWrite: false }),
+  );
+  fill.userData = { layer: "collision-editor", collisionId: collision.id, link: collision.link };
+  const edges = new THREE.LineSegments(
+    new THREE.EdgesGeometry(geometry),
+    new THREE.LineBasicMaterial({ color: 0xff7a59, transparent: true, opacity: 0.98 }),
+  );
+  edges.userData = { layer: "collision-editor", collisionId: collision.id, link: collision.link };
+  object.add(fill, edges);
+  setTransform(object, collision.origin);
+  object.visible = collisionShapesVisible || collisionMode;
+  link.add(object);
+  collisionObjects.set(collision.id, object);
+}
+
+function replaceDraftCollisionObject(collision) {
+  const old = collisionObjects.get(collision.id);
+  if (old) {
+    old.parent?.remove(old);
+    disposeObject(old);
+    collisionObjects.delete(collision.id);
+  }
+  addDraftCollisionObject(collision);
+  refreshCollisionObjectStyles();
+}
+
+function renderDraftCollisionObjects() {
+  clearDraftCollisionObjects();
+  if (!collisionMode) return;
+  for (const collision of collisionDraft) addDraftCollisionObject(collision);
+  robotGroup.traverse(node => {
+    if (node.userData.layer === "collision-overlay" && node.userData.editable) node.visible = false;
+    if (node.userData.layer === "collision-overlay" && !node.userData.editable) node.visible = true;
+  });
+  refreshCollisionObjectStyles();
+}
+
+function visualBoundsForLink(linkName) {
+  const link = visualLinkGroups.get(linkName);
+  if (!link) return null;
+  const bounds = new THREE.Box3();
+  let found = false;
+  link.traverse(node => {
+    if (!node.isMesh || node.userData.layer !== "visual-mesh") return;
+    node.geometry.computeBoundingBox();
+    const local = node.geometry.boundingBox?.clone();
+    if (!local) return;
+    node.updateWorldMatrix(true, false);
+    link.updateWorldMatrix(true, false);
+    local.applyMatrix4(node.matrixWorld).applyMatrix4(link.matrixWorld.clone().invert());
+    bounds.union(local);
+    found = true;
+  });
+  return found ? { min: bounds.min.toArray(), max: bounds.max.toArray() } : null;
+}
+
+function uniqueCollisionName(linkName, type) {
+  const names = new Set((collisionDocument?.collisions || []).filter(item => item.link === linkName).map(item => item.name).filter(Boolean));
+  for (const collision of collisionDraft) if (collision.link === linkName) names.add(collision.name);
+  let index = 1;
+  let candidate = `${linkName}_${type}_collision_${index}`;
+  while (names.has(candidate)) candidate = `${linkName}_${type}_collision_${++index}`;
+  return candidate;
+}
+
+function addPrimitiveCollision(type) {
+  if (!collisionMode || !collisionDocument || !collisionLink.value) return;
+  const random = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const collision = defaultCollision(
+    type,
+    collisionLink.value,
+    `${collisionDocument.new_id_prefix}${random}`,
+    uniqueCollisionName(collisionLink.value, type),
+    visualBoundsForLink(collisionLink.value),
+  );
+  collisionDraft.push(collision);
+  selectedCollisionId = collision.id;
+  renderDraftCollisionObjects();
+  renderCollisionPanel();
+  setCollisionStatus(`Added ${type} collision. Set its position with the exact XYZ fields below.`);
+}
+
+function selectCollision(id) {
+  if (!draftCollision(id)) return;
+  selectedCollisionId = id;
+  collisionLink.value = draftCollision(id).link;
+  renderCollisionPanel();
+  refreshCollisionObjectStyles();
+}
+
+function numberControl(label, value, onChange, options = {}) {
+  const row = document.createElement("label");
+  row.className = "collision-control";
+  const title = document.createElement("span");
+  title.textContent = label;
+  row.append(title);
+  let slider = null;
+  if (options.slider) {
+    slider = document.createElement("input");
+    slider.type = "range";
+    slider.min = String(options.min ?? -Math.max(Math.abs(value) * 3, 1));
+    slider.max = String(options.max ?? Math.max(Math.abs(value) * 3, 1));
+    slider.step = String(options.step ?? 0.001);
+    slider.value = String(value);
+    row.append(slider);
+  } else {
+    row.append(document.createElement("span"));
+  }
+  const input = document.createElement("input");
+  input.type = "number";
+  input.step = String(options.step ?? 0.001);
+  if (options.min !== undefined) input.min = String(options.min);
+  input.value = String(value);
+  const apply = raw => {
+    const next = Number(raw);
+    if (!Number.isFinite(next) || (options.min !== undefined && next < options.min)) return;
+    input.value = String(next);
+    if (slider) slider.value = String(Math.max(Number(slider.min), Math.min(Number(slider.max), next)));
+    onChange(next);
+  };
+  input.addEventListener("change", () => apply(input.value));
+  slider?.addEventListener("input", () => apply(slider.value));
+  row.append(input);
+  return row;
+}
+
+function renderCollisionDetail() {
+  collisionDetail.replaceChildren();
+  const collision = draftCollision(selectedCollisionId);
+  if (!collision) {
+    collisionDetail.innerHTML = '<p class="collision-readonly">Select an editable primitive or add one to this link. Mesh collisions are shown for reference and cannot be changed.</p>';
+    return;
+  }
+  const heading = document.createElement("div");
+  heading.className = "collision-section-title";
+  heading.textContent = `${collision.geometry.type} collision`;
+  const name = document.createElement("input");
+  name.className = "collision-name";
+  name.value = collision.name;
+  name.setAttribute("aria-label", "Collision name");
+  name.addEventListener("change", () => { collision.name = name.value.trim(); renderCollisionPanel(); });
+  collisionDetail.append(heading, name);
+  const dimensionHeading = document.createElement("div");
+  dimensionHeading.className = "collision-section-title";
+  dimensionHeading.textContent = "Dimensions (m)";
+  collisionDetail.append(dimensionHeading);
+  const updateGeometry = () => replaceDraftCollisionObject(collision);
+  if (collision.geometry.type === "box") {
+    ["X", "Y", "Z"].forEach((axis, index) => collisionDetail.append(numberControl(axis, collision.geometry.size[index], value => { collision.geometry.size[index] = value; updateGeometry(); }, { slider: true, min: 0.001 })));
+  } else if (collision.geometry.type === "sphere") {
+    collisionDetail.append(numberControl("Radius", collision.geometry.radius, value => { collision.geometry.radius = value; updateGeometry(); }, { slider: true, min: 0.001 }));
+  } else {
+    collisionDetail.append(numberControl("Radius", collision.geometry.radius, value => { collision.geometry.radius = value; updateGeometry(); }, { slider: true, min: 0.001 }));
+    collisionDetail.append(numberControl("Length", collision.geometry.length, value => { collision.geometry.length = value; updateGeometry(); }, { slider: true, min: 0.001 }));
+  }
+  const positionHeading = document.createElement("div");
+  positionHeading.className = "collision-section-title";
+  positionHeading.textContent = "Position (m)";
+  collisionDetail.append(positionHeading);
+  ["X", "Y", "Z"].forEach((axis, index) => collisionDetail.append(numberControl(axis, collision.origin.xyz[index], value => { collision.origin.xyz[index] = value; updateCollisionObject(collision); })));
+  const rotationHeading = document.createElement("div");
+  rotationHeading.className = "collision-section-title";
+  rotationHeading.textContent = "Rotation (degrees)";
+  collisionDetail.append(rotationHeading);
+  ["Roll", "Pitch", "Yaw"].forEach((axis, index) => collisionDetail.append(numberControl(axis, radiansToDegrees(collision.origin.rpy[index]), value => { collision.origin.rpy[index] = degreesToRadians(value); updateCollisionObject(collision); }, { slider: true, min: -180, max: 180, step: 0.1 })));
+  const actions = document.createElement("div");
+  actions.className = "collision-actions";
+  const reassign = document.createElement("button");
+  reassign.textContent = "Move to selected link";
+  reassign.disabled = collision.link === collisionLink.value;
+  reassign.addEventListener("click", () => reassignCollision(collision, collisionLink.value));
+  const remove = document.createElement("button");
+  remove.className = "collision-delete";
+  remove.textContent = "Delete";
+  remove.addEventListener("click", () => deleteSelectedCollision());
+  actions.append(reassign, remove);
+  collisionDetail.append(actions);
+}
+
+function renderCollisionPanel() {
+  const previous = collisionLink.value;
+  collisionLink.replaceChildren();
+  for (const link of collisionDocument?.links || []) {
+    const option = document.createElement("option");
+    option.value = link;
+    option.textContent = link;
+    collisionLink.append(option);
+  }
+  if (collisionDocument?.links.includes(previous)) collisionLink.value = previous;
+  else if (draftCollision(selectedCollisionId)) collisionLink.value = draftCollision(selectedCollisionId).link;
+  collisionList.replaceChildren();
+  if (collisionDocument && collisionLink.value) {
+    const editable = new Map(collisionDraft.filter(item => item.link === collisionLink.value).map(item => [item.id, item]));
+    for (const source of collisionDocument.collisions.filter(item => item.link === collisionLink.value)) {
+      if (source.editable && !editable.has(source.id)) continue;
+      const item = source.editable ? editable.get(source.id) : source;
+      const row = document.createElement("button");
+      row.className = `collision-row ${item.id === selectedCollisionId ? "active" : ""} ${source.editable ? "" : "readonly"}`;
+      const label = document.createElement("span");
+      label.className = "collision-row-name";
+      label.textContent = item.name || `${item.geometry.type} collision`;
+      const kind = document.createElement("span");
+      kind.className = "collision-row-kind";
+      kind.textContent = source.editable ? item.geometry.type : `mesh · ${item.geometry.filename.split("/").pop()}`;
+      row.append(label, kind);
+      if (source.editable) row.addEventListener("click", () => selectCollision(item.id));
+      else row.addEventListener("click", () => setCollisionStatus(`Mesh collision ${item.name || item.geometry.filename} is read-only.`));
+      collisionList.append(row);
+      editable.delete(source.id);
+    }
+    for (const item of editable.values()) {
+      const row = document.createElement("button");
+      row.className = `collision-row ${item.id === selectedCollisionId ? "active" : ""}`;
+      row.innerHTML = `<span class="collision-row-name"></span><span class="collision-row-kind"></span>`;
+      row.querySelector(".collision-row-name").textContent = item.name;
+      row.querySelector(".collision-row-kind").textContent = item.geometry.type;
+      row.addEventListener("click", () => selectCollision(item.id));
+      collisionList.append(row);
+    }
+  }
+  renderCollisionDetail();
+  collisionExport.disabled = !collisionMode || !collisionDocument;
+}
+
+function reassignCollision(collision, linkName) {
+  const object = collisionObjects.get(collision.id);
+  const target = visualLinkGroups.get(linkName);
+  if (!object || !target) return;
+  object.updateWorldMatrix(true, false);
+  const world = object.matrixWorld.clone();
+  target.updateWorldMatrix(true, false);
+  const local = target.matrixWorld.clone().invert().multiply(world);
+  const position = new THREE.Vector3();
+  const quaternion = new THREE.Quaternion();
+  const scale = new THREE.Vector3();
+  local.decompose(position, quaternion, scale);
+  const euler = new THREE.Euler().setFromQuaternion(quaternion, "XYZ");
+  collision.link = linkName;
+  collision.origin.xyz = position.toArray();
+  collision.origin.rpy = [euler.x, euler.y, euler.z];
+  collisionLink.value = linkName;
+  renderDraftCollisionObjects();
+  renderCollisionPanel();
+  setCollisionStatus(`Moved ${collision.name} to ${linkName} while preserving its world pose.`);
+}
+
+function deleteSelectedCollision() {
+  const collision = draftCollision(selectedCollisionId);
+  if (!collision || !window.confirm(`Delete collision ${collision.name}?`)) return;
+  collisionDraft = collisionDraft.filter(item => item.id !== collision.id);
+  selectedCollisionId = null;
+  renderDraftCollisionObjects();
+  renderCollisionPanel();
+  setCollisionStatus("Collision removed from the local draft.");
+}
+
+async function enterCollisionMode() {
+  if (!activeRobot) return;
+  collisionMode = true;
+  updateDisplayControls();
+  updateSimulationControls("Loading collision editor…");
+  try {
+    if (!collisionDocument) collisionDocument = await api(`/api/robots/${encodeURIComponent(activeRobot.id)}/collisions`);
+    if (!collisionMode) return;
+    collisionDraft = clone(collisionDocument.collisions.filter(item => item.editable));
+    selectedCollisionId = null;
+    physicsEnabled = false;
+    followEnabled = false;
+    collisionShapesVisible = true;
+    resetSimulation();
+    renderJointInspector();
+    renderDraftCollisionObjects();
+    renderCollisionPanel();
+    updateDisplayControls();
+    updateSimulationControls("Collision editor active: the model is reset and physics/joint editing are locked.");
+    setCollisionStatus("Draft loaded. Mesh collisions are reference-only; add a primitive to begin editing.");
+  } catch (error) {
+    collisionMode = false;
+    updateDisplayControls();
+    updateSimulationControls("Collision editor could not be loaded.");
+    setCollisionStatus(error.message, true);
+  }
+}
+
+function leaveCollisionMode() {
+  if (!collisionMode) return;
+  collisionMode = false;
+  clearDraftCollisionObjects();
+  renderJointInspector();
+  updateDisplayControls();
+  updateSimulationControls("Collision editing closed. Physics and joint controls are available again.");
+}
+
+async function resetCollisionDraft() {
+  if (!collisionMode || !activeRobot) return;
+  collisionDocument = await api(`/api/robots/${encodeURIComponent(activeRobot.id)}/collisions`);
+  collisionDraft = clone(collisionDocument.collisions.filter(item => item.editable));
+  selectedCollisionId = null;
+  renderDraftCollisionObjects();
+  renderCollisionPanel();
+  setCollisionStatus("Collision draft reset from the source URDF.");
+}
+
+async function exportCollisionDraft() {
+  if (!collisionDocument || !activeRobot) return;
+  try {
+    collisionExport.disabled = true;
+    const response = await fetch(`/api/robots/${encodeURIComponent(activeRobot.id)}/collision-exports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ revision: collisionDocument.revision, collisions: collisionDraft }),
+    });
+    const data = await response.json().catch(() => ({ ok: false, error: response.statusText }));
+    if (!response.ok || !data.ok) throw new Error(data.error || "Could not export collision copy");
+    setCollisionStatus(`Exported ${data.output_path}`);
+  } catch (error) {
+    setCollisionStatus(error.message, true);
+  } finally {
+    collisionExport.disabled = false;
+  }
 }
 
 async function renderRobotMeshes(robot, token, controller) {
@@ -546,7 +1007,7 @@ async function renderRobotMeshes(robot, token, controller) {
     visualRootLinks.add(name);
   }
   let renderedFirstMesh = false;
-  for (const link of robot.scene.links) {
+  for (const [linkIndex, link] of robot.scene.links.entries()) {
     const group = links.get(link.name);
     for (const visual of link.visuals) {
       const filename = visual.filename.split("/").pop();
@@ -573,9 +1034,9 @@ async function renderRobotMeshes(robot, token, controller) {
       }
       await new Promise(resolve => requestAnimationFrame(resolve));
     }
-    for (const collision of link.collisions || []) {
+    for (const [collisionIndex, collision] of (link.collisions || []).entries()) {
       try {
-        await addCollisionOverlay(collision, group, robot, token, controller);
+        await addCollisionOverlay(collision, group, robot, token, controller, `collision-${linkIndex}-${collisionIndex}`);
       } catch (error) {
         if (error?.name === "AbortError") throw error;
         console.warn(`Skipping collision overlay for ${link.name}: ${error.message}`);
@@ -740,6 +1201,10 @@ async function loadMujocoModel(robot, token, controller) {
 }
 
 async function selectRobot(id) {
+  leaveCollisionMode();
+  collisionDocument = null;
+  collisionDraft = [];
+  selectedCollisionId = null;
   loadAbortController?.abort();
   const controller = new AbortController();
   loadAbortController = controller;
@@ -837,11 +1302,18 @@ function pickRobotPart(event) {
   pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
   pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
   raycaster.setFromCamera(pointer, camera);
-  return raycaster.intersectObject(robotGroup, true).find(result => result.object.userData.link);
+  return raycaster.intersectObject(robotGroup, true).find(result => isPickableSceneObject(result.object, collisionMode));
 }
 
 canvas.addEventListener("pointerdown", event => {
+  if (event.button !== 0 || (event.buttons & 1) === 0) return;
   const hit = pickRobotPart(event);
+  if (collisionMode) {
+    const collisionId = hit?.object.userData.collisionId;
+    if (collisionId) selectCollision(collisionId);
+    else if (hit?.object.userData.link) selectElement(hit.object.userData.link, "link");
+    return;
+  }
   if (!hit) return;
   const link = hit.object.userData.link;
   const bodyId = getMujocoBodyId(link);
@@ -869,6 +1341,7 @@ canvas.addEventListener("pointermove", event => {
     pointerGesture.dragging = true;
     controls.enabled = false;
     canvas.classList.add("pushing");
+    setForceLinkHighlight(pointerGesture.link);
   }
   if (pointerGesture.dragging && dragForce) {
     const rect = canvas.getBoundingClientRect();
@@ -876,6 +1349,7 @@ canvas.addEventListener("pointermove", event => {
     pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     raycaster.setFromCamera(pointer, camera);
     raycaster.ray.intersectPlane(dragForce.plane, dragForce.target);
+    updateDragForceIndicator();
     if (!physicsEnabled) updateSimulationControls("Push queued on the selected link. Turn Physics on to integrate it.");
   }
 });
@@ -895,6 +1369,11 @@ canvas.addEventListener("pointercancel", finishPointerGesture);
 
 window.addEventListener("keydown", event => {
   if (event.repeat || event.target.matches("input, textarea, select, button")) return;
+  if (event.key === "Delete" && collisionMode && selectedCollisionId) {
+    event.preventDefault();
+    deleteSelectedCollision();
+    return;
+  }
   if (event.key.toLowerCase() === "p") {
     event.preventDefault();
     togglePhysics();
@@ -913,6 +1392,10 @@ physicsReset.addEventListener("click", resetSimulation);
 followToggle.addEventListener("click", toggleFollow);
 visualMeshToggle.addEventListener("click", toggleVisualMeshes);
 collisionShapeToggle.addEventListener("click", toggleCollisionShapes);
+document.querySelector("#collision-reset").addEventListener("click", () => resetCollisionDraft().catch(error => setCollisionStatus(error.message, true)));
+collisionExport.addEventListener("click", exportCollisionDraft);
+collisionLink.addEventListener("change", () => { renderCollisionPanel(); refreshCollisionObjectStyles(); });
+for (const button of document.querySelectorAll("[data-collision-add]")) button.addEventListener("click", () => addPrimitiveCollision(button.dataset.collisionAdd));
 elementSearch.addEventListener("input", renderElements);
 document.querySelector("#collapse-menagerie").addEventListener("click", () => {
   document.querySelector(".workbench").classList.add("collapsed");
@@ -925,6 +1408,8 @@ document.querySelector("#expand-menagerie").addEventListener("click", () => {
   setTimeout(resize, 200);
 });
 for (const tab of document.querySelectorAll(".tab")) tab.addEventListener("click", () => {
+  if (tab.dataset.tab === "collisions") enterCollisionMode();
+  else leaveCollisionMode();
   document.querySelectorAll(".tab, .tab-panel").forEach(node => node.classList.remove("active"));
   tab.classList.add("active");
   document.querySelector(`#${tab.dataset.tab}-panel`).classList.add("active");
