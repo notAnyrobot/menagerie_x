@@ -116,7 +116,20 @@ def _link_description(link: ET.Element, source_path: Path) -> dict[str, Any]:
         for collision in link.findall("collision")
         if (description := _geometry_description(collision, source_path, link.get("name", "collision"))) is not None
     ]
-    return {"name": link.get("name", ""), "visuals": visuals, "collisions": collisions}
+    inertial = link.find("inertial")
+    mass = inertial.find("mass") if inertial is not None else None
+    inertial_description = None
+    if inertial is not None and mass is not None:
+        try:
+            inertial_description = {
+                "mass": float(mass.get("value", "0")),
+                "origin": _parse_origin(inertial.find("origin")),
+            }
+        except ValueError:
+            # Validation reports the malformed mass below while clients retain a
+            # stable null shape rather than receiving a partially valid object.
+            pass
+    return {"name": link.get("name", ""), "visuals": visuals, "collisions": collisions, "inertial": inertial_description}
 
 
 def _parse_urdf(variant: Variant) -> tuple[RobotDescription | None, list[ValidationIssue]]:

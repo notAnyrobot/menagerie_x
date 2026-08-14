@@ -18,6 +18,25 @@ class AssetInspectionTests(unittest.TestCase):
         self.assertTrue(inspection.description.links)
         self.assertTrue(inspection.description.links[0]["collisions"])
 
+    def test_link_payload_projects_inertial_mass_and_origin(self):
+        inspection = inspect_variant(variants(ROOT)["astro_v1"])
+
+        assert inspection.description is not None
+        pelvis = next(link for link in inspection.description.links if link["name"] == "pelvis")
+        self.assertEqual(pelvis["inertial"], {"mass": 4.6593, "origin": {"xyz": [-0.0002233, 0.00012202, -0.076908], "rpy": [0.0, 0.0, 0.0]}})
+
+    def test_link_payload_uses_null_when_inertial_is_absent(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            urdf = root / "robot.urdf"
+            urdf.write_text('<robot name="test"><link name="base"/></robot>', encoding="utf-8")
+            variant = Variant("test", "test", 0, urdf, None, root / "meshes", "test", "")
+
+            inspection = inspect_variant(variant)
+
+        assert inspection.description is not None
+        self.assertIsNone(inspection.description.links[0]["inertial"])
+
     def test_urdf_only_variant_reports_missing_authored_mjcf(self):
         inspection = inspect_variant(variants(ROOT)["astro_v2"])
 

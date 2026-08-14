@@ -22,12 +22,12 @@
         <span class="eyebrow">Simulation</span>
         <div class="simulation-row">
           <span>Physics</span>
-          <button id="physics-toggle" class="state-toggle" aria-pressed="false">OFF</button>
+          <button id="physics-toggle" class="state-toggle" role="switch" aria-checked="false" aria-label="Toggle physics"><span class="switch-knob" aria-hidden="true"></span></button>
           <button id="physics-reset" class="reset-simulation" aria-label="Reset simulation" title="Reset simulation">↺</button>
         </div>
         <div class="simulation-row">
           <span>Camera follow</span>
-          <button id="follow-toggle" class="state-toggle" aria-pressed="false">OFF</button>
+          <button id="follow-toggle" class="state-toggle" role="switch" aria-checked="false" aria-label="Toggle camera follow"><span class="switch-knob" aria-hidden="true"></span></button>
         </div>
         <p id="simulation-state" class="simulation-state">Model ready for interactive inspection.</p>
       </section>
@@ -35,11 +35,29 @@
         <span class="eyebrow">Display</span>
         <div class="simulation-row">
           <span>Visual meshes</span>
-          <button id="visual-mesh-toggle" class="state-toggle" aria-pressed="true">ON</button>
+          <button id="visual-mesh-toggle" class="state-toggle" role="switch" aria-checked="true" aria-label="Toggle visual meshes"><span class="switch-knob" aria-hidden="true"></span></button>
         </div>
+        <label class="opacity-row" for="mesh-opacity"><span>Mesh opacity</span><output id="mesh-opacity-value" for="mesh-opacity">100%</output></label>
+        <input id="mesh-opacity" class="opacity-slider" type="range" min="0" max="100" value="100" aria-label="Visual mesh opacity">
         <div class="simulation-row">
           <span>Collision shapes</span>
-          <button id="collision-shape-toggle" class="state-toggle" aria-pressed="false">OFF</button>
+          <button id="collision-shape-toggle" class="state-toggle" role="switch" aria-checked="false" aria-label="Toggle collision shapes"><span class="switch-knob" aria-hidden="true"></span></button>
+        </div>
+        <div class="simulation-row">
+          <span>Link centers of mass</span>
+          <button id="center-of-mass-toggle" class="state-toggle" role="switch" aria-checked="false" aria-label="Toggle link centers of mass"><span class="switch-knob" aria-hidden="true"></span></button>
+        </div>
+        <div class="simulation-row">
+          <span>Link coordinate frames</span>
+          <button id="link-frame-toggle" class="state-toggle" role="switch" aria-checked="false" aria-label="Toggle link coordinate frames"><span class="switch-knob" aria-hidden="true"></span></button>
+        </div>
+        <div class="simulation-row">
+          <span>World coordinate frame</span>
+          <button id="world-frame-toggle" class="state-toggle" role="switch" aria-checked="false" aria-label="Toggle world coordinate frame"><span class="switch-knob" aria-hidden="true"></span></button>
+        </div>
+        <div class="simulation-row">
+          <span>Joint rotation axes</span>
+          <button id="joint-axis-toggle" class="state-toggle" role="switch" aria-checked="false" aria-label="Toggle joint rotation axes"><span class="switch-knob" aria-hidden="true"></span></button>
         </div>
       </section>
     </aside>

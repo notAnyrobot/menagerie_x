@@ -10,6 +10,7 @@ import {
   primitiveGeometry,
   radiansToDegrees,
 } from "/collision-editor.js";
+import { createVisualDiagnostics } from "/diagnostics.js";
 
 const canvas = document.querySelector("#robot-canvas");
 const viewerEmpty = document.querySelector("#viewer-empty");
@@ -28,6 +29,12 @@ const physicsReset = document.querySelector("#physics-reset");
 const followToggle = document.querySelector("#follow-toggle");
 const visualMeshToggle = document.querySelector("#visual-mesh-toggle");
 const collisionShapeToggle = document.querySelector("#collision-shape-toggle");
+const meshOpacity = document.querySelector("#mesh-opacity");
+const meshOpacityValue = document.querySelector("#mesh-opacity-value");
+const centerOfMassToggle = document.querySelector("#center-of-mass-toggle");
+const linkFrameToggle = document.querySelector("#link-frame-toggle");
+const worldFrameToggle = document.querySelector("#world-frame-toggle");
+const jointAxisToggle = document.querySelector("#joint-axis-toggle");
 const simulationState = document.querySelector("#simulation-state");
 const collisionLink = document.querySelector("#collision-link");
 const collisionList = document.querySelector("#collision-list");
@@ -58,6 +65,7 @@ const forceIndicator = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THR
 forceIndicator.visible = false;
 forceIndicator.renderOrder = 2;
 scene.add(forceIndicator);
+const diagnostics = createVisualDiagnostics(scene);
 
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
@@ -76,6 +84,11 @@ let physicsEnabled = false;
 let followEnabled = false;
 let visualMeshesVisible = true;
 let collisionShapesVisible = false;
+let meshOpacityPercent = 100;
+let centersOfMassVisible = false;
+let linkFramesVisible = false;
+let worldFrameVisible = false;
+let jointAxesVisible = false;
 let physicsAccumulator = 0;
 let pointerGesture = null;
 let dragForce = null;
@@ -146,21 +159,29 @@ function setEngineState(message, state = "loading") {
 }
 
 function updateSimulationControls(message = null) {
-  physicsToggle.textContent = physicsEnabled ? "ON" : "OFF";
-  physicsToggle.setAttribute("aria-pressed", String(physicsEnabled));
+  physicsToggle.setAttribute("aria-checked", String(physicsEnabled));
   physicsToggle.disabled = !simulationModel || collisionMode;
   physicsReset.disabled = !simulationModel || collisionMode;
-  followToggle.textContent = followEnabled ? "ON" : "OFF";
-  followToggle.setAttribute("aria-pressed", String(followEnabled));
+  followToggle.setAttribute("aria-checked", String(followEnabled));
   if (message) simulationState.textContent = message;
 }
 
 function updateDisplayControls() {
-  visualMeshToggle.textContent = visualMeshesVisible ? "ON" : "OFF";
-  visualMeshToggle.setAttribute("aria-pressed", String(visualMeshesVisible));
-  collisionShapeToggle.textContent = collisionShapesVisible ? "ON" : "OFF";
-  collisionShapeToggle.setAttribute("aria-pressed", String(collisionShapesVisible));
+  visualMeshToggle.setAttribute("aria-checked", String(visualMeshesVisible));
+  collisionShapeToggle.setAttribute("aria-checked", String(collisionShapesVisible));
   collisionShapeToggle.disabled = collisionMode;
+  centerOfMassToggle.setAttribute("aria-checked", String(centersOfMassVisible));
+  linkFrameToggle.setAttribute("aria-checked", String(linkFramesVisible));
+  worldFrameToggle.setAttribute("aria-checked", String(worldFrameVisible));
+  jointAxisToggle.setAttribute("aria-checked", String(jointAxesVisible));
+  meshOpacity.value = String(meshOpacityPercent);
+  meshOpacityValue.textContent = `${meshOpacityPercent}%`;
+  diagnostics.applyDisplayState({
+    centersOfMass: centersOfMassVisible,
+    linkFrames: linkFramesVisible,
+    worldFrame: worldFrameVisible,
+    jointAxes: jointAxesVisible,
+  });
 }
 
 function setLayerVisibility(layer, visible) {
@@ -175,10 +196,39 @@ function toggleVisualMeshes() {
   updateDisplayControls();
 }
 
+function applyVisualMeshOpacity() {
+  const multiplier = meshOpacityPercent / 100;
+  robotGroup.traverse(node => {
+    if (node.userData.layer !== "visual-mesh") return;
+    const material = node.material;
+    const original = node.userData.originalMaterial;
+    if (!material || !original) return;
+    const opacity = original.opacity * multiplier;
+    material.opacity = opacity;
+    material.transparent = original.transparent || opacity < 1;
+    material.depthWrite = original.depthWrite && opacity >= 1;
+    material.needsUpdate = true;
+  });
+}
+
+function setMeshOpacity(value) {
+  meshOpacityPercent = Math.round(Math.min(100, Math.max(0, Number(value) || 0)));
+  applyVisualMeshOpacity();
+  updateDisplayControls();
+}
+
 function toggleCollisionShapes() {
   collisionShapesVisible = !collisionShapesVisible;
   setLayerVisibility("collision-overlay", collisionShapesVisible);
   setLayerVisibility("collision-editor", collisionShapesVisible || collisionMode);
+  updateDisplayControls();
+}
+
+function toggleDiagnostics(key) {
+  if (key === "centersOfMass") centersOfMassVisible = !centersOfMassVisible;
+  if (key === "linkFrames") linkFramesVisible = !linkFramesVisible;
+  if (key === "worldFrame") worldFrameVisible = !worldFrameVisible;
+  if (key === "jointAxes") jointAxesVisible = !jointAxesVisible;
   updateDisplayControls();
 }
 
@@ -543,6 +593,7 @@ function renderElements() {
 
 function clearRobot() {
   collisionObjects.clear();
+  diagnostics.dispose();
   visualLinkGroups.clear();
   initialLinkTransforms.clear();
   visualJoints.clear();
@@ -554,6 +605,20 @@ function clearRobot() {
       node.material?.dispose?.();
     });
   }
+}
+
+function visualBounds() {
+  const bounds = new THREE.Box3();
+  let hasVisualMesh = false;
+  robotGroup.updateWorldMatrix(true, true);
+  robotGroup.traverse(node => {
+    if (node.userData.layer !== "visual-mesh" || !node.geometry) return;
+    if (!node.geometry.boundingBox) node.geometry.computeBoundingBox();
+    if (!node.geometry.boundingBox) return;
+    bounds.union(node.geometry.boundingBox.clone().applyMatrix4(node.matrixWorld));
+    hasVisualMesh = true;
+  });
+  return hasVisualMesh ? bounds : null;
 }
 
 function setTransform(object, origin) {
@@ -1024,7 +1089,13 @@ async function renderRobotMeshes(robot, token, controller) {
       const material = new THREE.MeshStandardMaterial({ color: 0xbfc9d3, metalness: .18, roughness: .58 });
       const mesh = new THREE.Mesh(geometry, material);
       mesh.castShadow = true;
-      mesh.userData = { link: link.name, layer: "visual-mesh", originalColor: material.color.clone(), filename };
+      mesh.userData = {
+        link: link.name,
+        layer: "visual-mesh",
+        originalColor: material.color.clone(),
+        originalMaterial: { opacity: material.opacity, transparent: material.transparent, depthWrite: material.depthWrite },
+        filename,
+      };
       mesh.visible = visualMeshesVisible;
       setTransform(mesh, visual.origin);
       mesh.scale.fromArray(visual.scale);
@@ -1044,6 +1115,10 @@ async function renderRobotMeshes(robot, token, controller) {
     }
   }
   if (isCurrentLoad(token, controller)) {
+    const bounds = visualBounds();
+    const visualBoundsDiagonal = bounds?.getSize(new THREE.Vector3()).length() || 0.5;
+    diagnostics.bindRobot(robot, links, visualBoundsDiagonal);
+    applyVisualMeshOpacity();
     viewerEmpty.hidden = true;
     frameRobot();
   }
@@ -1252,7 +1327,7 @@ function selectElement(name, kind) {
     if (joint) activeJointId = joint.id;
   }
   robotGroup.traverse(node => {
-    if (!node.isMesh) return;
+    if (node.userData.layer !== "visual-mesh") return;
     const material = node.material;
     material.color.copy(node.userData.originalColor);
     if (node.userData.link === resolvedName) material.color.set(0xd5ff4c);
@@ -1261,8 +1336,8 @@ function selectElement(name, kind) {
 }
 
 function frameRobot() {
-  const bounds = new THREE.Box3().setFromObject(robotGroup);
-  if (bounds.isEmpty()) return;
+  const bounds = visualBounds();
+  if (!bounds || bounds.isEmpty()) return;
   const center = bounds.getCenter(new THREE.Vector3());
   const size = bounds.getSize(new THREE.Vector3()).length();
   controls.target.copy(center);
@@ -1289,8 +1364,8 @@ function animate() {
     lastJointStatusUpdate = performance.now();
   }
   if (followEnabled && robotGroup.children.length) {
-    const center = new THREE.Box3().setFromObject(robotGroup).getCenter(new THREE.Vector3());
-    controls.target.lerp(center, Math.min(deltaSeconds * 7, 1));
+    const bounds = visualBounds();
+    if (bounds) controls.target.lerp(bounds.getCenter(new THREE.Vector3()), Math.min(deltaSeconds * 7, 1));
   }
   controls.update();
   renderer.render(scene, camera);
@@ -1302,7 +1377,7 @@ function pickRobotPart(event) {
   pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
   pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
   raycaster.setFromCamera(pointer, camera);
-  return raycaster.intersectObject(robotGroup, true).find(result => isPickableSceneObject(result.object, collisionMode));
+  return raycaster.intersectObject(robotGroup, true).find(result => !result.object.userData.visualDiagnostic && isPickableSceneObject(result.object, collisionMode));
 }
 
 canvas.addEventListener("pointerdown", event => {
@@ -1396,6 +1471,11 @@ document.querySelector("#collision-reset").addEventListener("click", () => reset
 collisionExport.addEventListener("click", exportCollisionDraft);
 collisionLink.addEventListener("change", () => { renderCollisionPanel(); refreshCollisionObjectStyles(); });
 for (const button of document.querySelectorAll("[data-collision-add]")) button.addEventListener("click", () => addPrimitiveCollision(button.dataset.collisionAdd));
+meshOpacity.addEventListener("input", () => setMeshOpacity(meshOpacity.value));
+centerOfMassToggle.addEventListener("click", () => toggleDiagnostics("centersOfMass"));
+linkFrameToggle.addEventListener("click", () => toggleDiagnostics("linkFrames"));
+worldFrameToggle.addEventListener("click", () => toggleDiagnostics("worldFrame"));
+jointAxisToggle.addEventListener("click", () => toggleDiagnostics("jointAxes"));
 elementSearch.addEventListener("input", renderElements);
 document.querySelector("#collapse-menagerie").addEventListener("click", () => {
   document.querySelector(".workbench").classList.add("collapsed");

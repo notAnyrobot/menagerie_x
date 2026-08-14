@@ -51,12 +51,19 @@ class WorkbenchTests(unittest.TestCase):
         self.assertEqual(catalog["robots"][0]["formats"], {"urdf": True, "mjcf": True})
         self.assertTrue(catalog["robots"][-1]["scene"]["links"])
         self.assertTrue(catalog["robots"][0]["scene"]["links"][0]["collisions"])
+        self.assertIn("inertial", catalog["robots"][0]["scene"]["links"][0])
 
     def test_urdf_only_robot_reports_missing_authored_mjcf(self):
         robot = self._get_json("/api/robots/astro_v2")["robot"]
 
         self.assertEqual(robot["formats"], {"urdf": True, "mjcf": False})
         self.assertTrue(any(issue["code"] == "mjcf-unavailable" for issue in robot["issues"]))
+
+    def test_diagnostics_module_is_served(self):
+        with urllib.request.urlopen(f"{self.base_url}/diagnostics.js") as response:
+            source = response.read().decode("utf-8")
+
+        self.assertIn("createVisualDiagnostics", source)
 
     def test_asset_endpoint_rejects_path_traversal(self):
         with self.assertRaises(urllib.error.HTTPError) as raised:
@@ -135,6 +142,29 @@ class WorkbenchTests(unittest.TestCase):
         self.assertNotIn("Snap collision", page)
         self.assertIn("collision-exports", app)
         self.assertIn("collisionMode", app)
+
+    def test_workbench_exposes_visual_diagnostics_and_accessible_switches(self):
+        page = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+        app = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+        diagnostics = (WEB_ROOT / "diagnostics.js").read_text(encoding="utf-8")
+
+        for control in ("physics-toggle", "follow-toggle", "visual-mesh-toggle", "collision-shape-toggle", "center-of-mass-toggle", "link-frame-toggle", "world-frame-toggle", "joint-axis-toggle"):
+            self.assertIn(f'id="{control}"', page)
+        self.assertEqual(page.count('role="switch"'), 8)
+        self.assertIn('id="mesh-opacity"', page)
+        self.assertIn('id="mesh-opacity-value"', page)
+        self.assertIn("aria-checked", app)
+        self.assertNotIn("aria-pressed", app)
+        self.assertIn("applyVisualMeshOpacity", app)
+        self.assertIn("createVisualDiagnostics", app)
+        self.assertIn("!result.object.userData.visualDiagnostic", app)
+        self.assertIn("world-frame", diagnostics)
+        self.assertIn("center-of-mass", diagnostics)
+        self.assertIn('new Set(["revolute", "continuous"])', diagnostics)
+        self.assertIn("new THREE.Vector3(0, 0, 1)", diagnostics)
+        self.assertIn("0xef4444", diagnostics)
+        self.assertIn("0x22c55e", diagnostics)
+        self.assertIn("0x3b82f6", diagnostics)
 
 
 if __name__ == "__main__":
