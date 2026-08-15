@@ -160,7 +160,7 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
             if parsed.path == "/":
                 self._serve_web_file("index.html")
                 return
-            if parsed.path in {"/app.js", "/collision-editor.js", "/contact-visualizer.js", "/diagnostics.js", "/mjcf-renderer.js", "/styles.css"}:
+            if parsed.path in {"/app.js", "/collision-editor.js", "/contact-visualizer.js", "/diagnostics.js", "/mjcf-renderer.js", "/mujoco-visualization.js", "/styles.css"}:
                 self._serve_web_file(parsed.path.lstrip("/"))
                 return
             if parsed.path.startswith("/vendor/"):

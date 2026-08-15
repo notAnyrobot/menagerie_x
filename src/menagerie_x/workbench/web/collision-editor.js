@@ -47,6 +47,47 @@ export function primitiveGeometry(THREE, geometry) {
   return cylinder;
 }
 
+export function mjcfPrimitiveSize(geometry) {
+  if (geometry.type === "box") return geometry.size.map(value => Number(value) / 2);
+  if (geometry.type === "sphere") return [Number(geometry.radius), 0, 0];
+  return [Number(geometry.radius), Number(geometry.length) / 2, 0];
+}
+
+export function rpyToMjcfQuaternion(rpy) {
+  const [roll, pitch, yaw] = rpy.map(value => Number(value) / 2);
+  const [sx, sy, sz] = [Math.sin(roll), Math.sin(pitch), Math.sin(yaw)];
+  const [cx, cy, cz] = [Math.cos(roll), Math.cos(pitch), Math.cos(yaw)];
+  return [
+    cx * cy * cz - sx * sy * sz,
+    sx * cy * cz + cx * sy * sz,
+    cx * sy * cz - sx * cy * sz,
+    cx * cy * sz + sx * sy * cz,
+  ];
+}
+
+/**
+ * Apply an ordinary primitive edit to an already compiled MuJoCo model.
+ * Compiling MJCF is synchronous in WASM and can stall the browser for seconds,
+ * while these arrays are intentionally exposed as mutable model views.
+ */
+export function syncPrimitiveToMjModel(model, collision) {
+  if (!model || !collision?.name) return false;
+  let geom = null;
+  try {
+    geom = model.geom(collision.name);
+    if (!geom || geom.name !== collision.name) return false;
+    geom.pos.set(collision.origin.xyz.map(Number));
+    geom.quat.set(rpyToMjcfQuaternion(collision.origin.rpy));
+    geom.size.fill(0);
+    geom.size.set(mjcfPrimitiveSize(collision.geometry));
+    return true;
+  } catch {
+    return false;
+  } finally {
+    geom?.delete?.();
+  }
+}
+
 export function defaultCollision(type, link, id, name, bounds) {
   const size = bounds ? bounds.max.map((value, index) => Math.max(value - bounds.min[index], 0.001)) : [0.1, 0.1, 0.1];
   const center = bounds ? bounds.min.map((value, index) => (value + bounds.max[index]) / 2) : [0, 0, 0];

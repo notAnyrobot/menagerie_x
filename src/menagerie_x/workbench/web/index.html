@@ -41,8 +41,12 @@
         <label class="opacity-row" for="mesh-opacity"><span>Mesh opacity</span><output id="mesh-opacity-value" for="mesh-opacity">100%</output></label>
         <input id="mesh-opacity" class="opacity-slider" type="range" min="0" max="100" value="100" aria-label="Visual mesh opacity">
         <div class="simulation-row">
-          <span>Collisions &amp; contacts</span>
-          <button id="collision-shape-toggle" class="state-toggle" role="switch" aria-checked="false" aria-label="Toggle collisions and contacts"><span class="switch-knob" aria-hidden="true"></span></button>
+          <span>Collision shapes</span>
+          <button id="collision-shape-toggle" class="state-toggle" role="switch" aria-checked="false" aria-label="Toggle collision shapes"><span class="switch-knob" aria-hidden="true"></span></button>
+        </div>
+        <div class="simulation-row">
+          <span>Contacts</span>
+          <button id="contact-toggle" class="state-toggle" role="switch" aria-checked="false" aria-label="Toggle MuJoCo contact points"><span class="switch-knob" aria-hidden="true"></span></button>
         </div>
         <div class="simulation-row">
           <span>Link centers of mass</span>
@@ -60,7 +64,35 @@
           <span>Joint rotation axes</span>
           <button id="joint-axis-toggle" class="state-toggle" role="switch" aria-checked="false" aria-label="Toggle joint rotation axes"><span class="switch-knob" aria-hidden="true"></span></button>
         </div>
+        <button id="collision-editor-toggle" class="collision-editor-toggle" type="button" aria-expanded="false" aria-controls="collision-editor-dock">Collision Editor</button>
       </section>
+    </aside>
+
+    <aside id="collision-editor-dock" class="collision-editor-dock" aria-label="Collision editor" hidden>
+      <header class="collision-editor-dock-heading">
+        <span><span class="eyebrow">Collision editor</span><strong>Temporary MJCF draft</strong></span>
+      </header>
+      <div class="collision-dock-content">
+        <div class="collision-dock-column collision-browser">
+          <label class="search-label" for="collision-link">Link</label>
+          <select id="collision-link" aria-label="Collision link"></select>
+          <div id="collision-add" class="collision-add" aria-label="Add collision shape">
+            <button data-collision-add="box">+ Box</button>
+            <button data-collision-add="sphere">+ Sphere</button>
+            <button data-collision-add="cylinder">+ Cylinder</button>
+            <button data-collision-add="capsule">+ Capsule</button>
+          </div>
+          <div id="collision-list" class="collision-list" aria-label="Collisions on selected link"></div>
+        </div>
+        <div class="collision-dock-column collision-properties">
+          <div id="collision-detail" class="collision-detail"></div>
+        </div>
+        <div class="collision-dock-column collision-draft-actions">
+          <button id="collision-reset" title="Restore the temporary draft from the MJCF source">Reset draft</button>
+          <button id="collision-export" class="primary collision-export">Export MJCF Candidate</button>
+          <p id="collision-status" class="collision-status">Open the editor to create a temporary collision draft.</p>
+        </div>
+      </div>
     </aside>
 
     <main class="workspace">
@@ -76,43 +108,12 @@
       </header>
 
       <section class="viewer-panel">
-        <canvas id="robot-canvas" aria-label="Interactive robot viewer"></canvas>
+        <canvas id="robot-canvas" tabindex="0" aria-label="Interactive robot viewer"></canvas>
         <div class="viewer-overlay top"><span id="engine-state">Preparing MuJoCo WASM…</span></div>
         <div class="viewer-overlay bottom legend" aria-label="Keyboard and mouse controls">
-          <span><kbd>P</kbd> Physics</span><span><kbd>R</kbd> Reset</span><span><kbd>F</kbd> Follow</span><span>◉ Drag to orbit</span><span>✥ Drag robot to push</span>
+          <span><kbd>P</kbd> Physics</span><span><kbd>R</kbd> Reset</span><span><kbd>F</kbd> Follow</span><span><kbd>C</kbd> Contacts</span><span>◉ Drag to orbit</span><span>✥ Drag robot to push</span>
         </div>
         <div id="viewer-empty" class="viewer-empty">Loading robot assets…</div>
-        <section id="collision-drawer" class="collision-drawer" aria-label="Collision editor" data-expanded="false">
-          <header class="collision-drawer-header">
-            <button id="collision-drawer-toggle" class="collision-drawer-toggle" type="button" aria-expanded="false" aria-controls="collision-drawer-content">
-              <span><span class="eyebrow">Collision editor</span><strong>Temporary MJCF draft</strong></span>
-              <span id="collision-contact-count" class="collision-contact-count">0 contacts</span>
-              <span class="collision-drawer-chevron" aria-hidden="true">⌃</span>
-            </button>
-            <button id="collision-drawer-close" class="collision-drawer-close" type="button" title="Close collision editor" aria-label="Close collision editor">×</button>
-          </header>
-          <div id="collision-drawer-content" class="collision-drawer-content" hidden>
-            <div class="collision-drawer-column collision-browser">
-              <label class="search-label" for="collision-link">Link</label>
-              <select id="collision-link" aria-label="Collision link"></select>
-              <div id="collision-add" class="collision-add" aria-label="Add collision shape">
-                <button data-collision-add="box">+ Box</button>
-                <button data-collision-add="sphere">+ Sphere</button>
-                <button data-collision-add="cylinder">+ Cylinder</button>
-                <button data-collision-add="capsule">+ Capsule</button>
-              </div>
-              <div id="collision-list" class="collision-list" aria-label="Collisions on selected link"></div>
-            </div>
-            <div class="collision-drawer-column collision-properties">
-              <div id="collision-detail" class="collision-detail"></div>
-            </div>
-            <div class="collision-drawer-column collision-draft-actions">
-              <button id="collision-reset" title="Restore the temporary draft from the MJCF source">Reset draft</button>
-              <button id="collision-export" class="primary collision-export">Export MJCF Candidate</button>
-              <p id="collision-status" class="collision-status">Open the editor to create a temporary collision draft.</p>
-            </div>
-          </div>
-        </section>
       </section>
 
       <section class="details-bar">

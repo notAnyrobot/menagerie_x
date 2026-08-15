@@ -109,7 +109,14 @@ class WorkbenchTests(unittest.TestCase):
 
         self.assertIn("createContactVisualizer", source)
         self.assertIn("mjv_updateScene", source)
-        self.assertIn("mjVIS_CONTACTPOINT", source)
+
+        with urllib.request.urlopen(f"{self.base_url}/mujoco-visualization.js") as response:
+            values = response.read().decode("utf-8")
+
+        self.assertIn("mujocoEnumValue", values)
+        self.assertIn("contactVisualizationValues", values)
+        self.assertIn("mjVIS_CONTACTPOINT", values)
+        self.assertIn("mjCAT_DECOR", values)
 
     def test_mjcf_renderer_uses_compiled_geom_poses_without_double_transforming_meshes(self):
         renderer = (WEB_ROOT / "mjcf-renderer.js").read_text(encoding="utf-8")
@@ -182,9 +189,13 @@ class WorkbenchTests(unittest.TestCase):
 
         self.assertIn('id="visual-mesh-toggle"', page)
         self.assertIn('id="collision-shape-toggle"', page)
-        self.assertIn("Collisions &amp; contacts", page)
+        self.assertIn('id="contact-toggle"', page)
+        self.assertIn("Collision shapes", page)
+        self.assertNotIn("Collisions &amp; contacts", page)
         self.assertIn("toggleVisualMeshes", app)
         self.assertIn("toggleCollisionShapes", app)
+        self.assertIn("toggleContacts", app)
+        self.assertIn("contactsVisible", app)
         self.assertIn("collision-overlay", app)
 
     def test_collision_editor_endpoints_and_controls_are_exposed(self):
@@ -200,9 +211,9 @@ class WorkbenchTests(unittest.TestCase):
         self.assertEqual(status, 404)
         self.assertFalse(error["ok"])
         self.assertNotIn('data-tab="collisions"', page)
-        self.assertIn('id="collision-drawer"', page)
-        self.assertIn('id="collision-drawer-toggle"', page)
-        self.assertIn('id="collision-drawer-close"', page)
+        self.assertIn('id="collision-editor-dock"', page)
+        self.assertIn('id="collision-editor-toggle"', page)
+        self.assertNotIn('id="collision-drawer"', page)
         self.assertIn('id="collision-export"', page)
         self.assertIn("enterCollisionMode", app)
         self.assertNotIn("nearestSnap", app)
@@ -216,6 +227,9 @@ class WorkbenchTests(unittest.TestCase):
         self.assertIn("compileDraftContacts", app)
         self.assertIn("collisionDraftSourcePath", app)
         self.assertIn("contactVisualizer", app)
+        self.assertIn("syncDiagnosticPose", app)
+        self.assertIn("collision-editor-open", app)
+        self.assertNotIn("collisionDrawer", app)
 
     def test_collision_draft_session_endpoints_create_save_reset_export_and_discard(self):
         created_status, created = self._post_json("/api/robots/astro_v1/collision-drafts", {})
@@ -259,9 +273,9 @@ class WorkbenchTests(unittest.TestCase):
         app = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
         diagnostics = (WEB_ROOT / "diagnostics.js").read_text(encoding="utf-8")
 
-        for control in ("physics-toggle", "follow-toggle", "visual-mesh-toggle", "collision-shape-toggle", "center-of-mass-toggle", "link-frame-toggle", "world-frame-toggle", "joint-axis-toggle"):
+        for control in ("physics-toggle", "follow-toggle", "visual-mesh-toggle", "collision-shape-toggle", "contact-toggle", "center-of-mass-toggle", "link-frame-toggle", "world-frame-toggle", "joint-axis-toggle"):
             self.assertIn(f'id="{control}"', page)
-        self.assertEqual(page.count('role="switch"'), 8)
+        self.assertEqual(page.count('role="switch"'), 9)
         self.assertIn('id="mesh-opacity"', page)
         self.assertIn('id="mesh-opacity-value"', page)
         self.assertIn("aria-checked", app)
@@ -281,6 +295,45 @@ class WorkbenchTests(unittest.TestCase):
         self.assertIn("TubeGeometry", diagnostics)
         self.assertIn("0xf59e0b", diagnostics)
         self.assertIn("transparent: true, depthTest: false, depthWrite: false", diagnostics)
+
+    def test_collision_editor_keeps_kinematic_pose_controls_and_native_contacts(self):
+        page = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+        app = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+        contacts = (WEB_ROOT / "contact-visualizer.js").read_text(encoding="utf-8")
+
+        self.assertIn("C</kbd> Contacts", page)
+        self.assertIn('id="robot-canvas" tabindex="0"', page)
+        self.assertIn("canvas.focus({ preventScroll: true });", app)
+        self.assertIn('event.key.toLowerCase() === "c"', app)
+        self.assertIn("event.target.matches(\"input, textarea, select, button\")", app)
+        self.assertIn("randomPoseButton.disabled = !simulationModel || !limitedJointStates().length", app)
+        self.assertNotIn("slider.disabled = collisionMode", app)
+        self.assertNotIn("|| collisionMode) return;\n  const joints = limitedJointStates", app)
+        self.assertIn("currentNamedJointPose", app)
+        self.assertIn("syncDiagnosticPose();", app)
+        self.assertIn("syncPrimitiveToMjModel", app)
+        self.assertIn("needsCompile && contactsVisible && collisionMode", app)
+        self.assertIn("if (contactsVisible) void compileDraftContacts(collisionDraftId);", app)
+        self.assertIn("Draft contact compilation superseded", app)
+        self.assertIn("if (collisionMode && (!diagnosticModel || !diagnosticData))", app)
+        self.assertIn("contactVisualizer.unbind();", app)
+        self.assertIn("collisionDraftDirty = false;\n    setCollisionStatus(`Exported", app)
+        self.assertNotIn("collisionDraftDirty = false;\n    if (collisionMode", app)
+        self.assertIn("mjv_updateScene", contacts)
+        self.assertIn("contactVisualizationValues", contacts)
+        self.assertIn("mujocoEnumValue", contacts)
+        self.assertNotIn("contactMarker", contacts)
+        self.assertNotIn("EdgesGeometry", contacts)
+        self.assertNotIn("LineSegments", contacts)
+        self.assertNotIn("TorusGeometry", contacts)
+        self.assertNotIn("Number(mujoco.mjt", contacts)
+        self.assertNotIn("data.contact", contacts)
+        self.assertNotIn("geom1", contacts)
+        self.assertNotIn("lastCount", contacts)
+        self.assertNotIn("get count", contacts)
+        self.assertIn("THREE.ACESFilmicToneMapping", app)
+        self.assertIn("const fillLight = new THREE.DirectionalLight", app)
+        self.assertIn("new THREE.HemisphereLight(0xdce7f2, 0x18251d, 1.05)", app)
 
 
 if __name__ == "__main__":

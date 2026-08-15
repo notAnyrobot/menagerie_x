@@ -11,6 +11,7 @@ import {
   primitiveDimensions,
   primitiveGeometry,
   radiansToDegrees,
+  syncPrimitiveToMjModel,
 } from "./collision-editor.js";
 
 test("dimension mapping and degree conversion are exact", () => {
@@ -66,4 +67,36 @@ test("position slider pins values to its local fine-adjustment range", () => {
   assert.equal(positionSliderValue(-0.4), -0.1);
   assert.equal(positionSliderValue(0.037), 0.037);
   assert.equal(positionSliderValue(0.4), 0.1);
+});
+
+test("consecutive primitive edits update the compiled MuJoCo geom in place", () => {
+  const geom = {
+    name: "pelvis_cylinder_collision_1",
+    pos: new Float64Array(3),
+    quat: new Float64Array(4),
+    size: new Float64Array(3),
+    delete() {},
+  };
+  const model = {
+    geom(name) {
+      assert.equal(name, geom.name);
+      return geom;
+    },
+  };
+  const collision = {
+    name: geom.name,
+    origin: { xyz: [0.01, -0.02, 0.03], rpy: [0, 0, 0] },
+    geometry: { type: "cylinder", radius: 0.08, length: 0.12 },
+  };
+
+  assert.equal(syncPrimitiveToMjModel(model, collision), true);
+  assert.deepEqual(Array.from(geom.pos), [0.01, -0.02, 0.03]);
+  assert.deepEqual(Array.from(geom.size), [0.08, 0.06, 0]);
+
+  collision.geometry.radius = 0.09;
+  collision.geometry.length = 0.14;
+  collision.origin.xyz = [-0.04, 0.05, 0.06];
+  assert.equal(syncPrimitiveToMjModel(model, collision), true);
+  assert.deepEqual(Array.from(geom.pos), [-0.04, 0.05, 0.06]);
+  assert.deepEqual(Array.from(geom.size), [0.09, 0.07, 0]);
 });

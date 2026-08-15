@@ -11,6 +11,7 @@ import {
   positionSliderValue,
   primitiveGeometry,
   radiansToDegrees,
+  syncPrimitiveToMjModel,
 } from "/collision-editor.js";
 import { createVisualDiagnostics } from "/diagnostics.js";
 import { createContactVisualizer } from "/contact-visualizer.js";
@@ -33,6 +34,7 @@ const followToggle = document.querySelector("#follow-toggle");
 const randomPoseButton = document.querySelector("#random-pose");
 const visualMeshToggle = document.querySelector("#visual-mesh-toggle");
 const collisionShapeToggle = document.querySelector("#collision-shape-toggle");
+const contactToggle = document.querySelector("#contact-toggle");
 const meshOpacity = document.querySelector("#mesh-opacity");
 const meshOpacityValue = document.querySelector("#mesh-opacity-value");
 const centerOfMassToggle = document.querySelector("#center-of-mass-toggle");
@@ -45,11 +47,8 @@ const collisionList = document.querySelector("#collision-list");
 const collisionDetail = document.querySelector("#collision-detail");
 const collisionStatus = document.querySelector("#collision-status");
 const collisionExport = document.querySelector("#collision-export");
-const collisionDrawer = document.querySelector("#collision-drawer");
-const collisionDrawerContent = document.querySelector("#collision-drawer-content");
-const collisionDrawerToggle = document.querySelector("#collision-drawer-toggle");
-const collisionDrawerClose = document.querySelector("#collision-drawer-close");
-const collisionContactCount = document.querySelector("#collision-contact-count");
+const collisionEditorDock = document.querySelector("#collision-editor-dock");
+const collisionEditorToggle = document.querySelector("#collision-editor-toggle");
 const mjcfTitle = document.querySelector("#mjcf-title");
 const mjcfSource = document.querySelector("#mjcf-source");
 const mjcfCandidateId = document.querySelector("#mjcf-candidate-id");
@@ -61,6 +60,8 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setClearColor(0x07100a);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(42, 1, 0.01, 100);
 camera.up.set(0, 0, 1);
@@ -71,10 +72,13 @@ const robotGroup = new THREE.Group();
 scene.add(robotGroup);
 const sceneGroup = new THREE.Group();
 scene.add(sceneGroup);
-scene.add(new THREE.HemisphereLight(0xe8f0db, 0x0d2417, 2.1));
-const keyLight = new THREE.DirectionalLight(0xf2f7e8, 2.35);
-keyLight.position.set(3, -3, 5);
+scene.add(new THREE.HemisphereLight(0xdce7f2, 0x18251d, 1.05));
+const keyLight = new THREE.DirectionalLight(0xffffff, 3.0);
+keyLight.position.set(4, -4, 6);
 scene.add(keyLight);
+const fillLight = new THREE.DirectionalLight(0xa9c7ff, 1.15);
+fillLight.position.set(-4, 2, 3);
+scene.add(fillLight);
 const grid = new THREE.GridHelper(4, 16, 0x4d865f, 0x244a31);
 grid.rotateX(Math.PI / 2);
 scene.add(grid);
@@ -83,7 +87,7 @@ forceIndicator.visible = false;
 forceIndicator.renderOrder = 2;
 scene.add(forceIndicator);
 const diagnostics = createVisualDiagnostics(scene);
-const contactVisualizer = createContactVisualizer(scene, updateContactState);
+const contactVisualizer = createContactVisualizer(scene);
 
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
@@ -104,6 +108,7 @@ let physicsEnabled = false;
 let followEnabled = false;
 let visualMeshesVisible = true;
 let collisionShapesVisible = false;
+let contactsVisible = false;
 let meshOpacityPercent = 100;
 let centersOfMassVisible = false;
 let linkFramesVisible = false;
@@ -124,12 +129,10 @@ let collisionDraftId = null;
 let retainedMeshIds = new Set();
 let collisionDraftSave = Promise.resolve();
 let collisionDraftSaveTimer = null;
+let collisionDraftNeedsCompile = false;
 let selectedCollisionId = null;
 let collisionMode = false;
-let collisionDrawerExpanded = false;
 let collisionDraftDirty = false;
-let contactGeomIds = new Set();
-let contactGeomNames = new Set();
 let diagnosticObjects = [];
 let diagnosticModel = null;
 let diagnosticData = null;
@@ -341,17 +344,12 @@ function disposeDiagnosticModel() {
   diagnosticGeneration += 1;
   diagnosticController?.abort();
   diagnosticController = null;
+  // Decorations are owned by the currently bound MuJoCo model.  Release that
+  // binding before deleting a temporary model so Three never reads freed data.
+  contactVisualizer.unbind();
   deleteWasmObjects(diagnosticObjects);
   diagnosticModel = null;
   diagnosticData = null;
-}
-
-function updateContactState({ count, geomIds, geomNames }) {
-  contactGeomIds = geomIds;
-  contactGeomNames = geomNames;
-  collisionContactCount.textContent = `${count} contact${count === 1 ? "" : "s"}`;
-  refreshCollisionObjectStyles();
-  paintCompiledCollisionContacts();
 }
 
 function isCurrentLoad(token, controller) {
@@ -380,8 +378,8 @@ function setEngineState(message, state = "loading") {
 function updateSimulationControls(message = null) {
   physicsToggle.setAttribute("aria-checked", String(physicsEnabled));
   physicsToggle.disabled = !simulationModel || collisionMode;
-  physicsReset.disabled = !simulationModel || collisionMode;
-  randomPoseButton.disabled = !simulationModel || collisionMode || !limitedJointStates().length;
+  physicsReset.disabled = !simulationModel;
+  randomPoseButton.disabled = !simulationModel || !limitedJointStates().length;
   followToggle.setAttribute("aria-checked", String(followEnabled));
   if (message) simulationState.textContent = message;
 }
@@ -389,6 +387,7 @@ function updateSimulationControls(message = null) {
 function updateDisplayControls() {
   visualMeshToggle.setAttribute("aria-checked", String(visualMeshesVisible));
   collisionShapeToggle.setAttribute("aria-checked", String(collisionShapesVisible));
+  contactToggle.setAttribute("aria-checked", String(contactsVisible));
   centerOfMassToggle.setAttribute("aria-checked", String(centersOfMassVisible));
   linkFrameToggle.setAttribute("aria-checked", String(linkFramesVisible));
   worldFrameToggle.setAttribute("aria-checked", String(worldFrameVisible));
@@ -440,9 +439,26 @@ function toggleCollisionShapes() {
   collisionShapesVisible = !collisionShapesVisible;
   setLayerVisibility("collision-overlay", collisionShapesVisible);
   setLayerVisibility("collision-editor", collisionShapesVisible);
-  contactVisualizer.setVisible(collisionShapesVisible);
-  if (collisionShapesVisible) syncContactVisualization();
-  else clearContactVisualization();
+  updateDisplayControls();
+}
+
+function toggleContacts() {
+  contactsVisible = !contactsVisible;
+  contactVisualizer.setVisible(contactsVisible);
+  if (contactsVisible && collisionMode) {
+    const pendingSave = collisionDraftSaveTimer !== null;
+    const saved = pendingSave ? flushCollisionDraft() : Promise.resolve();
+    saved.then(() => {
+      if (!collisionMode || !contactsVisible) return;
+      if (!diagnosticModel && !diagnosticController) void compileDraftContacts(collisionDraftId);
+      else syncContactVisualization();
+    }).catch(error => setCollisionStatus(error.message, true));
+  } else if (contactsVisible) {
+    syncContactVisualization();
+  } else {
+    if (collisionMode) disposeDiagnosticModel();
+    clearContactVisualization();
+  }
   updateDisplayControls();
 }
 
@@ -451,9 +467,13 @@ function clearContactVisualization() {
 }
 
 function syncContactVisualization() {
-  if (!collisionShapesVisible) return;
-  const model = collisionMode && diagnosticModel ? diagnosticModel : simulationModel;
-  const data = collisionMode && diagnosticData ? diagnosticData : simulationData;
+  if (!contactsVisible) return;
+  if (collisionMode && (!diagnosticModel || !diagnosticData)) {
+    clearContactVisualization();
+    return;
+  }
+  const model = collisionMode ? diagnosticModel : simulationModel;
+  const data = collisionMode ? diagnosticData : simulationData;
   if (!model || !data || !mujoco) return;
   contactVisualizer.bind(mujoco, model, data);
   contactVisualizer.setVisible(true);
@@ -484,6 +504,7 @@ function resetSimulation() {
       simulationData.qvel.fill(0);
     }
     mujoco.mj_forward?.(simulationModel, simulationData);
+    syncDiagnosticPose();
     physicsAccumulator = 0;
     restoreInitialVisualTransforms();
     updateJointValues();
@@ -537,12 +558,13 @@ function applyJointPose(pose) {
   if (!simulationData || !simulationModel || !mujoco) return;
   for (const { joint, value } of pose) simulationData.qpos[joint.qposAddress] = value;
   mujoco.mj_forward?.(simulationModel, simulationData);
+  syncDiagnosticPose();
   syncVisualsFromMujoco();
   updateJointValues();
 }
 
 function driveRandomPose() {
-  if (!simulationModel || !simulationData || !mujoco || collisionMode) return;
+  if (!simulationModel || !simulationData || !mujoco) return;
   const joints = limitedJointStates();
   if (!joints.length) {
     updateSimulationControls("No limited hinge or slide joints are available for a random pose.");
@@ -593,6 +615,33 @@ function syncVisualsFromMujoco() {
   mjcfRenderer.sync(simulationData);
   diagnostics.syncMujoco(simulationData);
   if (!collisionMode) syncContactVisualization();
+}
+
+function currentNamedJointPose() {
+  return new Map(jointStates.map(joint => [joint.name, Number(simulationData?.qpos[joint.qposAddress])]).filter(([, value]) => Number.isFinite(value)));
+}
+
+function syncDiagnosticPose() {
+  if (!diagnosticModel || !diagnosticData || !mujoco) return;
+  const pose = currentNamedJointPose();
+  for (let id = 0; id < Number(diagnosticModel.njnt || 0); id += 1) {
+    const joint = diagnosticModel.jnt(id);
+    const type = Number(joint.type);
+    if (type === 2 || type === 3) {
+      const value = pose.get(joint.name);
+      if (Number.isFinite(value)) diagnosticData.qpos[Number(joint.qposadr)] = value;
+    }
+    joint.delete?.();
+  }
+  diagnosticData.qvel?.fill?.(0);
+  mujoco.mj_forward(diagnosticModel, diagnosticData);
+  syncContactVisualization();
+}
+
+function syncDiagnosticCollision(collision) {
+  if (!diagnosticModel || !diagnosticData || !syncPrimitiveToMjModel(diagnosticModel, collision)) return false;
+  syncDiagnosticPose();
+  return true;
 }
 
 function restoreInitialVisualTransforms() {
@@ -775,7 +824,7 @@ function renderJointInspector() {
     slider.max = String(upper);
     slider.step = String(Math.max((upper - lower) / 1000, 0.0001));
     slider.value = String(Math.min(upper, Math.max(lower, jointValue(joint))));
-    slider.disabled = collisionMode;
+    slider.disabled = false;
     slider.setAttribute("aria-label", `Set ${joint.name} position`);
     slider.addEventListener("pointerdown", () => selectElement(joint.name, "joint"));
     slider.addEventListener("input", () => setJointPosition(joint.id, Number(slider.value)));
@@ -806,7 +855,6 @@ function selectJoint(id) {
 }
 
 function setJointPosition(id, value) {
-  if (collisionMode) return;
   const joint = jointStates.find(item => item.id === id);
   if (!joint || !simulationData || !simulationModel || !mujoco) return;
   cancelRandomPoseMotion();
@@ -994,17 +1042,26 @@ function persistCollisionDraft() {
   const path = collisionDraftPath();
   if (!path || !collisionDocument) return Promise.resolve();
   const body = JSON.stringify(collisionDraftPayload());
+  const needsCompile = collisionDraftNeedsCompile;
+  collisionDraftNeedsCompile = false;
   collisionDraftSave = collisionDraftSave.catch(() => undefined).then(() => collisionDraftRequest(path, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body,
-  }));
+  })).then(session => {
+    if (needsCompile && contactsVisible && collisionMode && session?.draft_id === collisionDraftId) void compileDraftContacts(collisionDraftId);
+    return session;
+  }).catch(error => {
+    collisionDraftNeedsCompile ||= needsCompile;
+    throw error;
+  });
   return collisionDraftSave;
 }
 
-function scheduleCollisionDraftSave() {
+function scheduleCollisionDraftSave(needsCompile = false) {
   cancelCollisionDraftSave();
   collisionDraftDirty = true;
+  collisionDraftNeedsCompile ||= needsCompile;
   collisionDraftSaveTimer = setTimeout(() => {
     persistCollisionDraft().catch(error => setCollisionStatus(error.message, true));
   }, 250);
@@ -1020,6 +1077,8 @@ function applyCollisionDraftSession(session) {
   collisionDraftId = session.draft_id;
   collisionDraft = clone(session.primitives);
   retainedMeshIds = new Set(session.retained_mesh_ids);
+  collisionDraftDirty = false;
+  collisionDraftNeedsCompile = false;
 }
 
 async function discardCollisionDraft() {
@@ -1027,6 +1086,7 @@ async function discardCollisionDraft() {
   const path = collisionDraftPath();
   collisionDraftId = null;
   retainedMeshIds = new Set();
+  collisionDraftNeedsCompile = false;
   if (!path) return;
   try {
     await collisionDraftSave.catch(() => undefined);
@@ -1059,28 +1119,15 @@ function paintCollisionObject(id) {
   const object = collisionObjects.get(id);
   if (!object) return;
   const selected = id === selectedCollisionId;
-  const collision = draftCollision(id);
-  const colliding = Boolean(collision && contactGeomNames.has(collision.name));
   object.traverse(node => {
     if (!node.material?.color) return;
-    // Selected wins for the edge outline; contact wins for the translucent fill.
-    node.material.color.set(node.isMesh && colliding ? 0xff754f : selected ? 0xc5f067 : 0x79ac4f);
-    if (node.isMesh) node.material.opacity = selected ? 0.38 : colliding ? 0.34 : 0.22;
-    if (node.isLineSegments) node.material.color.set(selected ? 0xc5f067 : colliding ? 0xffa15b : 0x8fca5e);
+    node.material.color.set(selected ? 0xc5f067 : node.isMesh ? 0x79ac4f : 0x8fca5e);
+    if (node.isMesh) node.material.opacity = selected ? 0.38 : 0.22;
   });
 }
 
 function refreshCollisionObjectStyles() {
   for (const id of collisionObjects.keys()) paintCollisionObject(id);
-}
-
-function paintCompiledCollisionContacts() {
-  robotGroup.traverse(node => {
-    if (node.userData.layer !== "collision-overlay" || !node.material?.color) return;
-    const colliding = contactGeomIds.has(node.userData.geomId) || contactGeomNames.has(node.userData.collisionName);
-    node.material.color.copy(node.userData.originalColor || new THREE.Color(0x79ac4f));
-    if (colliding) node.material.color.set(0xff754f);
-  });
 }
 
 function updateCollisionObject(collision) {
@@ -1186,7 +1233,7 @@ function addPrimitiveCollision(type) {
   selectedCollisionId = collision.id;
   renderDraftCollisionObjects();
   renderCollisionPanel();
-  scheduleCollisionDraftSave();
+  scheduleCollisionDraftSave(true);
   setCollisionStatus(`Added ${type} collision to the temporary draft.`);
 }
 
@@ -1268,7 +1315,7 @@ function renderCollisionDetail() {
   name.addEventListener("change", () => {
     collision.name = name.value.trim();
     renderCollisionPanel();
-    scheduleCollisionDraftSave();
+    scheduleCollisionDraftSave(true);
   });
   collisionDetail.append(heading, name);
   const dimensionHeading = document.createElement("div");
@@ -1277,7 +1324,7 @@ function renderCollisionDetail() {
   collisionDetail.append(dimensionHeading);
   const updateGeometry = () => {
     replaceDraftCollisionObject(collision);
-    scheduleCollisionDraftSave();
+    scheduleCollisionDraftSave(!syncDiagnosticCollision(collision));
   };
   if (collision.geometry.type === "box") {
     ["X", "Y", "Z"].forEach((axis, index) => collisionDetail.append(numberControl(axis, collision.geometry.size[index], value => { collision.geometry.size[index] = value; updateGeometry(); }, { slider: true, min: 0.001 })));
@@ -1294,7 +1341,7 @@ function renderCollisionDetail() {
   ["X", "Y", "Z"].forEach((axis, index) => collisionDetail.append(numberControl(axis, collision.origin.xyz[index], value => {
     collision.origin.xyz[index] = value;
     updateCollisionObject(collision);
-    scheduleCollisionDraftSave();
+    scheduleCollisionDraftSave(!syncDiagnosticCollision(collision));
   }, { slider: true, min: -POSITION_SLIDER_LIMIT, max: POSITION_SLIDER_LIMIT, inputMin: undefined, sliderValue: positionSliderValue, step: 0.001 })));
   const rotationHeading = document.createElement("div");
   rotationHeading.className = "collision-section-title";
@@ -1303,7 +1350,7 @@ function renderCollisionDetail() {
   ["Roll", "Pitch", "Yaw"].forEach((axis, index) => collisionDetail.append(numberControl(axis, radiansToDegrees(collision.origin.rpy[index]), value => {
     collision.origin.rpy[index] = degreesToRadians(value);
     updateCollisionObject(collision);
-    scheduleCollisionDraftSave();
+    scheduleCollisionDraftSave(!syncDiagnosticCollision(collision));
   }, { slider: true, min: -180, max: 180, step: 0.1 })));
   const actions = document.createElement("div");
   actions.className = "collision-actions";
@@ -1371,7 +1418,7 @@ function reassignCollision(collision, linkName) {
   collisionLink.value = linkName;
   renderDraftCollisionObjects();
   renderCollisionPanel();
-  scheduleCollisionDraftSave();
+  scheduleCollisionDraftSave(true);
   setCollisionStatus(`Centered ${collision.name} on ${linkName}'s origin; rotation was preserved.`);
 }
 
@@ -1382,7 +1429,7 @@ function deleteSelectedCollision() {
   selectedCollisionId = null;
   renderDraftCollisionObjects();
   renderCollisionPanel();
-  scheduleCollisionDraftSave();
+  scheduleCollisionDraftSave(true);
   setCollisionStatus("Collision removed from the temporary draft.");
 }
 
@@ -1393,7 +1440,7 @@ function deleteSelectedMeshCollision() {
   selectedCollisionId = null;
   renderDraftCollisionObjects();
   renderCollisionPanel();
-  scheduleCollisionDraftSave();
+  scheduleCollisionDraftSave(true);
   setCollisionStatus("Mesh collision removed from the temporary draft.");
 }
 
@@ -1450,15 +1497,15 @@ function snapCollision(collision) {
 
 async function enterCollisionMode() {
   if (!activeRobot || !activeRobot.workbench_loadable) {
-    setCollisionDrawerExpanded(true);
+    updateCollisionEditorDock(false);
     setCollisionStatus("Authorize or preview an MJCF model before editing collisions.", true);
     return;
   }
   if (collisionMode && collisionDraftId) {
-    setCollisionDrawerExpanded(true);
     return;
   }
   collisionMode = true;
+  contactVisualizer.unbind();
   updateDisplayControls();
   updateSimulationControls("Loading collision editor…");
   try {
@@ -1477,13 +1524,13 @@ async function enterCollisionMode() {
     renderJointInspector();
     renderDraftCollisionObjects();
     renderCollisionPanel();
-    setCollisionDrawerExpanded(true);
     updateDisplayControls();
-    updateSimulationControls("Collision editor active: the model is reset and physics/joint editing are locked.");
+    updateSimulationControls("Collision editor active: physics is paused; use joints or Random pose to inspect self-collision.");
     setCollisionStatus("Temporary MJCF draft loaded. Add a primitive or select a mesh collision to delete it.");
-    void compileDraftContacts(collisionDraftId);
+    if (contactsVisible) void compileDraftContacts(collisionDraftId);
   } catch (error) {
     collisionMode = false;
+    updateCollisionEditorDock(false);
     updateDisplayControls();
     updateSimulationControls("Collision editor could not be loaded.");
     setCollisionStatus(error.message, true);
@@ -1493,7 +1540,7 @@ async function enterCollisionMode() {
 function leaveCollisionMode() {
   if (!collisionMode) return;
   collisionMode = false;
-  setCollisionDrawerExpanded(false);
+  updateCollisionEditorDock(false);
   disposeDiagnosticModel();
   clearContactVisualization();
   void discardCollisionDraft();
@@ -1501,21 +1548,24 @@ function leaveCollisionMode() {
   renderJointInspector();
   updateDisplayControls();
   updateSimulationControls("Collision editing closed. Physics and joint controls are available again.");
+  if (contactsVisible) syncContactVisualization();
 }
 
-function setCollisionDrawerExpanded(expanded) {
-  collisionDrawerExpanded = Boolean(expanded);
-  collisionDrawer.dataset.expanded = String(collisionDrawerExpanded);
-  collisionDrawerToggle.setAttribute("aria-expanded", String(collisionDrawerExpanded));
-  collisionDrawerContent.hidden = !collisionDrawerExpanded;
+function updateCollisionEditorDock(open) {
+  collisionEditorDock.hidden = !open;
+  collisionEditorToggle.classList.toggle("active", open);
+  collisionEditorToggle.setAttribute("aria-expanded", String(open));
+  document.querySelector(".workbench").classList.toggle("collision-editor-open", open);
+  setTimeout(resize, 0);
 }
 
-function toggleCollisionDrawer() {
+function toggleCollisionEditor() {
   if (!collisionMode) {
+    updateCollisionEditorDock(true);
     void enterCollisionMode();
     return;
   }
-  setCollisionDrawerExpanded(!collisionDrawerExpanded);
+  closeCollisionEditor();
 }
 
 function closeCollisionEditor() {
@@ -1534,7 +1584,7 @@ async function resetCollisionDraft() {
     selectedCollisionId = null;
     renderDraftCollisionObjects();
     renderCollisionPanel();
-    void compileDraftContacts(collisionDraftId);
+    if (contactsVisible) void compileDraftContacts(collisionDraftId);
     setCollisionStatus("Temporary draft reset from the authorized MJCF source.");
   } catch (error) {
     setCollisionStatus(error.message, true);
@@ -1552,6 +1602,7 @@ async function exportCollisionDraft() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ revision: collisionDocument.revision }),
     });
+    collisionDraftDirty = false;
     setCollisionStatus(`Exported ${data.candidate_id || "MJCF candidate"}: ${data.output_path}`);
     if (activeCandidateId && data.candidate_id) await refreshMjcfCandidates();
   } catch (error) {
@@ -1606,8 +1657,9 @@ function setSpawnPose(model, data) {
 async function compileDraftContacts(draftId) {
   const sourcePath = collisionDraftSourcePath(draftId);
   const sourceBase = collisionAssetBase();
-  if (!sourcePath || !sourceBase || !mujoco || !collisionMode || !collisionShapesVisible) return;
+  if (!sourcePath || !sourceBase || !mujoco || !collisionMode) return;
   disposeDiagnosticModel();
+  clearContactVisualization();
   const generation = ++diagnosticGeneration;
   const controller = new AbortController();
   diagnosticController = controller;
@@ -1632,13 +1684,14 @@ async function compileDraftContacts(draftId) {
     diagnosticModel = model;
     diagnosticData = data;
     diagnosticController = null;
-    syncContactVisualization();
-    collisionContactCount.textContent = `${contactVisualizer.count} contact${contactVisualizer.count === 1 ? "" : "s"}`;
+    // The server source is a saved snapshot. Apply any newer slider/input
+    // values that arrived while this synchronous compile was in flight.
+    for (const collision of collisionDraft) syncPrimitiveToMjModel(model, collision);
+    syncDiagnosticPose();
   } catch (error) {
     deleteWasmObjects(objects);
     if (error?.name === "AbortError") return;
     if (generation === diagnosticGeneration) {
-      collisionContactCount.textContent = "contacts unavailable";
       setCollisionStatus(`Draft saved, but MuJoCo contact check failed: ${error.message}`, true);
     }
   }
@@ -1883,6 +1936,7 @@ function pickRobotPart(event) {
 }
 
 canvas.addEventListener("pointerdown", event => {
+  canvas.focus({ preventScroll: true });
   if (event.button !== 0 || (event.buttons & 1) === 0) return;
   const hit = pickRobotPart(event);
   if (collisionMode) {
@@ -1961,6 +2015,9 @@ window.addEventListener("keydown", event => {
   } else if (event.key.toLowerCase() === "f") {
     event.preventDefault();
     toggleFollow();
+  } else if (event.key.toLowerCase() === "c") {
+    event.preventDefault();
+    toggleContacts();
   }
 });
 
@@ -1971,8 +2028,8 @@ followToggle.addEventListener("click", toggleFollow);
 randomPoseButton.addEventListener("click", driveRandomPose);
 visualMeshToggle.addEventListener("click", toggleVisualMeshes);
 collisionShapeToggle.addEventListener("click", toggleCollisionShapes);
-collisionDrawerToggle.addEventListener("click", toggleCollisionDrawer);
-collisionDrawerClose.addEventListener("click", closeCollisionEditor);
+contactToggle.addEventListener("click", toggleContacts);
+collisionEditorToggle.addEventListener("click", toggleCollisionEditor);
 document.querySelector("#collision-reset").addEventListener("click", () => resetCollisionDraft().catch(error => setCollisionStatus(error.message, true)));
 collisionExport.addEventListener("click", exportCollisionDraft);
 mjcfGenerate.addEventListener("click", generateMjcfCandidate);
