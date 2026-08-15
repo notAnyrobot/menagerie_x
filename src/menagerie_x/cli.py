@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .assets import AssetError, get_asset_paths, load_manifest, validate_assets, variants
 from .commands.mujoco import check_mujoco, launch_mujoco
+from .commands.mjcf import MjcfCandidateError, authorize_candidate, convert_variant_to_candidate
 from .commands.urdf_capsules import CapsuleError, convert_mjcf_capsules_to_urdf
 from .commands.viser import launch_viser
 from .tools import calc_heights, pd_params_tool
@@ -29,6 +30,16 @@ def main(argv: list[str] | None = None) -> None:
     mujoco_parser.add_argument("--variant", default=None)
     mujoco_parser.add_argument("--check", action="store_true", help="Load the model and print dimensions without opening a viewer")
     mujoco_parser.add_argument("--seconds", type=float, default=None, help="Close passive viewer after this many seconds")
+
+    mjcf_parser = subparsers.add_parser("mjcf", help="Generate and explicitly authorize MJCF candidates")
+    mjcf_subparsers = mjcf_parser.add_subparsers(dest="mjcf_command", required=True)
+    mjcf_convert = mjcf_subparsers.add_parser("convert", help="Convert one URDF variant into an unregistered MJCF candidate")
+    mjcf_convert.add_argument("--source", required=True, help="Manifest variant to convert")
+    mjcf_convert.add_argument("--candidate-id", required=True, help="Human-reviewable candidate identifier")
+    mjcf_convert.add_argument("--output", required=True, type=Path, help="New .xml file for the review candidate")
+    mjcf_authorize = mjcf_subparsers.add_parser("authorize", help="Install a reviewed candidate for one declared manifest variant")
+    mjcf_authorize.add_argument("--candidate", required=True, type=Path)
+    mjcf_authorize.add_argument("--target", required=True, help="Existing manifest variant without MJCF")
 
     viser_parser = subparsers.add_parser("viser", help="Launch a Viser mesh browser")
     viser_parser.add_argument("--host", default="127.0.0.1")
@@ -81,6 +92,11 @@ def main(argv: list[str] | None = None) -> None:
                 _print_json(check_mujoco(args.variant, args.root))
             else:
                 launch_mujoco(args.variant, args.root, args.seconds)
+        elif args.command == "mjcf":
+            if args.mjcf_command == "convert":
+                _print_json(convert_variant_to_candidate(args.source, args.candidate_id, args.output, args.root))
+            else:
+                _print_json(authorize_candidate(args.candidate, args.target, args.root))
         elif args.command == "viser":
             launch_viser(args.root, args.host, args.port)
         elif args.command == "workbench":
@@ -105,7 +121,7 @@ def main(argv: list[str] | None = None) -> None:
             if args.no_browser:
                 pd_args.append("--no-browser")
             raise SystemExit(pd_params_tool.main(pd_args))
-    except (AssetError, CapsuleError) as exc:
+    except (AssetError, CapsuleError, MjcfCandidateError) as exc:
         parser.exit(2, f"menagerie_x: error: {exc}\n")
 
 

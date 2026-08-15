@@ -1,52 +1,123 @@
 {
+  "default_variant": "astro_v1",
+  "default_version": "astro_v1",
   "name": "Astro",
   "package_version": "0.1.0",
-  "default_version": "astro_v1",
-  "default_variant": "astro_v1",
   "robot_versions": {
     "astro_v1": {
+      "legacy_formats": [
+        "mjcf",
+        "isaac"
+      ],
       "source_format": "urdf",
-      "status": "legacy",
-      "legacy_formats": ["mjcf", "isaac"]
+      "status": "legacy"
     },
     "astro_v2": {
+      "legacy_formats": [],
       "source_format": "urdf",
-      "status": "current",
-      "legacy_formats": []
+      "status": "current"
     }
+  },
+  "scenes": {
+    "flat_floor": "scenes/flat_floor/scene.json"
+  },
+  "terrains": {
+    "flat_floor": "terrains/flat_floor/terrain.json"
   },
   "variants": {
     "astro_v1": {
-      "robot_version": "astro_v1",
+      "default_scene": "flat_floor",
       "dof": 30,
-      "urdf": "urdf/astro_v1.urdf",
       "mjcf": "legacy/mjcf/astro_v1.xml",
+      "notes": "Full Astro V1 model with head yaw.",
+      "robot_version": "astro_v1",
+      "spawn": {
+        "rpy": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scene_frame": "robot_spawn",
+        "xyz": [
+          0.0,
+          0.0,
+          0.75
+        ]
+      },
       "status": "legacy",
-      "notes": "Full Astro V1 model with head yaw."
+      "urdf": "urdf/astro_v1.urdf"
     },
     "astro_v1_27dof": {
-      "robot_version": "astro_v1",
+      "default_scene": "flat_floor",
       "dof": 27,
-      "urdf": "urdf/astro_v1_27dof.urdf",
       "mjcf": "legacy/mjcf/astro_v1_27dof.xml",
-      "status": "legacy",
-      "notes": "Reduced-DOF description kept for consumers that require the legacy joint set."
-    },
-    "astro_with_racket": {
+      "notes": "Reduced-DOF description kept for consumers that require the legacy joint set.",
       "robot_version": "astro_v1",
-      "dof": 30,
-      "urdf": "urdf/astro_with_racket.urdf",
-      "mjcf": null,
-      "status": "variant",
-      "notes": "URDF-only racket attachment variant."
+      "spawn": {
+        "rpy": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scene_frame": "robot_spawn",
+        "xyz": [
+          0.0,
+          0.0,
+          0.75
+        ]
+      },
+      "status": "legacy",
+      "urdf": "urdf/astro_v1_27dof.urdf"
     },
     "astro_v2": {
-      "robot_version": "astro_v2",
+      "default_scene": "flat_floor",
       "dof": 30,
-      "urdf": "urdf/astro_v2.urdf",
-      "mjcf": null,
+      "mjcf": "mjcf/astro_v2-review.xml",
+      "mjcf_provenance": {
+        "authorized_at": "2026-08-14T08:34:49.522552+00:00",
+        "candidate_id": "astro_v2-review",
+        "mujoco_version": "3.11.0",
+        "source_revision": "70752e62b85cd7b85738ea6013e4d2601a9d2b528019363bc04020ceac8c4f82"
+      },
+      "notes": "Astro V2 URDF source description.",
+      "robot_version": "astro_v2",
+      "spawn": {
+        "rpy": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scene_frame": "robot_spawn",
+        "xyz": [
+          0.0,
+          0.0,
+          0.75
+        ]
+      },
       "status": "current",
-      "notes": "Astro V2 URDF source description."
+      "urdf": "urdf/astro_v2.urdf"
+    },
+    "astro_with_racket": {
+      "default_scene": "flat_floor",
+      "dof": 30,
+      "mjcf": null,
+      "notes": "URDF-only racket attachment variant.",
+      "robot_version": "astro_v1",
+      "spawn": {
+        "rpy": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scene_frame": "robot_spawn",
+        "xyz": [
+          0.0,
+          0.0,
+          0.75
+        ]
+      },
+      "status": "variant",
+      "urdf": "urdf/astro_with_racket.urdf"
     }
   }
 }

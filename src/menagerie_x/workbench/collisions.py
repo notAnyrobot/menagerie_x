@@ -7,7 +7,11 @@ import datetime as dt
 import hashlib
 import math
 import os
+import shutil
 import tempfile
+import threading
+import time
+import uuid
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
@@ -19,6 +23,10 @@ class CollisionDocumentError(ValueError):
 
 class StaleCollisionDocumentError(CollisionDocumentError):
     """Raised when the URDF changed after the browser loaded its draft."""
+
+
+class CollisionDraftNotFoundError(CollisionDocumentError):
+    """Raised when a temporary collision draft is unavailable."""
 
 
 PRIMITIVE_TYPES = frozenset({"box", "sphere", "cylinder"})
@@ -169,14 +177,34 @@ def _draft_positive(value: Any, field: str) -> float:
     return parsed
 
 
-def _validated_draft(document: CollisionDocument, draft: Any) -> list[dict[str, Any]]:
+def _validated_retained_mesh_ids(document: CollisionDocument, retained_mesh_ids: Any | None) -> set[str]:
+    mesh_ids = {item["id"] for item in document.collisions if item["geometry"]["type"] == "mesh"}
+    if retained_mesh_ids is None:
+        return mesh_ids
+    if not isinstance(retained_mesh_ids, list) or not all(isinstance(identifier, str) for identifier in retained_mesh_ids):
+        raise CollisionDocumentError("retained_mesh_ids must be a list of collision IDs")
+    retained = set(retained_mesh_ids)
+    if len(retained) != len(retained_mesh_ids):
+        raise CollisionDocumentError("retained mesh collision IDs must be unique")
+    unknown = retained - mesh_ids
+    if unknown:
+        raise CollisionDocumentError(f"unknown mesh collision ID: {sorted(unknown)[0]}")
+    return retained
+
+
+def _validated_draft(
+    document: CollisionDocument,
+    draft: Any,
+    retained_mesh_ids: Any | None = None,
+) -> tuple[list[dict[str, Any]], set[str]]:
     if not isinstance(draft, list):
         raise CollisionDocumentError("collisions must be a list")
+    retained_meshes = _validated_retained_mesh_ids(document, retained_mesh_ids)
     existing = {item["id"]: item for item in document.collisions if item["editable"]}
     seen_ids: set[str] = set()
     names: dict[str, set[str]] = {link: set() for link in document.links}
     for item in document.collisions:
-        if not item["editable"] and item["name"]:
+        if item["id"] in retained_meshes and item["name"]:
             names[item["link"]].add(item["name"])
     parsed: list[dict[str, Any]] = []
     for item in draft:
@@ -221,7 +249,7 @@ def _validated_draft(document: CollisionDocument, draft: Any) -> list[dict[str, 
             result["geometry"]["radius"] = _draft_positive(geometry.get("radius"), "cylinder radius")
             result["geometry"]["length"] = _draft_positive(geometry.get("length"), "cylinder length")
         parsed.append(result)
-    return parsed
+    return parsed, retained_meshes
 
 
 def _primitive_collision(item: dict[str, Any]) -> ET.Element:
@@ -249,25 +277,24 @@ def _timestamped_target(source: Path, now: dt.datetime | None = None) -> Path:
     return candidate
 
 
-def export_collision_copy(source: Path, expected_revision: str, draft: Any, now: dt.datetime | None = None) -> Path:
-    """Validate a primitive draft and atomically write a timestamped sibling URDF."""
-
-    document = load_collision_document(source)
-    if expected_revision != document.revision:
-        raise StaleCollisionDocumentError("URDF changed; reload collision data before exporting")
-    primitives = _validated_draft(document, draft)
+def _materialize_draft(source: Path, document: CollisionDocument, primitives: list[dict[str, Any]], retained_mesh_ids: set[str]) -> bytes:
     root = ET.fromstring(source.read_bytes(), parser=_parser())
     links = {link.get("name"): link for link in root.findall("link")}
-    for link in links.values():
-        for collision in list(link.findall("collision")):
+    for link_index, link in enumerate(root.findall("link")):
+        for collision_index, collision in enumerate(list(link.findall("collision"))):
             geometry = _geometry(collision)
+            collision_id = f"collision-{link_index}-{collision_index}"
             if geometry and geometry["type"] in PRIMITIVE_TYPES:
+                link.remove(collision)
+            elif geometry and geometry["type"] == "mesh" and collision_id not in retained_mesh_ids:
                 link.remove(collision)
     for item in primitives:
         links[item["link"]].append(_primitive_collision(item))
     ET.indent(root, space="  ")
-    target = _timestamped_target(source, now)
-    payload = ET.tostring(root, encoding="utf-8", xml_declaration=True) + b"\n"
+    return ET.tostring(root, encoding="utf-8", xml_declaration=True) + b"\n"
+
+
+def _atomic_write(target: Path, payload: bytes) -> None:
     descriptor, temporary = tempfile.mkstemp(prefix=f".{target.name}.", suffix=".tmp", dir=target.parent)
     try:
         with os.fdopen(descriptor, "wb") as output:
@@ -281,4 +308,159 @@ def export_collision_copy(source: Path, expected_revision: str, draft: Any, now:
         except FileNotFoundError:
             pass
         raise
+
+
+def export_collision_copy(
+    source: Path,
+    expected_revision: str,
+    draft: Any,
+    now: dt.datetime | None = None,
+    retained_mesh_ids: Any | None = None,
+) -> Path:
+    """Validate a collision draft and atomically write a timestamped sibling URDF."""
+
+    document = load_collision_document(source)
+    if expected_revision != document.revision:
+        raise StaleCollisionDocumentError("URDF changed; reload collision data before exporting")
+    primitives, retained_meshes = _validated_draft(document, draft, retained_mesh_ids)
+    target = _timestamped_target(source, now)
+    _atomic_write(target, _materialize_draft(source, document, primitives, retained_meshes))
     return target
+
+
+@dataclasses.dataclass
+class CollisionDraftSession:
+    """Server-owned temporary collision document for one browser editing session."""
+
+    identifier: str
+    source: Path
+    document: CollisionDocument
+    temporary: Path
+    primitives: list[dict[str, Any]]
+    retained_mesh_ids: set[str]
+    updated_at: float
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            **self.document.as_dict(),
+            "draft_id": self.identifier,
+            "primitives": self.primitives,
+            "retained_mesh_ids": sorted(self.retained_mesh_ids),
+        }
+
+
+class CollisionDraftStore:
+    """Own temporary URDF copies and hide lifecycle details behind draft operations."""
+
+    def __init__(self, ttl_seconds: float = 3600.0) -> None:
+        self._ttl_seconds = ttl_seconds
+        self._directory = Path(tempfile.mkdtemp(prefix="menagerie-workbench-collision-drafts-"))
+        self._sessions: dict[str, CollisionDraftSession] = {}
+        self._lock = threading.RLock()
+
+    def _cleanup_expired_locked(self, now: float) -> None:
+        expired = [identifier for identifier, session in self._sessions.items() if now - session.updated_at >= self._ttl_seconds]
+        for identifier in expired:
+            session = self._sessions.pop(identifier)
+            session.temporary.unlink(missing_ok=True)
+
+    def cleanup_expired(self, now: float | None = None) -> None:
+        with self._lock:
+            self._cleanup_expired_locked(time.monotonic() if now is None else now)
+
+    def _session(self, identifier: str, source: Path) -> CollisionDraftSession:
+        self._cleanup_expired_locked(time.monotonic())
+        session = self._sessions.get(identifier)
+        if session is None or session.source.resolve() != source.resolve():
+            raise CollisionDraftNotFoundError("collision draft not found")
+        return session
+
+    @staticmethod
+    def _initial_primitives(document: CollisionDocument) -> list[dict[str, Any]]:
+        return [
+            {
+                "id": item["id"],
+                "link": item["link"],
+                "name": item["name"],
+                "origin": {"xyz": item["origin"]["xyz"].copy(), "rpy": item["origin"]["rpy"].copy()},
+                "geometry": {key: value.copy() if isinstance(value, list) else value for key, value in item["geometry"].items()},
+            }
+            for item in document.collisions
+            if item["editable"]
+        ]
+
+    @staticmethod
+    def _all_mesh_ids(document: CollisionDocument) -> set[str]:
+        return {item["id"] for item in document.collisions if item["geometry"]["type"] == "mesh"}
+
+    def create(self, source: Path) -> CollisionDraftSession:
+        with self._lock:
+            self._cleanup_expired_locked(time.monotonic())
+            document = load_collision_document(source)
+            identifier = uuid.uuid4().hex
+            temporary = self._directory / f"{identifier}.urdf"
+            _atomic_write(temporary, source.read_bytes())
+            session = CollisionDraftSession(
+                identifier=identifier,
+                source=source.resolve(),
+                document=document,
+                temporary=temporary,
+                primitives=self._initial_primitives(document),
+                retained_mesh_ids=self._all_mesh_ids(document),
+                updated_at=time.monotonic(),
+            )
+            self._sessions[identifier] = session
+            return session
+
+    def update(
+        self,
+        identifier: str,
+        source: Path,
+        expected_revision: str,
+        primitives: Any,
+        retained_mesh_ids: Any,
+    ) -> CollisionDraftSession:
+        with self._lock:
+            session = self._session(identifier, source)
+            current = load_collision_document(source)
+            if expected_revision != session.document.revision or current.revision != session.document.revision:
+                raise StaleCollisionDocumentError("URDF changed; reset the collision draft before saving")
+            validated_primitives, retained_meshes = _validated_draft(session.document, primitives, retained_mesh_ids)
+            _atomic_write(session.temporary, _materialize_draft(source, session.document, validated_primitives, retained_meshes))
+            session.primitives = validated_primitives
+            session.retained_mesh_ids = retained_meshes
+            session.updated_at = time.monotonic()
+            return session
+
+    def reset(self, identifier: str, source: Path) -> CollisionDraftSession:
+        with self._lock:
+            session = self._session(identifier, source)
+            document = load_collision_document(source)
+            _atomic_write(session.temporary, source.read_bytes())
+            session.document = document
+            session.primitives = self._initial_primitives(document)
+            session.retained_mesh_ids = self._all_mesh_ids(document)
+            session.updated_at = time.monotonic()
+            return session
+
+    def export(self, identifier: str, source: Path, expected_revision: str, now: dt.datetime | None = None) -> Path:
+        with self._lock:
+            session = self._session(identifier, source)
+            current = load_collision_document(source)
+            if expected_revision != session.document.revision or current.revision != session.document.revision:
+                raise StaleCollisionDocumentError("URDF changed; reset the collision draft before exporting")
+            target = _timestamped_target(source, now)
+            _atomic_write(target, session.temporary.read_bytes())
+            session.updated_at = time.monotonic()
+            return target
+
+    def discard(self, identifier: str, source: Path) -> None:
+        with self._lock:
+            session = self._session(identifier, source)
+            self._sessions.pop(identifier, None)
+            session.temporary.unlink(missing_ok=True)
+
+    def close(self) -> None:
+        with self._lock:
+            self._sessions.clear()
+            shutil.rmtree(self._directory, ignore_errors=True)

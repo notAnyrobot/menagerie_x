@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "id": "flat_floor",
+  "gravity": [0.0, 0.0, -9.81],
+  "terrain_instances": [
+    {"id": "ground", "terrain": "flat_floor", "pose": {"xyz": [0.0, 0.0, 0.0], "rpy": [0.0, 0.0, 0.0]}}
+  ],
+  "prop_instances": [],
+  "spawn_frames": {"robot_spawn": {"xyz": [0.0, 0.0, 0.0], "rpy": [0.0, 0.0, 0.0]}},
+  "overrides": {}
+}

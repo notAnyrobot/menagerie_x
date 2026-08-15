@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -20,6 +21,27 @@ class Variant:
     meshes_dir: Path
     status: str
     notes: str
+    default_scene: str | None = None
+    spawn: dict[str, Any] = dataclasses.field(default_factory=lambda: {"scene_frame": "robot_spawn", "xyz": [0.0, 0.0, 0.75], "rpy": [0.0, 0.0, 0.0]})
+    mjcf_provenance: dict[str, Any] | None = None
+
+    @property
+    def workbench_loadable(self) -> bool:
+        """Only an explicitly authorized, present MJCF may enter Workbench."""
+        return self.mjcf is not None and self.mjcf.is_file()
+
+    @property
+    def urdf_revision(self) -> str:
+        return hashlib.sha256(self.urdf.read_bytes()).hexdigest()
+
+    @property
+    def source_drift_warning(self) -> str | None:
+        if not self.mjcf_provenance:
+            return None
+        revision = self.mjcf_provenance.get("source_revision")
+        if isinstance(revision, str) and revision != self.urdf_revision:
+            return "URDF source has changed since the authorized MJCF was reviewed. Workbench continues to use the authorized MJCF."
+        return None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -112,6 +134,9 @@ def variants(root: Path | None = None) -> dict[str, Variant]:
             meshes_dir=robot_root / "meshes",
             status=str(raw.get("status", "unknown")),
             notes=str(raw.get("notes", "")),
+            default_scene=str(raw["default_scene"]) if raw.get("default_scene") is not None else None,
+            spawn=dict(raw.get("spawn", {"scene_frame": "robot_spawn", "xyz": [0.0, 0.0, 0.75], "rpy": [0.0, 0.0, 0.0]})),
+            mjcf_provenance=dict(raw["mjcf_provenance"]) if isinstance(raw.get("mjcf_provenance"), dict) else None,
         )
     return parsed
 
@@ -148,6 +173,10 @@ def validate_assets(root: Path | None = None) -> list[str]:
             errors.append(f"{variant.name}: missing URDF {variant.urdf}")
         if variant.mjcf is not None and not variant.mjcf.is_file():
             errors.append(f"{variant.name}: missing MJCF {variant.mjcf}")
+        try:
+            resolve_scene(variant, paths.root)
+        except AssetError as exc:
+            errors.append(f"{variant.name}: invalid default scene: {exc}")
     for robot_version in sorted(raw_versions) if isinstance(raw_versions, dict) else ():
         for mesh in sorted(paths.robot_dir(robot_version).joinpath("meshes").glob("*.stl")):
             if mesh.stat().st_size == 0:
@@ -156,12 +185,16 @@ def validate_assets(root: Path | None = None) -> list[str]:
 
 
 from .inspection import RobotDescription, RobotInspection, ValidationIssue, inspect_variant
+from .scenes import ResolvedScene, SceneDescription, TerrainDescription, load_scene, load_terrain, resolve_scene
 
 __all__ = [
     "AssetError",
     "AssetPaths",
     "RobotDescription",
     "RobotInspection",
+    "ResolvedScene",
+    "SceneDescription",
+    "TerrainDescription",
     "ValidationIssue",
     "Variant",
     "default_robot_root",
@@ -169,7 +202,10 @@ __all__ = [
     "get_variant",
     "inspect_variant",
     "load_manifest",
+    "load_scene",
+    "load_terrain",
     "package_root",
+    "resolve_scene",
     "validate_assets",
     "variants",
 ]

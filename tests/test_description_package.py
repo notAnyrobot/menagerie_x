@@ -1,7 +1,7 @@
 import pathlib
 import unittest
 
-from menagerie_x.assets import get_variant, validate_assets, variants
+from menagerie_x.assets import get_variant, load_scene, resolve_scene, validate_assets, variants
 from menagerie_x.commands.mujoco import check_mujoco
 
 
@@ -29,6 +29,24 @@ class AssetManifestTests(unittest.TestCase):
 
     def test_validate_assets_accepts_current_checkout(self):
         self.assertEqual(validate_assets(ROOT), [])
+
+    def test_flat_floor_scene_resolves_for_current_robot_versions(self):
+        scene = load_scene("flat_floor", ROOT)
+        self.assertEqual(scene.gravity, [0.0, 0.0, -9.81])
+        self.assertEqual(scene.terrain_instances[0]["terrain"], "flat_floor")
+        for variant_name in ("astro_v1", "astro_v2"):
+            resolved = resolve_scene(variants(ROOT)[variant_name], ROOT)
+            self.assertEqual(resolved.identifier, "flat_floor")
+            self.assertEqual(resolved.robot_spawn, {"xyz": [0.0, 0.0, 0.75], "rpy": [0.0, 0.0, 0.0]})
+            floor = resolved.terrain_instances[0]
+            self.assertEqual(floor["geometry"], {"type": "plane", "size": [16.0, 16.0], "thickness": 0.1})
+            self.assertEqual(floor["pose"]["xyz"], [0.0, 0.0, 0.0])
+
+    def test_authored_urdfs_remain_robot_only(self):
+        for variant_name in ("astro_v1", "astro_v2"):
+            source = variants(ROOT)[variant_name].urdf.read_text(encoding="utf-8")
+            self.assertNotIn("workbench_floor", source)
+            self.assertNotIn("flat_floor", source)
 
 
 class MujocoPackageTests(unittest.TestCase):

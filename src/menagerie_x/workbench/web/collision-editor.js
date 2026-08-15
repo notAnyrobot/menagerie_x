@@ -1,4 +1,9 @@
-export const PRIMITIVE_TYPES = ["box", "sphere", "cylinder"];
+export const PRIMITIVE_TYPES = ["box", "sphere", "cylinder", "capsule"];
+export const POSITION_SLIDER_LIMIT = 0.1;
+
+export function positionSliderValue(value) {
+  return Math.max(-POSITION_SLIDER_LIMIT, Math.min(POSITION_SLIDER_LIMIT, Number(value)));
+}
 
 /**
  * Limit pointer picking to objects that are actually interactive in the active mode.
@@ -7,7 +12,9 @@ export const PRIMITIVE_TYPES = ["box", "sphere", "cylinder"];
 export function isPickableSceneObject(object, collisionMode) {
   if (!object?.visible || !object.userData?.link) return false;
   const layer = object.userData.layer;
-  return collisionMode ? layer === "visual-mesh" || layer === "collision-editor" : layer === "visual-mesh";
+  return collisionMode
+    ? layer === "collision-editor" || layer === "collision-overlay"
+    : layer === "visual-mesh";
 }
 
 export function degreesToRadians(value) {
@@ -27,7 +34,13 @@ export function primitiveDimensions(geometry) {
 export function primitiveGeometry(THREE, geometry) {
   if (geometry.type === "box") return new THREE.BoxGeometry(...geometry.size);
   if (geometry.type === "sphere") return new THREE.SphereGeometry(geometry.radius, 20, 14);
-  // Three.js cylinders use Y as their length axis. URDF uses Z.
+  if (geometry.type === "capsule") {
+    const capsule = new THREE.CapsuleGeometry(geometry.radius, geometry.length, 8, 16);
+    capsule.rotateX(Math.PI / 2);
+    capsule.computeBoundingBox();
+    return capsule;
+  }
+  // Three.js cylinders use Y as their length axis. MJCF collision drafts use Z.
   const cylinder = new THREE.CylinderGeometry(geometry.radius, geometry.radius, geometry.length, 20);
   cylinder.rotateX(Math.PI / 2);
   cylinder.computeBoundingBox();

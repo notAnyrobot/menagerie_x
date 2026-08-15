@@ -224,7 +224,7 @@ def inspect_variant(variant: Variant) -> RobotInspection:
             ValidationIssue(
                 "info",
                 "mjcf-unavailable",
-                "No authored MJCF is packaged; consumers can compile the URDF when needed.",
+                "No authorized MJCF is packaged; Workbench is disabled until an operator converts and authorizes a candidate.",
                 path=str(variant.urdf),
             )
         )

@@ -6,6 +6,8 @@ import {
   defaultCollision,
   degreesToRadians,
   isPickableSceneObject,
+  POSITION_SLIDER_LIMIT,
+  positionSliderValue,
   primitiveDimensions,
   primitiveGeometry,
   radiansToDegrees,
@@ -15,6 +17,7 @@ test("dimension mapping and degree conversion are exact", () => {
   assert.deepEqual(primitiveDimensions({ type: "box", size: [1, 2, 3] }), [1, 2, 3]);
   assert.deepEqual(primitiveDimensions({ type: "sphere", radius: 0.2 }), [0.4, 0.4, 0.4]);
   assert.deepEqual(primitiveDimensions({ type: "cylinder", radius: 0.2, length: 0.8 }), [0.4, 0.4, 0.8]);
+  assert.deepEqual(primitiveDimensions({ type: "capsule", radius: 0.2, length: 0.8 }), [0.4, 0.4, 0.8]);
   assert.equal(radiansToDegrees(degreesToRadians(90)), 90);
 });
 
@@ -30,12 +33,15 @@ test("hidden collision overlays cannot capture robot push picking", () => {
   assert.ok(hits.length > 0, "Three.js raycasts invisible objects");
   const visibleMesh = { visible: true, userData: { link: "torso", layer: "visual-mesh" } };
   const visibleEditorShape = { visible: true, userData: { link: "torso", layer: "collision-editor" } };
+  const visibleCollisionOverlay = { visible: true, userData: { link: "torso", layer: "collision-overlay" } };
 
   assert.equal(isPickableSceneObject(hiddenOverlay, false), false);
   assert.equal(hits.find(hit => isPickableSceneObject(hit.object, false)), undefined);
   assert.equal(isPickableSceneObject(visibleEditorShape, false), false);
   assert.equal(isPickableSceneObject(visibleMesh, false), true);
+  assert.equal(isPickableSceneObject(visibleMesh, true), false);
   assert.equal(isPickableSceneObject(visibleEditorShape, true), true);
+  assert.equal(isPickableSceneObject(visibleCollisionOverlay, true), true);
   hiddenOverlay.geometry.dispose();
   hiddenOverlay.material.dispose();
 });
@@ -49,4 +55,15 @@ test("new primitives fit local bounds and cylinders use URDF Z", () => {
   const size = geometry.boundingBox.getSize(new THREE.Vector3());
   assert.ok(Math.abs(size.z - 0.8) < 1e-6);
   geometry.dispose();
+  const capsule = primitiveGeometry(THREE, { type: "capsule", radius: 0.2, length: 0.8 });
+  capsule.computeBoundingBox();
+  assert.ok(capsule.boundingBox.getSize(new THREE.Vector3()).z > 0.8);
+  capsule.dispose();
+});
+
+test("position slider pins values to its local fine-adjustment range", () => {
+  assert.equal(POSITION_SLIDER_LIMIT, 0.1);
+  assert.equal(positionSliderValue(-0.4), -0.1);
+  assert.equal(positionSliderValue(0.037), 0.037);
+  assert.equal(positionSliderValue(0.4), 0.1);
 });

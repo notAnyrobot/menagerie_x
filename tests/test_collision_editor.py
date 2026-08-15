@@ -5,6 +5,8 @@ import unittest
 import xml.etree.ElementTree as ET
 
 from menagerie_x.workbench.collisions import (
+    CollisionDraftNotFoundError,
+    CollisionDraftStore,
     CollisionDocumentError,
     StaleCollisionDocumentError,
     export_collision_copy,
@@ -100,6 +102,65 @@ class CollisionDocumentTests(unittest.TestCase):
 
         self.assertEqual(first.name, "robot_collision_edited_20260813T010203Z.urdf")
         self.assertEqual(second.name, "robot_collision_edited_20260813T010203Z_2.urdf")
+
+    def test_export_can_delete_mesh_collisions_without_mutating_source(self):
+        document = load_collision_document(self.source)
+
+        output = export_collision_copy(self.source, document.revision, [], retained_mesh_ids=[])
+
+        self.assertIn("base_mesh", self.source.read_text(encoding="utf-8"))
+        root = ET.fromstring(output.read_bytes())
+        self.assertIsNone(root.find("./link[@name='base']/collision[@name='base_mesh']"))
+
+    def test_temporary_draft_materializes_mesh_deletions_and_discards_cleanly(self):
+        store = CollisionDraftStore()
+        try:
+            session = store.create(self.source)
+            self.assertTrue(session.temporary.is_file())
+            self.assertEqual(session.temporary.read_bytes(), self.source.read_bytes())
+            self.assertEqual(len(session.retained_mesh_ids), 1)
+
+            store.update(session.identifier, self.source, session.document.revision, session.primitives, [])
+            temporary = ET.fromstring(session.temporary.read_bytes())
+            self.assertIsNone(temporary.find("./link[@name='base']/collision[@name='base_mesh']"))
+
+            output = store.export(session.identifier, self.source, session.document.revision)
+            self.assertTrue(session.temporary.exists())
+            self.assertIsNone(ET.fromstring(output.read_bytes()).find("./link[@name='base']/collision[@name='base_mesh']"))
+
+            store.discard(session.identifier, self.source)
+            self.assertFalse(session.temporary.exists())
+            with self.assertRaises(CollisionDraftNotFoundError):
+                store.discard(session.identifier, self.source)
+        finally:
+            store.close()
+
+    def test_temporary_draft_reset_uses_current_source_and_stale_save_is_rejected(self):
+        store = CollisionDraftStore()
+        try:
+            session = store.create(self.source)
+            revision = session.document.revision
+            self.source.write_text(SOURCE.replace("base_mesh", "replacement_mesh"), encoding="utf-8")
+            with self.assertRaises(StaleCollisionDocumentError):
+                store.update(session.identifier, self.source, revision, session.primitives, list(session.retained_mesh_ids))
+
+            reset = store.reset(session.identifier, self.source)
+            self.assertNotEqual(reset.document.revision, revision)
+            self.assertIn("replacement_mesh", reset.temporary.read_text(encoding="utf-8"))
+        finally:
+            store.close()
+
+    def test_temporary_draft_expiration_removes_its_file(self):
+        store = CollisionDraftStore(ttl_seconds=1)
+        try:
+            session = store.create(self.source)
+            store.cleanup_expired(session.updated_at + 2)
+
+            self.assertFalse(session.temporary.exists())
+            with self.assertRaises(CollisionDraftNotFoundError):
+                store.discard(session.identifier, self.source)
+        finally:
+            store.close()
 
 
 if __name__ == "__main__":
