@@ -286,7 +286,9 @@ class WorkbenchTests(unittest.TestCase):
         self.assertIn(editions[0]["kind"], {"converted", "collision-draft", "legacy"})
         self.assertNotEqual(editions[0]["kind"], "authorized")
         self.assertTrue(all(record["role"] in {"candidate", "manual"} for record in editions[1:]))
-        self.assertTrue(any(record["kind"] == "collision-draft" for record in editions[1:]))
+        self.assertIn("astro_v2_primitive_collision_halfway", {record["id"] for record in editions[1:]})
+        self.assertNotIn("astro_v2-review_collision_edited_20260815T075510Z", {record["id"] for record in editions})
+        self.assertNotIn("astro_v2-review_collision_edited_20260815T082637Z", {record["id"] for record in editions})
         self.assertTrue(all(len(record["revision"]) == 64 for record in editions))
         self.assertTrue(all("source_drift_warning" in record for record in editions))
 
