@@ -5,12 +5,14 @@ import { createMjcfRenderer } from "/mjcf-renderer.js";
 import {
   POSITION_SLIDER_LIMIT,
   PRIMITIVE_TYPES,
+  createCollisionMaterial,
   defaultCollision,
   degreesToRadians,
   isPickableSceneObject,
   positionSliderValue,
   primitiveGeometry,
   radiansToDegrees,
+  setCollisionMaterialSelected,
   syncPrimitiveToMjModel,
 } from "/collision-editor.js";
 import { createVisualDiagnostics } from "/diagnostics.js";
@@ -47,6 +49,9 @@ const collisionList = document.querySelector("#collision-list");
 const collisionDetail = document.querySelector("#collision-detail");
 const collisionStatus = document.querySelector("#collision-status");
 const collisionExport = document.querySelector("#collision-export");
+const collisionOverwrite = document.querySelector("#collision-overwrite");
+const collisionMirrorLeftToRight = document.querySelector("#collision-mirror-left-to-right");
+const collisionMirrorRightToLeft = document.querySelector("#collision-mirror-right-to-left");
 const collisionEditorDock = document.querySelector("#collision-editor-dock");
 const collisionEditorToggle = document.querySelector("#collision-editor-toggle");
 const mjcfTitle = document.querySelector("#mjcf-title");
@@ -55,6 +60,8 @@ const mjcfCandidateId = document.querySelector("#mjcf-candidate-id");
 const mjcfGenerate = document.querySelector("#mjcf-generate");
 const mjcfStatus = document.querySelector("#mjcf-status");
 const mjcfCandidateList = document.querySelector("#mjcf-candidate-list");
+const reloadDescriptionButton = document.querySelector("#reload-description");
+const openNativeViewerButton = document.querySelector("#open-native-viewer");
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -94,8 +101,10 @@ const pointer = new THREE.Vector2();
 const mjcfRenderer = createMjcfRenderer(robotGroup);
 let catalog = [];
 let activeRobot = null;
+let activeEdition = null;
 let activeCandidateId = null;
 let mjcfCandidates = [];
+let mjcfEditions = [];
 let selectedName = null;
 let selectedKind = null;
 let mujoco = null;
@@ -133,6 +142,11 @@ let collisionDraftNeedsCompile = false;
 let selectedCollisionId = null;
 let collisionMode = false;
 let collisionDraftDirty = false;
+let descriptionReloading = false;
+let nativeViewerAvailable = false;
+let nativeViewerState = "idle";
+let nativeViewerLaunching = false;
+let nativeViewerPollTimer = null;
 let diagnosticObjects = [];
 let diagnosticModel = null;
 let diagnosticData = null;
@@ -145,7 +159,7 @@ const collisionObjects = new Map();
 const simulationClock = new THREE.Clock();
 
 function api(path) {
-  return fetch(path).then(async response => {
+  return fetch(path, { cache: "no-store" }).then(async response => {
     const data = await response.json().catch(() => ({ ok: false, error: response.statusText }));
     if (!response.ok || !data.ok) throw new Error(data.error || "Request failed");
     return data;
@@ -164,10 +178,73 @@ function apiRequest(path, method, payload = null) {
   });
 }
 
+function editionBase(edition = activeEdition) {
+  if (!activeRobot || !edition) return null;
+  return `/api/robots/${encodeURIComponent(activeRobot.id)}/editions/${encodeURIComponent(edition.id)}`;
+}
+
+function collisionDraftHasChanges() {
+  return collisionMode && collisionDraftDirty;
+}
+
 function activateTab(name) {
   document.querySelectorAll(".tab, .tab-panel").forEach(node => node.classList.remove("active"));
   document.querySelector(`.tab[data-tab="${name}"]`)?.classList.add("active");
   document.querySelector(`#${name}-panel`)?.classList.add("active");
+}
+
+function updateReloadDescriptionControl() {
+  reloadDescriptionButton.disabled = descriptionReloading || !activeRobot || !activeEdition;
+}
+
+function updateNativeViewerControl() {
+  const running = nativeViewerState === "running";
+  openNativeViewerButton.textContent = running ? "MuJoCo viewer open" : "Open in MuJoCo";
+  openNativeViewerButton.disabled = nativeViewerLaunching || running || !nativeViewerAvailable || !activeRobot || !activeEdition;
+  openNativeViewerButton.title = !nativeViewerAvailable
+    ? "Native MuJoCo launch is available only when the Workbench is bound to localhost"
+    : running
+      ? "A native MuJoCo viewer is already open"
+      : "Open the selected saved MJCF edition in native MuJoCo";
+}
+
+function applyNativeViewerStatus(status) {
+  nativeViewerAvailable = Boolean(status.available);
+  nativeViewerState = status.state || "idle";
+  updateNativeViewerControl();
+  if (nativeViewerPollTimer !== null) {
+    clearTimeout(nativeViewerPollTimer);
+    nativeViewerPollTimer = null;
+  }
+  if (nativeViewerState === "running") {
+    nativeViewerPollTimer = setTimeout(() => {
+      refreshNativeViewerStatus().catch(error => setMjcfStatus(`Could not check native MuJoCo viewer: ${error.message}`, true));
+    }, 1000);
+  } else if (nativeViewerState === "failed" && status.error) {
+    setMjcfStatus(`Native MuJoCo viewer: ${status.error}`, true);
+  }
+}
+
+async function refreshNativeViewerStatus() {
+  applyNativeViewerStatus(await api("/api/native-viewer"));
+}
+
+async function openNativeViewer() {
+  if (!activeRobot || !activeEdition || !nativeViewerAvailable || nativeViewerState === "running" || nativeViewerLaunching) return;
+  if (collisionDraftHasChanges() && !window.confirm("The native MuJoCo viewer opens the saved MJCF edition. Unsaved temporary collision edits will not appear until you choose Overwrite Current Edition or Export New Edition. Open the saved edition?")) return;
+  nativeViewerLaunching = true;
+  updateNativeViewerControl();
+  try {
+    const status = await apiRequest(`${editionBase()}/native-viewer`, "POST", {});
+    applyNativeViewerStatus(status);
+    setMjcfStatus(`Opened ${activeEdition.label} in native MuJoCo from its saved MJCF edition.`);
+  } catch (error) {
+    setMjcfStatus(`Could not open native MuJoCo viewer: ${error.message}`, true);
+    await refreshNativeViewerStatus().catch(() => {});
+  } finally {
+    nativeViewerLaunching = false;
+    updateNativeViewerControl();
+  }
 }
 
 function setMjcfStatus(message, error = false) {
@@ -199,8 +276,12 @@ async function refreshMjcfCandidates() {
   if (!activeRobot) return;
   const data = await api(`/api/robots/${encodeURIComponent(activeRobot.id)}/mjcf-candidates`);
   mjcfCandidates = data.candidates;
+  const editions = await api(`/api/robots/${encodeURIComponent(activeRobot.id)}/editions`);
+  mjcfEditions = editions.editions;
   ensureMjcfCandidateId();
   renderMjcfPanel();
+  renderRobotList();
+  updateReloadDescriptionControl();
 }
 
 function renderMjcfPanel() {
@@ -218,8 +299,12 @@ function renderMjcfPanel() {
     : `URDF revision ${activeRobot.source_revision.slice(0, 12)}. Generate a review candidate for ${activeRobot.name}.`;
   mjcfGenerate.disabled = false;
   for (const record of mjcfCandidates) {
+    // Manually named XML editions are intentionally selectable from the
+    // variant's edition list, but do not participate in candidate review or
+    // authorization because they have no provenance comment.
+    if (record.manual) continue;
     const row = document.createElement("div");
-    row.className = `mjcf-candidate ${record.id === activeCandidateId ? "active" : ""}`;
+    row.className = `mjcf-candidate ${record.id === activeEdition?.id ? "active" : ""}`;
     const name = document.createElement("strong");
     name.className = "mjcf-candidate-name";
     name.textContent = record.id;
@@ -233,8 +318,8 @@ function renderMjcfPanel() {
       const actions = document.createElement("div");
       actions.className = "mjcf-candidate-actions";
       const preview = document.createElement("button");
-      preview.textContent = "Preview";
-      preview.addEventListener("click", () => previewMjcfCandidate(record.id));
+      preview.textContent = "Select";
+      preview.addEventListener("click", () => selectEdition(record.id));
       const authorize = document.createElement("button");
       authorize.className = "authorize";
       authorize.textContent = "Authorize";
@@ -270,49 +355,45 @@ async function generateMjcfCandidate() {
 }
 
 async function previewMjcfCandidate(candidateId) {
-  if (!activeRobot) return;
-  activeCandidateId = candidateId;
-  selectedSource.textContent = "MJCF candidate preview";
-  viewerEmpty.hidden = false;
-  viewerEmpty.textContent = "Loading MJCF candidate preview…";
-  const controller = new AbortController();
-  loadAbortController?.abort();
-  loadAbortController = controller;
-  const token = ++loadVersion;
-  try {
-    await loadMujocoModel(activeRobot, token, controller);
-    if (isCurrentLoad(token, controller)) {
-      selectedTitle.textContent = `${displayName(activeRobot)} · Candidate preview`;
-      setMjcfStatus(`Previewing ${candidateId}. It is not authorized.`);
-      renderMjcfPanel();
-    }
-  } catch (error) {
-    setMjcfStatus(error.message, true);
-  }
+  return selectEdition(candidateId);
 }
 
 async function authorizeMjcfCandidate(record) {
   if (!activeRobot || activeRobot.workbench_loadable) return;
   const warning = record.source_drift_warning ? `\n\nWarning: ${record.source_drift_warning}` : "";
-  if (!window.confirm(`Authorize ${record.id} for ${activeRobot.name}? This registers the candidate in the manifest.${warning}`)) return;
+  const draftWarning = collisionDraftHasChanges()
+    ? "\n\nThe unsaved temporary collision draft will be discarded."
+    : "";
+  if (!window.confirm(`Authorize ${record.id} for ${activeRobot.name}? This registers the candidate in the manifest.${warning}${draftWarning}`)) return;
   try {
     await apiRequest(`/api/robots/${encodeURIComponent(activeRobot.id)}/mjcf-candidates/${encodeURIComponent(record.id)}/authorize`, "POST", { expected_source_revision: record.candidate.source_revision });
+    collisionDraftDirty = false;
     setMjcfStatus(`Authorized ${record.id}. Reloading Workbench model…`);
     const catalogData = await api("/api/robots");
     catalog = catalogData.robots;
-    activeCandidateId = null;
     await selectRobot(activeRobot.id);
+    await selectEdition("authorized");
   } catch (error) {
     setMjcfStatus(error.message, true);
   }
 }
 
 async function discardMjcfCandidate(record) {
-  if (!activeRobot || !window.confirm(`Discard review candidate ${record.id}?`)) return;
+  if (!activeRobot) return;
+  const isSelected = activeEdition?.id === record.id;
+  const draftWarning = isSelected && collisionDraftHasChanges()
+    ? " Its unsaved temporary collision draft will also be discarded."
+    : "";
+  if (!window.confirm(`Discard review candidate ${record.id}?${draftWarning}`)) return;
   try {
     await apiRequest(`/api/robots/${encodeURIComponent(activeRobot.id)}/mjcf-candidates/${encodeURIComponent(record.id)}`, "DELETE");
     if (activeCandidateId === record.id) activeCandidateId = null;
-    await refreshMjcfCandidates();
+    if (isSelected) {
+      collisionDraftDirty = false;
+      await selectRobot(activeRobot.id);
+    } else {
+      await refreshMjcfCandidates();
+    }
     setMjcfStatus(`Discarded ${record.id}.`);
   } catch (error) {
     setMjcfStatus(error.message, true);
@@ -734,6 +815,8 @@ function displayName(robot) {
 function renderRobotList() {
   robotList.replaceChildren();
   for (const robot of catalog) {
+    const entry = document.createElement("div");
+    entry.className = "robot-entry";
     const button = document.createElement("button");
     button.className = `robot-row ${robot.id === activeRobot?.id ? "active" : ""}`;
     button.innerHTML = `<span class="robot-name"><span></span><span class="badge"></span></span><span class="robot-meta"></span>`;
@@ -750,8 +833,34 @@ function renderRobotList() {
       button.title = "MJCF required — open the MJCF panel to create a review candidate.";
       button.querySelector(".robot-meta").textContent = `${robot.dof} DOF · MJCF required`;
     }
-    button.addEventListener("click", () => selectRobot(robot.id));
-    robotList.append(button);
+    button.addEventListener("click", () => {
+      if (robot.id !== activeRobot?.id) selectRobot(robot.id);
+    });
+    entry.append(button);
+    if (robot.id === activeRobot?.id) {
+      const editions = document.createElement("div");
+      editions.className = "edition-list";
+      if (!mjcfEditions.length) {
+        const empty = document.createElement("span");
+        empty.className = "edition-empty";
+        empty.textContent = "No selectable MJCF editions.";
+        editions.append(empty);
+      }
+      for (const edition of mjcfEditions) {
+        const option = document.createElement("button");
+        option.className = `edition-row ${edition.id === activeEdition?.id ? "active" : ""}`;
+        const stamp = edition.modified_at || edition.created_at;
+        option.innerHTML = `<span class="edition-row-name"></span><span class="edition-row-meta"></span>`;
+        option.querySelector(".edition-row-name").textContent = edition.role === "authorized"
+          ? `Authorized MJCF · ${edition.source_id || edition.id}`
+          : edition.label;
+        option.querySelector(".edition-row-meta").textContent = `${edition.kind}${stamp ? ` · ${new Date(stamp).toLocaleString()}` : ""}`;
+        option.addEventListener("click", () => selectEdition(edition.id));
+        editions.append(option);
+      }
+      entry.append(editions);
+    }
+    robotList.append(entry);
   }
 }
 
@@ -969,10 +1078,8 @@ async function addCollisionOverlay(collision, group, robot, token, controller, s
     assertCurrentLoad(token, controller);
   }
   if (!geometry) return;
-  const overlay = new THREE.LineSegments(
-    new THREE.EdgesGeometry(geometry),
-    new THREE.LineBasicMaterial({ color: 0x8fca5e, transparent: true, opacity: 0.86 }),
-  );
+  geometry.computeVertexNormals?.();
+  const overlay = new THREE.Mesh(geometry, createCollisionMaterial(THREE));
   overlay.userData = { link: group.name, layer: "collision-overlay", collisionName: collision.name || "", sourceCollisionId, editable: collision.type !== "mesh" };
   overlay.visible = collisionShapesVisible || (collisionMode && collision.type === "mesh");
   setTransform(overlay, collision.origin);
@@ -1010,18 +1117,15 @@ async function collisionDraftRequest(path, options = {}) {
 }
 
 function collisionDraftPath(suffix = "") {
-  if (!activeRobot || !collisionDraftId) return null;
-  const base = activeCandidateId
-    ? `/api/robots/${encodeURIComponent(activeRobot.id)}/mjcf-candidates/${encodeURIComponent(activeCandidateId)}/collision-drafts`
-    : `/api/robots/${encodeURIComponent(activeRobot.id)}/collision-drafts`;
+  if (!collisionDraftId) return null;
+  const base = collisionDraftBase();
+  if (!base) return null;
   return `${base}/${encodeURIComponent(collisionDraftId)}${suffix}`;
 }
 
 function collisionDraftBase() {
-  if (!activeRobot) return null;
-  return activeCandidateId
-    ? `/api/robots/${encodeURIComponent(activeRobot.id)}/mjcf-candidates/${encodeURIComponent(activeCandidateId)}/collision-drafts`
-    : `/api/robots/${encodeURIComponent(activeRobot.id)}/collision-drafts`;
+  const base = editionBase();
+  return base ? `${base}/collision-drafts` : null;
 }
 
 function cancelCollisionDraftSave() {
@@ -1120,9 +1224,8 @@ function paintCollisionObject(id) {
   if (!object) return;
   const selected = id === selectedCollisionId;
   object.traverse(node => {
-    if (!node.material?.color) return;
-    node.material.color.set(selected ? 0xc5f067 : node.isMesh ? 0x79ac4f : 0x8fca5e);
-    if (node.isMesh) node.material.opacity = selected ? 0.38 : 0.22;
+    if (!node.isMesh) return;
+    setCollisionMaterialSelected(node.material, selected);
   });
 }
 
@@ -1144,17 +1247,9 @@ function addDraftCollisionObject(collision) {
   const object = new THREE.Group();
   object.userData = { layer: "collision-editor", collisionId: collision.id, link: collision.link };
   const geometry = primitiveGeometry(THREE, collision.geometry);
-  const fill = new THREE.Mesh(
-    geometry,
-    new THREE.MeshBasicMaterial({ color: 0x79ac4f, transparent: true, opacity: 0.22, depthWrite: false }),
-  );
+  const fill = new THREE.Mesh(geometry, createCollisionMaterial(THREE));
   fill.userData = { layer: "collision-editor", collisionId: collision.id, link: collision.link };
-  const edges = new THREE.LineSegments(
-    new THREE.EdgesGeometry(geometry),
-    new THREE.LineBasicMaterial({ color: 0x8fca5e, transparent: true, opacity: 0.98 }),
-  );
-  edges.userData = { layer: "collision-editor", collisionId: collision.id, link: collision.link };
-  object.add(fill, edges);
+  object.add(fill);
   setTransform(object, collision.origin);
   object.visible = collisionShapesVisible;
   link.add(object);
@@ -1407,7 +1502,11 @@ function renderCollisionPanel() {
     }
   }
   renderCollisionDetail();
-  collisionExport.disabled = !collisionMode || !collisionDocument || !collisionDraftId;
+  const draftUnavailable = !collisionMode || !collisionDocument || !collisionDraftId;
+  collisionExport.disabled = draftUnavailable;
+  collisionOverwrite.disabled = draftUnavailable;
+  collisionMirrorLeftToRight.disabled = draftUnavailable;
+  collisionMirrorRightToLeft.disabled = draftUnavailable;
 }
 
 function reassignCollision(collision, linkName) {
@@ -1496,9 +1595,9 @@ function snapCollision(collision) {
 }
 
 async function enterCollisionMode() {
-  if (!activeRobot || !activeRobot.workbench_loadable) {
+  if (!activeRobot || !activeEdition || !simulationModel) {
     updateCollisionEditorDock(false);
-    setCollisionStatus("Authorize or preview an MJCF model before editing collisions.", true);
+    setCollisionStatus("Select an MJCF edition before editing collisions.", true);
     return;
   }
   if (collisionMode && collisionDraftId) {
@@ -1591,11 +1690,48 @@ async function resetCollisionDraft() {
   }
 }
 
+async function mirrorCollisionDraft(direction) {
+  const previewPath = collisionDraftPath("/mirror-preview");
+  const applyPath = collisionDraftPath("/mirror");
+  if (!collisionDocument || !previewPath || !applyPath) return;
+  try {
+    collisionMirrorLeftToRight.disabled = true;
+    collisionMirrorRightToLeft.disabled = true;
+    await flushCollisionDraft();
+    const request = { revision: collisionDocument.revision, direction };
+    const preview = await collisionDraftRequest(previewPath, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+    });
+    const targetLabel = `${preview.target_side}-side`;
+    const meshDetail = preview.replaced_target_meshes ? ` This also replaces ${preview.replaced_target_meshes} target mesh collision${preview.replaced_target_meshes === 1 ? "" : "s"}.` : "";
+    if (!window.confirm(`Mirror ${preview.source_side} to ${preview.target_side} across ${preview.sagittal_plane}? This overwrites ${preview.affected.length} ${targetLabel} primitive collision shape${preview.affected.length === 1 ? "" : "s"}.${meshDetail}`)) return;
+    const session = await collisionDraftRequest(applyPath, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...request, confirmed: true }),
+    });
+    applyCollisionDraftSession(session);
+    collisionDraftDirty = true;
+    selectedCollisionId = session.primitives.find(item => item.link.startsWith(`${preview.target_side}_`))?.id || null;
+    renderDraftCollisionObjects();
+    renderCollisionPanel();
+    if (contactsVisible) void compileDraftContacts(collisionDraftId);
+    setCollisionStatus(`Mirrored ${preview.affected.length} collision shape${preview.affected.length === 1 ? "" : "s"} from ${preview.source_side} to ${preview.target_side} across ${preview.sagittal_plane}.`);
+  } catch (error) {
+    setCollisionStatus(error.message, true);
+  } finally {
+    renderCollisionPanel();
+  }
+}
+
 async function exportCollisionDraft() {
   const path = collisionDraftPath("/export");
   if (!collisionDocument || !path) return;
   try {
     collisionExport.disabled = true;
+    collisionOverwrite.disabled = true;
     await flushCollisionDraft();
     const data = await collisionDraftRequest(path, {
       method: "POST",
@@ -1603,27 +1739,52 @@ async function exportCollisionDraft() {
       body: JSON.stringify({ revision: collisionDocument.revision }),
     });
     collisionDraftDirty = false;
-    setCollisionStatus(`Exported ${data.candidate_id || "MJCF candidate"}: ${data.output_path}`);
-    if (activeCandidateId && data.candidate_id) await refreshMjcfCandidates();
+    setCollisionStatus(`Exported ${data.edition_id || "MJCF edition"}: ${data.output_path}`);
+    await refreshMjcfCandidates();
+    await selectEdition(data.edition_id, true);
   } catch (error) {
     setCollisionStatus(error.message, true);
   } finally {
     collisionExport.disabled = false;
+    collisionOverwrite.disabled = false;
+  }
+}
+
+async function overwriteCollisionDraft() {
+  const path = collisionDraftPath("/overwrite");
+  if (!collisionDocument || !path || !activeEdition) return;
+  const editionName = activeEdition.role === "authorized"
+    ? `authorized MJCF ${activeEdition.source_id || activeEdition.id}`
+    : activeEdition.id;
+  if (!window.confirm(`Overwrite ${editionName}? This replaces exactly this MJCF edition and cannot be undone automatically.`)) return;
+  try {
+    collisionExport.disabled = true;
+    collisionOverwrite.disabled = true;
+    await flushCollisionDraft();
+    const data = await collisionDraftRequest(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ revision: collisionDocument.revision, edition_id: activeEdition.id }),
+    });
+    collisionDraftDirty = false;
+    await refreshMjcfCandidates();
+    setCollisionStatus(`Overwrote ${editionName}: ${data.output_path}`);
+    await selectEdition(data.edition_id, true);
+  } catch (error) {
+    setCollisionStatus(error.message, true);
+  } finally {
+    collisionExport.disabled = false;
+    collisionOverwrite.disabled = false;
   }
 }
 
 function collisionDraftSourcePath(draftId = collisionDraftId) {
-  if (!activeRobot || !draftId) return null;
-  return activeCandidateId
-    ? `/api/robots/${encodeURIComponent(activeRobot.id)}/mjcf-candidates/${encodeURIComponent(activeCandidateId)}/collision-drafts/${encodeURIComponent(draftId)}/source`
-    : `/api/robots/${encodeURIComponent(activeRobot.id)}/collision-drafts/${encodeURIComponent(draftId)}/source`;
+  const base = collisionDraftBase();
+  return base && draftId ? `${base}/${encodeURIComponent(draftId)}/source` : null;
 }
 
 function collisionAssetBase() {
-  if (!activeRobot) return null;
-  return activeCandidateId
-    ? `/api/robots/${encodeURIComponent(activeRobot.id)}/mjcf-candidates/${encodeURIComponent(activeCandidateId)}`
-    : `/api/robots/${encodeURIComponent(activeRobot.id)}`;
+  return editionBase();
 }
 
 async function cachedMeshBytes(sourceBase, name, controller) {
@@ -1734,16 +1895,15 @@ function prepareSimulationSource(source, format, robot) {
   return { source: new XMLSerializer().serializeToString(xml) };
 }
 
-async function loadMujocoModel(robot, token, controller) {
+async function loadMujocoModel(robot, token, controller, options = {}) {
   setEngineState("Loading MuJoCo WASM model…");
   const objects = [];
   try {
     mujoco ||= await loadMujoco({ locateFile: file => `/vendor/${file}` });
     assertCurrentLoad(token, controller);
-    const sourceBase = activeCandidateId
-      ? `/api/robots/${encodeURIComponent(robot.id)}/mjcf-candidates/${encodeURIComponent(activeCandidateId)}`
-      : `/api/robots/${encodeURIComponent(robot.id)}`;
-    const raw = await fetch(activeCandidateId ? `${sourceBase}/source` : `${sourceBase}/source?format=mjcf`, { signal: controller.signal })
+    const sourceBase = editionBase();
+    if (!sourceBase) throw new Error("Select an MJCF edition before loading a model.");
+    const raw = await fetch(`${sourceBase}/source`, { signal: controller.signal, cache: options.forceReload ? "no-store" : "default" })
       .then(response => response.ok ? response.text() : Promise.reject(new Error("Could not load model source")));
     assertCurrentLoad(token, controller);
     const prepared = prepareSimulationSource(raw, "mjcf", robot);
@@ -1752,7 +1912,7 @@ async function loadMujocoModel(robot, token, controller) {
     const sourceDocument = new DOMParser().parseFromString(prepared.source, "application/xml");
     const names = [...new Set([...sourceDocument.querySelectorAll("mesh[filename], mesh[file]")].map(node => (node.getAttribute("filename") || node.getAttribute("file")).split("/").pop()))];
     for (const name of names) {
-      const bytes = await fetch(`${sourceBase}/files/${encodeURIComponent(name)}`, { signal: controller.signal })
+      const bytes = await fetch(`${sourceBase}/files/${encodeURIComponent(name)}`, { signal: controller.signal, cache: options.forceReload ? "no-store" : "default" })
         .then(response => response.ok ? response.arrayBuffer() : Promise.reject(new Error(`Could not read ${name}`)));
       assertCurrentLoad(token, controller);
       vfs.addBuffer(name, new Uint8Array(bytes));
@@ -1790,20 +1950,55 @@ async function loadMujocoModel(robot, token, controller) {
     diagnostics.bindMujoco(model, data, bodyGroups, bounds?.getSize(new THREE.Vector3()).length() || 0.5);
     viewerEmpty.hidden = false;
     viewerEmpty.hidden = true;
-    frameRobot();
+    if (options.view) restoreViewerView(options.view);
+    else frameRobot();
     setEngineState(`MuJoCo WASM loaded · ${model.nbody} bodies · ${model.ngeom} geoms`, "ready");
+    return true;
   } catch (error) {
     deleteWasmObjects(objects);
-    if (error?.name === "AbortError") return;
+    if (error?.name === "AbortError") return false;
     if (isCurrentLoad(token, controller)) {
+      // The selected edition is now the failed source. Never leave the prior
+      // simulation model live under that selection: a later reload must not
+      // mistake stale geometry/data for a successful recompilation.
+      disposeWasm();
+      clearRobot();
+      clearSceneObjects();
       physicsEnabled = false;
+      followEnabled = false;
       updateSimulationControls("Model load failed. Select a robot to try again.");
       setEngineState(`MuJoCo WASM model check failed: ${error?.message || error}`, "error");
+      viewerEmpty.hidden = false;
+      viewerEmpty.textContent = `Could not load this MJCF edition: ${error?.message || error}`;
+      throw error;
     }
+    return false;
   }
 }
 
+function captureViewerView() {
+  return {
+    position: camera.position.toArray(),
+    quaternion: camera.quaternion.toArray(),
+    target: controls.target.toArray(),
+    near: camera.near,
+    far: camera.far,
+  };
+}
+
+function restoreViewerView(view) {
+  if (!view) return;
+  camera.position.fromArray(view.position);
+  camera.quaternion.fromArray(view.quaternion);
+  controls.target.fromArray(view.target);
+  camera.near = view.near;
+  camera.far = view.far;
+  camera.updateProjectionMatrix();
+  controls.update();
+}
+
 async function selectRobot(id) {
+  if (id !== activeRobot?.id && collisionDraftHasChanges() && !window.confirm("Discard the unsaved temporary collision draft and change robot variant?")) return;
   leaveCollisionMode();
   collisionDocument = null;
   collisionDraft = [];
@@ -1821,42 +2016,164 @@ async function selectRobot(id) {
     const data = await api(`/api/robots/${encodeURIComponent(id)}`);
     assertCurrentLoad(token, controller);
     activeRobot = data.robot;
+    activeEdition = null;
     activeCandidateId = null;
     delete mjcfCandidateId.dataset.robotId;
     mjcfCandidateId.value = "";
     selectedName = null;
+    updateReloadDescriptionControl();
+    updateNativeViewerControl();
     selectedKind = null;
     selectedTitle.textContent = displayName(activeRobot);
     selectedElement.textContent = "None";
-    if (!activeRobot.workbench_loadable) {
-      disposeWasm();
-      clearRobot();
-      clearSceneObjects();
-      renderRobotList();
-      renderElements();
-      await refreshMjcfCandidates();
-      activateTab("mjcf");
-      viewerEmpty.textContent = "MJCF authorization required. Generate a candidate in the MJCF panel.";
-      setEngineState("MJCF candidate required", "loading");
-      return;
-    }
-    selectedSource.textContent = "MJCF (authorized)";
+    selectedSource.textContent = "No MJCF edition selected";
     physicsEnabled = false;
     followEnabled = false;
-    updateSimulationControls("Loading MuJoCo model…");
+    disposeWasm();
+    clearRobot();
+    clearSceneObjects();
+    updateSimulationControls("Select an MJCF edition to load the model.");
     renderRobotList();
     renderElements();
     await refreshMjcfCandidates();
-    clearRobot();
-    await loadMujocoModel(activeRobot, token, controller);
-    if (isCurrentLoad(token, controller) && simulationModel) {
-      restoreInitialVisualTransforms();
-    }
+    viewerEmpty.textContent = mjcfEditions.length
+      ? "Choose an MJCF edition beneath the selected robot variant."
+      : "No selectable MJCF edition. Generate or repair a candidate in the MJCF panel.";
+    setEngineState("MJCF edition selection required", "loading");
+    activateTab(mjcfEditions.length ? "joints" : "mjcf");
   } catch (error) {
     if (error?.name === "AbortError") return;
     viewerEmpty.hidden = false;
     viewerEmpty.textContent = error.message;
     setEngineState(error.message, "error");
+  }
+}
+
+async function selectEdition(editionId, continueCollisionEditing = false, options = {}) {
+  if (!activeRobot) return;
+  const edition = mjcfEditions.find(item => item.id === editionId);
+  if (!edition) {
+    setMjcfStatus(`MJCF edition ${editionId} is not available for ${activeRobot.name}.`, true);
+    return;
+  }
+  // Re-selecting the active row is a no-op. In particular, it must not tear
+  // down an unfinished draft just because the operator clicked its edition.
+  if (edition.id === activeEdition?.id && !continueCollisionEditing && !options.forceReload) return;
+  if (edition.id !== activeEdition?.id && collisionDraftHasChanges() && !window.confirm("Discard the unsaved temporary collision draft and change MJCF edition?")) return;
+  const reopenEditor = continueCollisionEditing || collisionMode;
+  if (collisionMode) {
+    collisionDraftDirty = false;
+    leaveCollisionMode();
+  }
+  collisionDocument = null;
+  collisionDraft = [];
+  collisionDraftId = null;
+  retainedMeshIds = new Set();
+  cancelCollisionDraftSave();
+  selectedCollisionId = null;
+  loadAbortController?.abort();
+  const controller = new AbortController();
+  loadAbortController = controller;
+  const token = ++loadVersion;
+  activeEdition = edition;
+  activeCandidateId = edition.role === "candidate" ? edition.id : null;
+  selectedName = null;
+  updateReloadDescriptionControl();
+  updateNativeViewerControl();
+  selectedKind = null;
+  selectedTitle.textContent = `${displayName(activeRobot)} · ${edition.role === "authorized" ? `Authorized MJCF · ${edition.source_id || edition.id}` : edition.label}`;
+  selectedElement.textContent = "None";
+  selectedSource.textContent = edition.role === "authorized" ? "MJCF (authorized)" : "MJCF edition";
+  viewerEmpty.hidden = false;
+  viewerEmpty.textContent = "Loading MJCF edition…";
+  physicsEnabled = false;
+  followEnabled = false;
+  updateSimulationControls("Loading MuJoCo model…");
+  renderRobotList();
+  renderMjcfPanel();
+  renderElements();
+  try {
+    clearRobot();
+    const loaded = await loadMujocoModel(activeRobot, token, controller, options);
+    if (!loaded || !isCurrentLoad(token, controller) || !simulationModel) return;
+    restoreInitialVisualTransforms();
+    setMjcfStatus(`Selected ${edition.role === "authorized" ? "authorized MJCF" : edition.label}.`);
+    if (reopenEditor) {
+      updateCollisionEditorDock(true);
+      await enterCollisionMode();
+    }
+    if (options.tab) activateTab(options.tab);
+    updateReloadDescriptionControl();
+  } catch (error) {
+    if (error?.name === "AbortError") return;
+    viewerEmpty.hidden = false;
+    viewerEmpty.textContent = error.message;
+    setEngineState(error.message, "error");
+    setMjcfStatus(`Could not load ${edition.label}: ${error.message}`, true);
+    updateReloadDescriptionControl();
+  }
+}
+
+async function reloadCurrentDescription() {
+  if (!activeRobot || !activeEdition || descriptionReloading) return;
+  if (collisionDraftHasChanges() && !window.confirm("Discard the unsaved temporary collision draft and reload the MJCF description?")) return;
+
+  const robotId = activeRobot.id;
+  const editionId = activeEdition.id;
+  const tab = document.querySelector(".tab.active")?.dataset.tab || "joints";
+  const view = captureViewerView();
+  const reopenEditor = collisionMode;
+  descriptionReloading = true;
+  updateReloadDescriptionControl();
+  setEngineState("Reloading MJCF description…");
+  setMjcfStatus(`Reloading ${editionId} from disk…`);
+  try {
+    if (collisionMode) {
+      collisionDraftDirty = false;
+      leaveCollisionMode();
+    }
+    loadAbortController?.abort();
+    const catalogData = await api("/api/robots");
+    catalog = catalogData.robots;
+    const record = catalog.find(robot => robot.id === robotId);
+    if (!record) throw new Error(`Robot variant ${robotId} is no longer available.`);
+    const robotData = await api(`/api/robots/${encodeURIComponent(robotId)}`);
+    activeRobot = robotData.robot;
+    selectedTitle.textContent = displayName(activeRobot);
+    await refreshMjcfCandidates();
+    if (!mjcfEditions.some(edition => edition.id === editionId)) {
+      activeEdition = null;
+      activeCandidateId = null;
+      updateNativeViewerControl();
+      physicsEnabled = false;
+      followEnabled = false;
+      disposeWasm();
+      clearRobot();
+      clearSceneObjects();
+      renderJointInspector();
+      renderElements();
+      renderRobotList();
+      updateSimulationControls("Choose an available MJCF edition to load the model.");
+      viewerEmpty.hidden = false;
+      viewerEmpty.textContent = "The previously selected MJCF edition is no longer available. Choose an edition beneath this robot variant.";
+      setEngineState("MJCF edition selection required", "loading");
+      setMjcfStatus(`MJCF edition ${editionId} is no longer available. Choose another edition.`, true);
+      activateTab(tab);
+      return;
+    }
+    await selectEdition(editionId, reopenEditor, { forceReload: true, view, tab });
+    if (activeEdition?.id === editionId && simulationModel) {
+      if (contactsVisible) syncContactVisualization();
+      setMjcfStatus(`Reloaded ${editionId} from disk.`);
+    }
+  } catch (error) {
+    if (error?.name !== "AbortError") {
+      setMjcfStatus(`Could not reload menagerie: ${error.message}`, true);
+      setEngineState(`MJCF reload failed: ${error.message}`, "error");
+    }
+  } finally {
+    descriptionReloading = false;
+    updateReloadDescriptionControl();
   }
 }
 
@@ -2022,6 +2339,8 @@ window.addEventListener("keydown", event => {
 });
 
 document.querySelector("#reset-camera").addEventListener("click", frameRobot);
+reloadDescriptionButton.addEventListener("click", reloadCurrentDescription);
+openNativeViewerButton.addEventListener("click", openNativeViewer);
 physicsToggle.addEventListener("click", togglePhysics);
 physicsReset.addEventListener("click", resetSimulation);
 followToggle.addEventListener("click", toggleFollow);
@@ -2031,7 +2350,10 @@ collisionShapeToggle.addEventListener("click", toggleCollisionShapes);
 contactToggle.addEventListener("click", toggleContacts);
 collisionEditorToggle.addEventListener("click", toggleCollisionEditor);
 document.querySelector("#collision-reset").addEventListener("click", () => resetCollisionDraft().catch(error => setCollisionStatus(error.message, true)));
+collisionMirrorLeftToRight.addEventListener("click", () => mirrorCollisionDraft("left-to-right"));
+collisionMirrorRightToLeft.addEventListener("click", () => mirrorCollisionDraft("right-to-left"));
 collisionExport.addEventListener("click", exportCollisionDraft);
+collisionOverwrite.addEventListener("click", overwriteCollisionDraft);
 mjcfGenerate.addEventListener("click", generateMjcfCandidate);
 collisionLink.addEventListener("change", () => { renderCollisionPanel(); refreshCollisionObjectStyles(); });
 for (const button of document.querySelectorAll("[data-collision-add]")) button.addEventListener("click", () => addPrimitiveCollision(button.dataset.collisionAdd));
@@ -2060,12 +2382,29 @@ for (const tab of document.querySelectorAll(".tab")) tab.addEventListener("click
 new ResizeObserver(resize).observe(canvas);
 resize();
 updateDisplayControls();
+updateReloadDescriptionControl();
+updateNativeViewerControl();
 animate();
+
+try {
+  await refreshNativeViewerStatus();
+} catch (error) {
+  nativeViewerAvailable = false;
+  updateNativeViewerControl();
+  setMjcfStatus(`Native MuJoCo viewer is unavailable: ${error.message}`, true);
+}
 
 try {
   const data = await api("/api/robots");
   catalog = data.robots;
-  await selectRobot(catalog[0]?.id);
+  renderRobotList();
+  renderJointInspector();
+  renderElements();
+  updateSimulationControls("Select a robot variant, then an MJCF edition.");
+  selectedSource.textContent = "No MJCF edition selected";
+  viewerEmpty.hidden = false;
+  viewerEmpty.textContent = "Select a robot variant, then choose an MJCF edition.";
+  setEngineState("MJCF edition selection required", "loading");
 } catch (error) {
   viewerEmpty.textContent = error.message;
   setEngineState(error.message, "error");

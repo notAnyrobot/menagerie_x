@@ -3,6 +3,7 @@ import test from "node:test";
 import * as THREE from "three";
 
 import {
+  createCollisionMaterial,
   defaultCollision,
   degreesToRadians,
   isPickableSceneObject,
@@ -12,7 +13,23 @@ import {
   primitiveGeometry,
   radiansToDegrees,
   syncPrimitiveToMjModel,
+  setCollisionMaterialSelected,
 } from "./collision-editor.js";
+
+test("collision shapes use the shaded translucent MuJoCo-style material", () => {
+  const material = createCollisionMaterial(THREE);
+  assert.equal(material.isMeshStandardMaterial, true);
+  assert.equal(material.transparent, true);
+  assert.equal(material.depthWrite, false);
+  assert.equal(material.side, THREE.DoubleSide);
+  assert.ok(material.opacity > 0 && material.opacity < 1);
+  const idleColor = material.color.getHex();
+
+  setCollisionMaterialSelected(material, true);
+  assert.notEqual(material.color.getHex(), idleColor);
+  assert.ok(material.opacity > 0 && material.opacity < 1);
+  material.dispose();
+});
 
 test("dimension mapping and degree conversion are exact", () => {
   assert.deepEqual(primitiveDimensions({ type: "box", size: [1, 2, 3] }), [1, 2, 3]);

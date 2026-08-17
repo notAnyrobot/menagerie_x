@@ -1,15 +1,195 @@
 import json
 import pathlib
+import subprocess
+import sys
 import threading
+import time
 import unittest
 import urllib.error
 import urllib.request
 
+from menagerie_x.assets import variants
 from menagerie_x.workbench import create_server
+from menagerie_x.workbench.server import NativeViewerAlreadyRunningError, NativeViewerProcessManager, WorkbenchRequestHandler
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 WEB_ROOT = ROOT / "src" / "menagerie_x" / "workbench" / "web"
+
+
+class FakeNativeViewerProcess:
+    def __init__(self, stderr: str = ""):
+        self.stderr_log = None
+        self.initial_stderr = stderr
+        self.returncode = None
+        self._finished = threading.Event()
+        self.terminated = False
+        self.killed = False
+
+    def poll(self):
+        return self.returncode
+
+    def wait(self):
+        self._finished.wait(timeout=3)
+        return self.returncode if self.returncode is not None else -1
+
+    def finish(self, returncode: int = 0):
+        self.returncode = returncode
+        self._finished.set()
+
+    def write_stderr(self, message: str):
+        assert self.stderr_log is not None
+        self.stderr_log.write(message.encode("utf-8"))
+        self.stderr_log.flush()
+
+    def terminate(self):
+        self.terminated = True
+        self.finish(-15)
+
+    def kill(self):
+        self.killed = True
+        self.finish(-9)
+
+
+def wait_for_viewer_state(manager: NativeViewerProcessManager, state: str) -> dict:
+    deadline = time.monotonic() + 2
+    while time.monotonic() < deadline:
+        status = manager.status()
+        if status["state"] == state:
+            return status
+        time.sleep(0.01)
+    raise AssertionError(f"native viewer did not reach {state}: {manager.status()}")
+
+
+class NativeViewerProcessManagerTests(unittest.TestCase):
+    def setUp(self):
+        self.calls = []
+        self.processes = []
+
+        def factory(*args, **kwargs):
+            self.calls.append((args, kwargs))
+            process = FakeNativeViewerProcess()
+            process.stderr_log = kwargs["stderr"]
+            self.processes.append(process)
+            return process
+
+        self.manager = NativeViewerProcessManager(ROOT / "src" / "menagerie_x" / "assets", factory)
+        self.variant = variants(ROOT)["astro_v2"]
+        self.source = self.variant.mjcf
+
+    def tearDown(self):
+        self.manager.close()
+
+    def test_launch_tracks_exact_saved_source_and_rejects_duplicates(self):
+        status = self.manager.launch(self.variant, {"id": "authorized"}, self.source)
+
+        self.assertEqual(status["state"], "running")
+        self.assertEqual(status["launch"]["source"], str(self.source.resolve()))
+        command = self.calls[0][0][0]
+        self.assertIsNot(self.calls[0][1]["stderr"], subprocess.PIPE)
+        self.assertEqual(command[:5], [sys.executable, "-m", "menagerie_x.cli", "--root", str((ROOT / "src" / "menagerie_x" / "assets").resolve())])
+        self.assertEqual(command[-2:], ["--mjcf", str(self.source.resolve())])
+        with self.assertRaises(NativeViewerAlreadyRunningError):
+            self.manager.launch(self.variant, {"id": "authorized"}, self.variant.mjcf)
+
+        self.processes[0].finish(0)
+        self.assertEqual(wait_for_viewer_state(self.manager, "idle")["error"], None)
+
+    def test_failed_exit_preserves_stderr_and_shutdown_terminates_owned_process(self):
+        self.manager.launch(self.variant, {"id": "authorized"}, self.variant.mjcf)
+        self.processes[0].write_stderr("GL context unavailable\n" + "x" * 2048)
+        self.processes[0].finish(1)
+        self.assertIn("GL context unavailable", wait_for_viewer_state(self.manager, "failed")["error"])
+
+        self.manager.launch(self.variant, {"id": "authorized"}, self.variant.mjcf)
+        process = self.processes[1]
+        self.manager.close()
+        self.assertTrue(process.terminated)
+
+
+class NativeViewerEndpointTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.processes = []
+
+        def factory(*_args, **_kwargs):
+            process = FakeNativeViewerProcess()
+            process.stderr_log = _kwargs["stderr"]
+            cls.processes.append(process)
+            return process
+
+        cls.server = create_server(ROOT, process_factory=factory)
+        cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
+        cls.thread.start()
+        host, port = cls.server.server_address
+        cls.base_url = f"http://{host}:{port}"
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.shutdown()
+        cls.server.server_close()
+        cls.thread.join(timeout=2)
+
+    def _request(self, path: str, method: str = "GET", payload: dict | None = None) -> tuple[int, dict]:
+        request = urllib.request.Request(
+            f"{self.base_url}{path}",
+            data=json.dumps(payload).encode("utf-8") if payload is not None else None,
+            headers={"Content-Type": "application/json"} if payload is not None else {},
+            method=method,
+        )
+        try:
+            with urllib.request.urlopen(request) as response:
+                return response.status, json.loads(response.read())
+        except urllib.error.HTTPError as error:
+            return error.code, json.loads(error.read())
+
+    def test_endpoint_resolves_saved_edition_server_side_and_reports_lifecycle(self):
+        status_code, status = self._request("/api/native-viewer")
+        self.assertEqual(status_code, 200)
+        self.assertTrue(status["available"])
+        self.assertEqual(status["state"], "idle")
+        _, editions = self._request("/api/robots/astro_v2/editions")
+        edition = editions["editions"][0]
+        resolver = object.__new__(WorkbenchRequestHandler)
+        resolver.asset_root = ROOT / "src" / "menagerie_x" / "assets"
+        variant = variants(ROOT)["astro_v2"]
+        for record in editions["editions"]:
+            _record, source = resolver._edition(variant, record["id"])
+            self.assertEqual(str(source.resolve()), record["output_path"])
+        path = f"/api/robots/astro_v2/editions/{edition['id']}/native-viewer"
+        status_code, launched = self._request(path, "POST", {})
+        self.assertEqual(status_code, 202)
+        self.assertEqual(launched["state"], "running")
+        self.assertEqual(launched["launch"]["source"], edition["output_path"])
+        self.assertEqual(self._request(path, "POST", {})[0], 409)
+        self.assertEqual(self._request("/api/robots/astro_v2/editions/no-such-edition/native-viewer", "POST", {})[0], 404)
+        self.assertEqual(self._request(path, "POST", {"mjcf": "/tmp/arbitrary.xml"})[0], 400)
+
+        self.processes[-1].finish(0)
+        self.assertEqual(wait_for_viewer_state(self.server.native_viewer, "idle")["state"], "idle")
+
+    def test_remote_binding_refuses_native_viewer_launch(self):
+        processes = []
+        remote_server = create_server(ROOT, host="0.0.0.0", process_factory=lambda *_args, **_kwargs: processes.append(FakeNativeViewerProcess()) or processes[-1])
+        remote_thread = threading.Thread(target=remote_server.serve_forever, daemon=True)
+        remote_thread.start()
+        try:
+            _host, port = remote_server.server_address
+            base_url = f"http://127.0.0.1:{port}"
+            request = urllib.request.Request(
+                f"{base_url}/api/robots/astro_v2/editions/authorized/native-viewer",
+                data=b"{}",
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with self.assertRaises(urllib.error.HTTPError) as raised:
+                urllib.request.urlopen(request)
+            self.assertEqual(raised.exception.code, 403)
+            self.assertEqual(processes, [])
+        finally:
+            remote_server.shutdown()
+            remote_server.server_close()
+            remote_thread.join(timeout=2)
 
 
 class WorkbenchTests(unittest.TestCase):
@@ -97,6 +277,63 @@ class WorkbenchTests(unittest.TestCase):
         self.assertNotIn("mjcfGenerate.disabled = authorized", app)
         self.assertIn("async function generateMjcfCandidate() {\n  if (!activeRobot) return;", app)
 
+    def test_explicit_mjcf_editions_include_authorized_and_valid_candidates(self):
+        editions = self._get_json("/api/robots/astro_v2/editions")["editions"]
+
+        self.assertEqual(editions[0]["id"], "authorized")
+        self.assertEqual(editions[0]["role"], "authorized")
+        self.assertTrue(editions[0]["source_id"])
+        self.assertIn(editions[0]["kind"], {"converted", "collision-draft", "legacy"})
+        self.assertNotEqual(editions[0]["kind"], "authorized")
+        self.assertTrue(all(record["role"] in {"candidate", "manual"} for record in editions[1:]))
+        self.assertTrue(any(record["kind"] == "collision-draft" for record in editions[1:]))
+        self.assertTrue(all(len(record["revision"]) == 64 for record in editions))
+        self.assertTrue(all("source_drift_warning" in record for record in editions))
+
+    def test_workbench_starts_without_loading_a_default_edition(self):
+        app = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+        page = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+
+        self.assertNotIn("await selectRobot(catalog[0]?.id)", app)
+        self.assertIn("function selectEdition(editionId", app)
+        self.assertIn("/editions/${encodeURIComponent(edition.id)}", app)
+        self.assertIn("Select a robot variant, then choose an MJCF edition.", page)
+        self.assertIn('id="collision-overwrite"', page)
+
+    def test_reload_description_control_reuses_the_edition_api_and_forces_a_same_id_reload(self):
+        app = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+        page = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+
+        self.assertIn('id="reload-description"', page)
+        self.assertIn("Reload menagerie", page)
+        self.assertNotIn("Reload description", page)
+        self.assertIn("async function reloadCurrentDescription()", app)
+        self.assertIn('api("/api/robots")', app)
+        self.assertIn("forceReload: true", app)
+        self.assertIn('cache: options.forceReload ? "no-store" : "default"', app)
+        self.assertIn("captureViewerView", app)
+        self.assertIn("restoreViewerView", app)
+        self.assertIn("previously selected MJCF edition is no longer available", app)
+        self.assertIn("Discard the unsaved temporary collision draft and reload", app)
+        self.assertIn("Never leave the prior", app)
+        self.assertIn("disposeWasm();\n      clearRobot();\n      clearSceneObjects();", app)
+        self.assertIn("throw error;", app)
+        self.assertIn("const loaded = await loadMujocoModel", app)
+
+    def test_native_viewer_control_uses_saved_editions_and_warns_about_dirty_drafts(self):
+        app = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+        page = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+
+        self.assertIn('id="open-native-viewer"', page)
+        self.assertIn("async function openNativeViewer()", app)
+        self.assertIn('api("/api/native-viewer")', app)
+        self.assertIn('`${editionBase()}/native-viewer`', app)
+        self.assertIn('"POST", {}', app)
+        self.assertIn("MuJoCo viewer open", app)
+        self.assertIn("Unsaved temporary collision edits will not appear", app)
+        self.assertIn("Overwrite Current Edition or Export New Edition", app)
+        self.assertIn("nativeViewerState === \"running\"", app)
+
     def test_diagnostics_module_is_served(self):
         with urllib.request.urlopen(f"{self.base_url}/diagnostics.js") as response:
             source = response.read().decode("utf-8")
@@ -159,7 +396,7 @@ class WorkbenchTests(unittest.TestCase):
         self.assertIn("xfrc_applied", app)
         self.assertIn("AbortController", app)
         self.assertIn("createMjcfRenderer", app)
-        self.assertIn("/source?format=mjcf", app)
+        self.assertIn("/editions/${encodeURIComponent(edition.id)}", app)
         self.assertNotIn("workbench_root_collision", app)
         self.assertNotIn("robotGroup.position.addScaledVector", app)
         self.assertIn("new THREE.ArrowHelper", app)
@@ -268,6 +505,23 @@ class WorkbenchTests(unittest.TestCase):
         self.assertEqual(discarded_status, 200)
         self.assertTrue(discarded["ok"])
 
+    def test_explicit_edition_draft_export_returns_a_selectable_edition(self):
+        editions = self._get_json("/api/robots/astro_v2/editions")["editions"]
+        candidate = next(record for record in editions if record["role"] == "candidate")
+        base = f"/api/robots/astro_v2/editions/{candidate['id']}/collision-drafts"
+        created_status, created = self._post_json(base, {})
+        self.assertEqual(created_status, 201)
+        try:
+            status, exported = self._post_json(f"{base}/{created['draft_id']}/export", {"revision": created["revision"]})
+            self.assertEqual(status, 201)
+            self.assertIn("edition_id", exported)
+            self.assertTrue(pathlib.Path(exported["output_path"]).is_file())
+            listed = self._get_json("/api/robots/astro_v2/editions")["editions"]
+            self.assertIn(exported["edition_id"], {record["id"] for record in listed})
+            pathlib.Path(exported["output_path"]).unlink()
+        finally:
+            self._json_request(f"{base}/{created['draft_id']}", {}, "DELETE")
+
     def test_workbench_exposes_visual_diagnostics_and_accessible_switches(self):
         page = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
         app = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
@@ -334,6 +588,23 @@ class WorkbenchTests(unittest.TestCase):
         self.assertIn("THREE.ACESFilmicToneMapping", app)
         self.assertIn("const fillLight = new THREE.DirectionalLight", app)
         self.assertIn("new THREE.HemisphereLight(0xdce7f2, 0x18251d, 1.05)", app)
+
+    def test_collision_shapes_use_solid_translucent_mujoco_style(self):
+        app = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+        renderer = (WEB_ROOT / "mjcf-renderer.js").read_text(encoding="utf-8")
+
+        self.assertIn("createCollisionMaterial", app)
+        self.assertIn("new THREE.Mesh(geometry, createCollisionMaterial(THREE))", app)
+        self.assertNotIn("new THREE.EdgesGeometry(geometry)", app)
+        self.assertNotIn("new THREE.LineSegments(", app)
+        self.assertIn("contact ? createCollisionMaterial(THREE) :", renderer)
+
+    def test_edition_list_cannot_widen_or_horizontally_scroll_the_menagerie(self):
+        styles = (WEB_ROOT / "styles.css").read_text(encoding="utf-8")
+
+        self.assertIn(".menagerie { min-width: 0; overflow-x: hidden; }", styles)
+        self.assertIn(".robot-list, .element-list, .joint-list, .robot-entry, .edition-list { min-width: 0; }", styles)
+        self.assertIn(".robot-name > span:first-child, .robot-meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }", styles)
 
 
 if __name__ == "__main__":

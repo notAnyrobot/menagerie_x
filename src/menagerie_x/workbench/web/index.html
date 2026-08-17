@@ -16,7 +16,7 @@
         </div>
         <button id="collapse-menagerie" class="icon-button" aria-label="Collapse robot menagerie" title="Collapse robot menagerie">‹</button>
       </div>
-      <p class="sidebar-copy">Select a robot description to inspect its visual assets and joint configuration.</p>
+      <p class="sidebar-copy">Select a robot variant, then choose one MJCF edition to inspect or continue editing.</p>
       <div id="robot-list" class="robot-list" aria-live="polite"></div>
       <section class="simulation-panel" aria-label="Simulation controls">
         <span class="eyebrow">Simulation</span>
@@ -89,7 +89,10 @@
         </div>
         <div class="collision-dock-column collision-draft-actions">
           <button id="collision-reset" title="Restore the temporary draft from the MJCF source">Reset draft</button>
-          <button id="collision-export" class="primary collision-export">Export MJCF Candidate</button>
+          <button id="collision-mirror-left-to-right" title="Replace right-side collision shapes with reflected left-side shapes">Mirror left → right</button>
+          <button id="collision-mirror-right-to-left" title="Replace left-side collision shapes with reflected right-side shapes">Mirror right → left</button>
+          <button id="collision-overwrite" class="collision-export">Overwrite Current Edition</button>
+          <button id="collision-export" class="primary collision-export">Export New Edition</button>
           <p id="collision-status" class="collision-status">Open the editor to create a temporary collision draft.</p>
         </div>
       </div>
@@ -100,9 +103,11 @@
         <button id="expand-menagerie" class="icon-button hidden" aria-label="Expand robot menagerie" title="Expand robot menagerie">›</button>
         <div class="robot-title">
           <span id="robot-status" class="status-dot" aria-hidden="true"></span>
-          <div><span class="eyebrow">MuJoCo WASM workbench</span><h2 id="selected-title">Loading robot catalog…</h2></div>
+          <div><span class="eyebrow">MuJoCo WASM workbench</span><h2 id="selected-title">Select a robot variant</h2></div>
         </div>
         <div class="toolbar-actions">
+          <button id="reload-description" disabled title="Reload the selected MJCF edition from disk">Reload menagerie</button>
+          <button id="open-native-viewer" disabled title="Open the selected saved MJCF edition in native MuJoCo">Open in MuJoCo</button>
           <button id="reset-camera">Reset view</button>
         </div>
       </header>
@@ -113,7 +118,7 @@
         <div class="viewer-overlay bottom legend" aria-label="Keyboard and mouse controls">
           <span><kbd>P</kbd> Physics</span><span><kbd>R</kbd> Reset</span><span><kbd>F</kbd> Follow</span><span><kbd>C</kbd> Contacts</span><span>◉ Drag to orbit</span><span>✥ Drag robot to push</span>
         </div>
-        <div id="viewer-empty" class="viewer-empty">Loading robot assets…</div>
+        <div id="viewer-empty" class="viewer-empty">Select a robot variant, then choose an MJCF edition.</div>
       </section>
 
       <section class="details-bar">

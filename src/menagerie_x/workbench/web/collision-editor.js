@@ -1,6 +1,37 @@
 export const PRIMITIVE_TYPES = ["box", "sphere", "cylinder", "capsule"];
 export const POSITION_SLIDER_LIMIT = 0.1;
 
+const COLLISION_COLOR = 0x347c43;
+const SELECTED_COLLISION_COLOR = 0x9dcc58;
+const COLLISION_OPACITY = 0.4;
+const SELECTED_COLLISION_OPACITY = 0.58;
+
+/**
+ * Match MuJoCo's collision-view presentation: a lit, translucent solid instead
+ * of a wireframe. The shape remains readable against both visual meshes and
+ * the floor while preserving the depth cues from the viewer lighting.
+ */
+export function createCollisionMaterial(THREE) {
+  return new THREE.MeshStandardMaterial({
+    color: COLLISION_COLOR,
+    metalness: 0,
+    roughness: 0.58,
+    transparent: true,
+    opacity: COLLISION_OPACITY,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+}
+
+export function setCollisionMaterialSelected(material, selected) {
+  if (!material?.color) return;
+  material.color.set(selected ? SELECTED_COLLISION_COLOR : COLLISION_COLOR);
+  material.opacity = selected ? SELECTED_COLLISION_OPACITY : COLLISION_OPACITY;
+  material.transparent = true;
+  material.depthWrite = false;
+  material.needsUpdate = true;
+}
+
 export function positionSliderValue(value) {
   return Math.max(-POSITION_SLIDER_LIMIT, Math.min(POSITION_SLIDER_LIMIT, Number(value)));
 }

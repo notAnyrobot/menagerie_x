@@ -1,4 +1,5 @@
 import * as THREE from "/vendor/three.module.js";
+import { createCollisionMaterial } from "/collision-editor.js";
 
 function matrixFromArray(array, offset, position) {
   return new THREE.Matrix4().set(
@@ -106,7 +107,7 @@ export function createMjcfRenderer(robotGroup) {
         continue;
       }
       const { color, opacity } = geomColor(geom);
-      const material = new THREE.MeshStandardMaterial({ color, metalness: 0.12, roughness: 0.7, transparent: opacity < 1, opacity, depthWrite: opacity >= 1 });
+      const material = contact ? createCollisionMaterial(THREE) : new THREE.MeshStandardMaterial({ color, metalness: 0.12, roughness: 0.7, transparent: opacity < 1, opacity, depthWrite: opacity >= 1 });
       const mesh = new THREE.Mesh(geometry, material);
       mesh.name = geom.name || `geom_${id}`;
       const layer = bodyId === 0 ? "scene-terrain" : contact ? "collision-overlay" : "visual-mesh";
@@ -116,8 +117,8 @@ export function createMjcfRenderer(robotGroup) {
         geomId: id,
         collisionName: geom.name || "",
         layer,
-        originalColor: color.clone(),
-        originalMaterial: { opacity, transparent: opacity < 1, depthWrite: opacity >= 1 },
+        originalColor: material.color.clone(),
+        originalMaterial: { opacity: material.opacity, transparent: material.transparent, depthWrite: material.depthWrite },
       };
       mesh.visible = layer === "scene-terrain" || !contact;
       robotGroup.add(mesh);
