@@ -382,6 +382,17 @@ def list_managed_candidates(source_variant: str, root: Path | None = None) -> li
             paths.extend(path for path in legacy.iterdir() if path.is_dir() and _CANDIDATE_ID.fullmatch(path.name))
     for candidate_path in paths:
         try:
+            # Discovery also sees selectable external editions.  A provenance
+            # comment with an explicit non-candidate kind describes an
+            # edition, not a failed review candidate, so it does not belong in
+            # the candidate panel.
+            if candidate_path.is_file():
+                try:
+                    metadata, _ = _candidate_metadata(candidate_path)
+                except MjcfCandidateError:
+                    metadata = None
+                if isinstance(metadata, dict) and isinstance(metadata.get("kind"), str) and metadata["kind"] != "candidate":
+                    continue
             checked = validate_candidate(candidate_path, variant)
             candidate = dict(checked["candidate"])
             records.append({

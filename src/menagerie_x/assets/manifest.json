@@ -16,6 +16,10 @@
       "legacy_formats": [],
       "source_format": "urdf",
       "status": "current"
+    },
+    "unitree_g1": {
+      "source_format": "urdf",
+      "status": "imported"
     }
   },
   "scenes": {
@@ -118,6 +122,51 @@
       },
       "status": "variant",
       "urdf": "urdf/astro_with_racket.urdf"
+    },
+    "unitree_g1": {
+      "default_scene": "flat_floor",
+      "dof": 43,
+      "mjcf": "mjcf/g1_29dof_with_hand_rev_1_0.xml",
+      "mjcf_provenance": {
+        "authorized_at": "2026-08-17T00:00:00+00:00",
+        "source_revision": "97da67732d067c3147fc5fb7b7bafc8982718f4e7f8c92ff82266a4d9c07200d"
+      },
+      "notes": "Official Unitree G1 29-DOF-with-hand revision 1.0 description. Includes 29 body joints and 14 hand joints.",
+      "robot_version": "unitree_g1",
+      "source_provenance": {
+        "license": "BSD-3-Clause",
+        "license_file": "LICENSE.Unitree",
+        "repository": "https://github.com/unitreerobotics/unitree_ros",
+        "revision": "daadf41ee9afce8f90fdc09a98506012691fa122",
+        "retargeting_urdf": {
+          "license": "Apache-2.0; bundled Unitree meshes remain BSD-3-Clause",
+          "license_file": "LICENSE.ProtoMotions",
+          "packaged_path": "urdf/for_retargeting/g1.urdf",
+          "packaging_note": "Only vendor mesh paths were adapted to ../../meshes for the Menagerie workspace.",
+          "repository": "https://github.com/NVlabs/ProtoMotions",
+          "revision": "a6df301d312dc58ac40a4d994f4f1064728d854c",
+          "packaged_sha256": "f96fd282d73a4fed139268b75309726b4582fc71f94286c28f044e5389b89276",
+          "source_sha256": "bd199a00d2bd38f17b47ecf896c3891605af658ebc76d8954b6c2060af071c8e",
+          "source_path": "protomotions/data/assets/urdf/for_retargeting/g1.urdf"
+        },
+        "sha256": "97da67732d067c3147fc5fb7b7bafc8982718f4e7f8c92ff82266a4d9c07200d",
+        "source_path": "robots/g1_description/g1_29dof_with_hand_rev_1_0.urdf"
+      },
+      "spawn": {
+        "rpy": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scene_frame": "robot_spawn",
+        "xyz": [
+          0.0,
+          0.0,
+          0.793
+        ]
+      },
+      "status": "imported",
+      "urdf": "urdf/g1_29dof_with_hand_rev_1_0.urdf"
     }
   }
 }

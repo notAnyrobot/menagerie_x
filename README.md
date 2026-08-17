@@ -101,6 +101,17 @@ The manifest's `mjcf` path is the authorized edition for a variant. Additional c
 
 Manual editions can be visualized and collision-edited, but are not authorizable until exported as a managed edition with review provenance.
 
+### Third-party robot descriptions
+
+`assets/unitree_g1/` packages the official Unitree G1
+`g1_29dof_with_hand_rev_1_0` URDF and MJCF, plus only the meshes they
+reference.  The description originates from Unitree Robotics'
+[`unitree_ros`](https://github.com/unitreerobotics/unitree_ros) repository at
+revision `daadf41ee9afce8f90fdc09a98506012691fa122`; the included
+[`LICENSE.Unitree`](src/menagerie_x/assets/unitree_g1/LICENSE.Unitree) retains
+its BSD 3-Clause terms.  The packaged MJCF changes only its relative
+`meshdir` because it lives in Menagerie's per-variant `mjcf/` workspace.
+
 Use the Simulation panel or press `P` to toggle physics, `R` to reset the model, and `F` to toggle camera follow. Drag empty space to orbit; drag a robot link to apply a push.
 
 ## Repository Layout
