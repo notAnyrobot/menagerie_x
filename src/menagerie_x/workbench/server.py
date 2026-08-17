@@ -17,7 +17,26 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Callable
 
-from menagerie_x.assets import AssetError, RobotInspection, Variant, get_asset_paths, inspect_variant, load_scene, resolve_scene, variants
+from menagerie_x.assets import (
+    AssetError,
+    MjcfEditionError,
+    RobotInspection,
+    Variant,
+    delete_mjcf_edition,
+    duplicate_mjcf_edition,
+    edition_path,
+    get_asset_paths,
+    import_mjcf_edition,
+    import_mjcf_variant,
+    import_urdf_variant,
+    inspect_variant,
+    list_mjcf_editions,
+    load_scene,
+    rename_mjcf_edition,
+    resolve_scene,
+    set_default_mjcf_edition,
+    variants,
+)
 from menagerie_x.commands.mjcf import (
     MjcfCandidateError,
     authorize_managed_candidate,
@@ -190,6 +209,7 @@ def _is_within(path: Path, directory: Path) -> bool:
 def _serialize_inspection(inspection: RobotInspection, root: Path | None = None) -> dict[str, Any]:
     variant = inspection.variant
     counts = Counter(issue.severity for issue in inspection.issues)
+    editions = list_mjcf_editions(variant, root)
     return {
         "id": variant.name,
         "name": variant.name,
@@ -197,10 +217,11 @@ def _serialize_inspection(inspection: RobotInspection, root: Path | None = None)
         "dof": variant.dof,
         "status": variant.status,
         "notes": variant.notes,
-        "formats": {"urdf": True, "mjcf": variant.workbench_loadable},
-        "workbench_loadable": variant.workbench_loadable,
-        "conversion_guidance": None if variant.workbench_loadable else f"menagerie_x mjcf convert --source {variant.name} --candidate-id <reviewed-id> --output <empty-directory>",
+        "formats": {"urdf": True, "mjcf": bool(editions)},
+        "workbench_loadable": bool(editions),
+        "conversion_guidance": None if editions else "Import an MJCF edition or convert this variant's URDF into its first edition.",
         "mjcf_provenance": variant.mjcf_provenance,
+        "source_provenance": variant.source_provenance,
         "source_revision": variant.urdf_revision,
         "source_drift_warning": variant.source_drift_warning,
         # URDF remains provenance and inspection input; the browser does not use
@@ -299,126 +320,33 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
             }
 
     def _edition(self, variant: Variant, edition_id: str) -> tuple[dict[str, Any], Path]:
-        """Resolve an explicit workbench edition without changing authorization."""
-        if edition_id == "authorized":
-            if not variant.workbench_loadable or variant.mjcf is None:
-                raise WorkbenchError(f"{variant.name} has no authorized MJCF source")
-            document = load_mjcf_collision_document(variant.mjcf)
-            provenance = variant.mjcf_provenance or {}
-            try:
-                metadata = read_candidate_metadata_file(variant.mjcf)
-            except MjcfCandidateError:
-                metadata = {}
-            kind = metadata.get("kind")
-            if kind not in {"converted", "collision-draft", "legacy"}:
-                kind = "converted" if (metadata or provenance) else "legacy"
-            return {
-                "id": "authorized",
-                "role": "authorized",
-                "source_id": metadata.get("candidate_id") or provenance.get("candidate_id") or variant.mjcf.stem,
-                "kind": kind,
-                "label": "Authorized MJCF",
-                "revision": document.revision,
-                "source_revision": provenance.get("source_revision", variant.urdf_revision),
-                "source_drift_warning": variant.source_drift_warning,
-                "output_path": str(variant.mjcf.resolve()),
-            }, variant.mjcf
-        for record in list_managed_candidates(variant.name, self.asset_root):
-            if record.get("id") == edition_id and record.get("manual"):
-                source = self._candidate_model(variant, edition_id)
-                document = load_mjcf_collision_document(source)
-                return {
-                    "id": edition_id,
-                    "role": "manual",
-                    "source_id": edition_id,
-                    "kind": "manual",
-                    "label": edition_id,
-                    "modified_at": record.get("modified_at"),
-                    "revision": document.revision,
-                    "source_revision": None,
-                    "source_drift_warning": "Manual MJCF edition: no URDF provenance is recorded.",
-                    "model": record.get("model"),
-                    "validation": "manual",
-                    "output_path": str(source.resolve()),
-                }, source
-        candidate, report = self._candidate_metadata(variant, edition_id)
-        source = self._candidate_model(variant, edition_id)
-        document = load_mjcf_collision_document(source)
-        kind = candidate.get("kind", "converted")
-        if kind not in {"converted", "collision-draft", "legacy"}:
-            kind = "converted"
-        return {
-            "id": edition_id,
-            "role": "candidate",
-            "source_id": candidate.get("candidate_id", edition_id),
-            "kind": kind,
-            "label": edition_id,
-            "created_at": candidate.get("created_at"),
-            "modified_at": candidate.get("modified_at"),
-            "revision": document.revision,
-            "source_revision": candidate.get("source_revision"),
-            "source_drift_warning": report.get("source_drift_warning"),
-            "model": report.get("model"),
-            "validation": "unverified" if report.get("unverified") else "validated",
-            "output_path": str(source.resolve()),
-        }, source
+        """Resolve a discovered edition; default is a marker, never a gate."""
+        for record in list_mjcf_editions(variant, self.asset_root):
+            if record["id"] == edition_id:
+                source = Path(str(record["output_path"]))
+                # Collision documents provide the revision used for optimistic
+                # writes.  It is deliberately calculated from the saved XML.
+                return {**record, "revision": load_mjcf_collision_document(source).revision}, source
+        raise WorkbenchError(f"MJCF edition {edition_id!r} does not exist for {variant.name}")
 
     def _editions(self, variant: Variant) -> list[dict[str, Any]]:
-        authorized: list[dict[str, Any]] = []
-        candidates: list[dict[str, Any]] = []
-        if variant.workbench_loadable and variant.mjcf is not None:
-            authorized.append(self._edition(variant, "authorized")[0])
-        # Invalid candidates intentionally remain in the MJCF maintenance panel,
-        # but are not safe selectable editions.
-        for candidate in list_managed_candidates(variant.name, self.asset_root):
-            if candidate.get("manual"):
-                try:
-                    edition, _ = self._edition(variant, str(candidate["id"]))
-                except (MjcfCandidateError, CollisionDocumentError):
-                    continue
-                candidates.append(edition)
-            elif candidate.get("valid") or "mujoco is not installed" in str(candidate.get("error", "")):
-                try:
-                    edition, _ = self._edition(variant, str(candidate["id"]))
-                except (MjcfCandidateError, CollisionDocumentError):
-                    continue
-                edition["model"] = candidate.get("model") or edition.get("model")
-                candidates.append(edition)
-        return authorized + sorted(candidates, key=lambda record: str(record.get("modified_at") or record.get("created_at") or ""), reverse=True)
+        return [self._edition(variant, str(record["id"]))[0] for record in list_mjcf_editions(variant, self.asset_root)]
 
     def _edition_export_parent(self, variant: Variant, edition_id: str) -> tuple[dict[str, Any], dict[str, Any], str]:
-        if edition_id != "authorized":
-            edition, _ = self._edition(variant, edition_id)
-            if edition["role"] == "manual":
-                return {
-                    "schema_version": 1,
-                    "source_variant": variant.name,
-                    "source_revision": variant.urdf_revision,
-                    "mujoco_version": "unknown",
-                    "fixed_link_frame_sites": [],
-                }, {}, edition_id
-            candidate, report = self._candidate_metadata(variant, edition_id)
-            return candidate, report, edition_id
-        provenance = variant.mjcf_provenance or {}
+        edition, _ = self._edition(variant, edition_id)
+        provenance = edition.get("provenance") or variant.mjcf_provenance or {}
         return {
             "schema_version": 1,
             "source_variant": variant.name,
             "source_revision": provenance.get("source_revision", variant.urdf_revision),
             "mujoco_version": provenance.get("mujoco_version", "unknown"),
             "fixed_link_frame_sites": [],
-        }, {}, variant.mjcf.stem if variant.mjcf is not None else variant.name
+        }, {}, edition_id
 
     def _edition_overwrite_metadata(
         self, variant: Variant, edition_id: str, source: Path
     ) -> tuple[dict[str, Any] | None, Path | None]:
         """Return metadata to preserve and its legacy sidecar, if any."""
-        if edition_id != "authorized":
-            edition, _ = self._edition(variant, edition_id)
-            if edition["role"] == "manual":
-                return None, None
-            candidate, _, _ = self._edition_export_parent(variant, edition_id)
-            candidate_path = managed_candidate_path(variant.name, edition_id, self.asset_root)
-            return candidate, candidate_path / "candidate.json" if candidate_path.is_dir() else None
         try:
             return read_candidate_metadata_file(source), None
         except MjcfCandidateError:
@@ -559,10 +487,55 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
         try:
             parsed = urllib.parse.urlparse(self.path)
             path_parts = [part for part in parsed.path.split("/") if part]
+            if path_parts in (["api", "variants", "import-mjcf"], ["api", "variants", "import-urdf"]):
+                if not _loopback_host(str(self.server.server_address[0])):
+                    self._json(HTTPStatus.FORBIDDEN, {"ok": False, "error": "asset import is available only on a loopback-bound workbench"})
+                    return
+                payload = self._body_json()
+                variant_id = payload.get("variant_id")
+                source_path = payload.get("source_path")
+                if not isinstance(variant_id, str) or not isinstance(source_path, str):
+                    raise WorkbenchError("variant_id and source_path are required")
+                result = (
+                    import_mjcf_variant(variant_id, Path(source_path), self.asset_root)
+                    if path_parts[-1] == "import-mjcf"
+                    else import_urdf_variant(variant_id, Path(source_path), self.asset_root)
+                )
+                self._json(HTTPStatus.CREATED, {"ok": True, **result})
+                return
             if len(path_parts) < 4 or path_parts[:2] != ["api", "robots"]:
                 raise WorkbenchError("not found")
             variant = self._variant(urllib.parse.unquote(path_parts[2]))
             payload = self._body_json()
+            if len(path_parts) == 5 and path_parts[3:] == ["editions", "import"]:
+                if not _loopback_host(str(self.server.server_address[0])):
+                    self._json(HTTPStatus.FORBIDDEN, {"ok": False, "error": "asset import is available only on a loopback-bound workbench"})
+                    return
+                source_path = payload.get("source_path")
+                edition_id = payload.get("edition_id")
+                if not isinstance(source_path, str) or not isinstance(edition_id, str):
+                    raise WorkbenchError("source_path and edition_id are required")
+                result = import_mjcf_edition(variant.name, Path(source_path), edition_id, self.asset_root)
+                self._json(HTTPStatus.CREATED, {"ok": True, **result})
+                return
+            if len(path_parts) == 6 and path_parts[3] == "editions":
+                edition_id = urllib.parse.unquote(path_parts[4])
+                operation = path_parts[5]
+                if operation == "duplicate":
+                    new_id = payload.get("edition_id")
+                    if not isinstance(new_id, str):
+                        raise WorkbenchError("edition_id is required")
+                    self._json(HTTPStatus.CREATED, {"ok": True, **duplicate_mjcf_edition(variant.name, edition_id, new_id, self.asset_root)})
+                    return
+                if operation == "rename":
+                    new_id = payload.get("edition_id")
+                    if not isinstance(new_id, str):
+                        raise WorkbenchError("edition_id is required")
+                    self._json(HTTPStatus.OK, {"ok": True, **rename_mjcf_edition(variant.name, edition_id, new_id, self.asset_root)})
+                    return
+                if operation == "set-default":
+                    self._json(HTTPStatus.OK, {"ok": True, **set_default_mjcf_edition(variant.name, edition_id, self.asset_root)})
+                    return
             if len(path_parts) == 6 and path_parts[3] == "editions" and path_parts[5] == "native-viewer":
                 if payload:
                     raise NativeViewerRequestError("native viewer requests must use an empty JSON object")
@@ -764,6 +737,11 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
         try:
             parsed = urllib.parse.urlparse(self.path)
             path_parts = [part for part in parsed.path.split("/") if part]
+            if len(path_parts) == 5 and path_parts[:2] == ["api", "robots"] and path_parts[3] == "editions":
+                variant = self._variant(urllib.parse.unquote(path_parts[2]))
+                delete_mjcf_edition(variant.name, urllib.parse.unquote(path_parts[4]), self.asset_root)
+                self._json(HTTPStatus.OK, {"ok": True})
+                return
             if len(path_parts) == 7 and path_parts[:2] == ["api", "robots"] and path_parts[3] == "editions" and path_parts[5] == "collision-drafts":
                 variant = self._variant(urllib.parse.unquote(path_parts[2]))
                 _, source = self._edition(variant, urllib.parse.unquote(path_parts[4]))

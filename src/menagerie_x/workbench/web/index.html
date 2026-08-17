@@ -17,6 +17,10 @@
         <button id="collapse-menagerie" class="icon-button" aria-label="Collapse menagerie workbench" title="Collapse menagerie workbench">‹</button>
       </div>
       <p class="sidebar-copy">Select a robot variant, then choose one MJCF edition to inspect or continue editing.</p>
+      <div class="menagerie-actions" aria-label="Robot workspace actions">
+        <button id="add-robot-variant" type="button">Add robot variant</button>
+        <button id="import-mjcf-edition" type="button" disabled>Import MJCF edition</button>
+      </div>
       <div id="robot-list" class="robot-list" aria-live="polite"></div>
       <section class="simulation-panel" aria-label="Simulation controls">
         <span class="eyebrow">Simulation</span>
@@ -148,6 +152,12 @@
         <label class="search-label" for="mjcf-candidate-id">MJCF file name</label>
         <input id="mjcf-candidate-id" type="text" maxlength="64" autocomplete="off" placeholder="astro_v2-review (creates .xml)">
         <button id="mjcf-generate" class="primary mjcf-generate">Generate Candidate</button>
+        <div class="mjcf-edition-actions" aria-label="Selected MJCF edition actions">
+          <button id="edition-set-default" type="button">Set as default</button>
+          <button id="edition-duplicate" type="button">Duplicate</button>
+          <button id="edition-rename" type="button">Rename</button>
+          <button id="edition-delete" type="button">Delete</button>
+        </div>
         <p id="mjcf-status" class="collision-status">Choose a URDF variant to generate a review candidate.</p>
         <div id="mjcf-candidate-list" class="mjcf-candidate-list" aria-label="MJCF candidates"></div>
       </section>

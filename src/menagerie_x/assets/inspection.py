@@ -134,6 +134,8 @@ def _link_description(link: ET.Element, source_path: Path) -> dict[str, Any]:
 
 def _parse_urdf(variant: Variant) -> tuple[RobotDescription | None, list[ValidationIssue]]:
     issues: list[ValidationIssue] = []
+    if variant.urdf is None:
+        return None, [ValidationIssue("info", "urdf-unavailable", "This imported MJCF variant has no URDF source.")]
     try:
         root = ET.fromstring(variant.urdf.read_text(encoding="utf-8"))
     except FileNotFoundError:
@@ -224,8 +226,8 @@ def inspect_variant(variant: Variant) -> RobotInspection:
             ValidationIssue(
                 "info",
                 "mjcf-unavailable",
-                "No authorized MJCF is packaged; Workbench is disabled until an operator converts and authorizes a candidate.",
-                path=str(variant.urdf),
+                "No default MJCF is designated. Workbench can still open any discovered MJCF edition.",
+                path=str(variant.urdf) if variant.urdf is not None else None,
             )
         )
     elif not variant.mjcf.is_file():

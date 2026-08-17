@@ -230,7 +230,10 @@ class WorkbenchTests(unittest.TestCase):
     def test_catalog_endpoint_preserves_robot_payload(self):
         catalog = self._get_json("/api/robots")
 
-        self.assertEqual([robot["id"] for robot in catalog["robots"]], ["astro_v1", "astro_v1_27dof", "astro_v2", "astro_with_racket"])
+        self.assertEqual(
+            [robot["id"] for robot in catalog["robots"]],
+            ["astro_v1", "astro_v1_27dof", "astro_v2", "astro_with_racket", "unitree_g1"],
+        )
         self.assertEqual(catalog["robots"][0]["formats"], {"urdf": True, "mjcf": True})
         self.assertTrue(catalog["robots"][2]["scene"]["links"])
         self.assertTrue(catalog["robots"][0]["scene"]["links"][0]["collisions"])
@@ -238,6 +241,18 @@ class WorkbenchTests(unittest.TestCase):
         self.assertEqual(catalog["robots"][0]["default_scene"], "flat_floor")
         self.assertEqual(catalog["robots"][2]["scene_description"]["id"], "flat_floor")
         self.assertEqual(catalog["robots"][2]["scene_description"]["robot_spawn"]["xyz"], [0.0, 0.0, 0.75])
+        self.assertEqual(catalog["robots"][4]["dof"], 43)
+        self.assertEqual(catalog["robots"][4]["formats"], {"urdf": True, "mjcf": True})
+        self.assertEqual(catalog["robots"][4]["source_provenance"]["repository"], "https://github.com/unitreerobotics/unitree_ros")
+
+    def test_unitree_g1_editions_report_official_metadata_and_exclude_retargeting_reference_from_candidates(self):
+        editions = self._get_json("/api/robots/unitree_g1/editions")["editions"]
+        default = next(edition for edition in editions if edition["default"])
+
+        self.assertEqual(default["id"], "g1_29dof_with_hand_rev_1_0")
+        self.assertEqual(default["kind"], "official")
+        self.assertLess(default["modified_at"], 10**13)
+        self.assertEqual(self._get_json("/api/robots/unitree_g1/mjcf-candidates")["candidates"], [])
 
     def test_flat_floor_scene_endpoint_and_workbench_adapter(self):
         scene = self._get_json("/api/scenes/flat_floor")["scene"]
@@ -250,12 +265,12 @@ class WorkbenchTests(unittest.TestCase):
         self.assertIn("workbench_scene_", app)
         self.assertIn("scene_description?.robot_spawn", app)
 
-    def test_urdf_only_robot_reports_missing_authored_mjcf(self):
+    def test_urdf_only_robot_reports_empty_mjcf_workspace(self):
         robot = self._get_json("/api/robots/astro_with_racket")["robot"]
 
         self.assertEqual(robot["formats"], {"urdf": True, "mjcf": False})
         self.assertFalse(robot["workbench_loadable"])
-        self.assertIn("menagerie_x mjcf convert --source astro_with_racket", robot["conversion_guidance"])
+        self.assertIn("Import an MJCF edition", robot["conversion_guidance"])
         self.assertTrue(any(issue["code"] == "mjcf-unavailable" for issue in robot["issues"]))
 
     def test_mjcf_conversion_panel_and_candidate_routes_are_exposed(self):
@@ -271,22 +286,23 @@ class WorkbenchTests(unittest.TestCase):
         self.assertIn("create_managed_candidate", (ROOT / "src" / "menagerie_x" / "workbench" / "server.py").read_text(encoding="utf-8"))
         self.assertIn("previewMjcfCandidate", app)
         self.assertIn("authorizeMjcfCandidate", app)
-        self.assertIn("MJCF required", app)
+        self.assertIn("no MJCF editions", app)
         self.assertIn("nextMjcfCandidateId", app)
         self.assertIn("Generate another review candidate without replacing this MJCF", app)
+        self.assertIn("Official packaged MJCF", app)
+        self.assertIn("Retargeting reference", app)
         self.assertNotIn("mjcfGenerate.disabled = authorized", app)
         self.assertIn("async function generateMjcfCandidate() {\n  if (!activeRobot) return;", app)
 
-    def test_explicit_mjcf_editions_include_authorized_and_valid_candidates(self):
+    def test_mjcf_editions_discover_actual_valid_files_without_candidate_assumptions(self):
         editions = self._get_json("/api/robots/astro_v2/editions")["editions"]
 
-        self.assertEqual(editions[0]["id"], "authorized")
-        self.assertEqual(editions[0]["role"], "authorized")
+        self.assertEqual(editions[0]["id"], "astro_v2_primitive_collision")
+        self.assertTrue(editions[0]["default"])
+        self.assertEqual(editions[0]["role"], "default")
         self.assertTrue(editions[0]["source_id"])
-        self.assertIn(editions[0]["kind"], {"converted", "collision-draft", "legacy"})
-        self.assertNotEqual(editions[0]["kind"], "authorized")
-        self.assertTrue(all(record["role"] in {"candidate", "manual"} for record in editions[1:]))
-        self.assertIn("astro_v2_primitive_collision_halfway", {record["id"] for record in editions[1:]})
+        self.assertEqual(sum(record["default"] for record in editions), 1)
+        self.assertIn("astro_v2_primitive_collision_halfway", {record["id"] for record in editions})
         self.assertNotIn("astro_v2-review_collision_edited_20260815T075510Z", {record["id"] for record in editions})
         self.assertNotIn("astro_v2-review_collision_edited_20260815T082637Z", {record["id"] for record in editions})
         self.assertTrue(all(len(record["revision"]) == 64 for record in editions))
@@ -519,8 +535,8 @@ class WorkbenchTests(unittest.TestCase):
 
     def test_explicit_edition_draft_export_returns_a_selectable_edition(self):
         editions = self._get_json("/api/robots/astro_v2/editions")["editions"]
-        candidate = next(record for record in editions if record["role"] == "candidate")
-        base = f"/api/robots/astro_v2/editions/{candidate['id']}/collision-drafts"
+        edition = next(record for record in editions if not record["default"])
+        base = f"/api/robots/astro_v2/editions/{edition['id']}/collision-drafts"
         created_status, created = self._post_json(base, {})
         self.assertEqual(created_status, 201)
         try:

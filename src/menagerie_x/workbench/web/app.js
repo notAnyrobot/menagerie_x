@@ -62,6 +62,12 @@ const mjcfStatus = document.querySelector("#mjcf-status");
 const mjcfCandidateList = document.querySelector("#mjcf-candidate-list");
 const reloadDescriptionButton = document.querySelector("#reload-description");
 const openNativeViewerButton = document.querySelector("#open-native-viewer");
+const addRobotVariantButton = document.querySelector("#add-robot-variant");
+const importMjcfEditionButton = document.querySelector("#import-mjcf-edition");
+const editionSetDefaultButton = document.querySelector("#edition-set-default");
+const editionDuplicateButton = document.querySelector("#edition-duplicate");
+const editionRenameButton = document.querySelector("#edition-rename");
+const editionDeleteButton = document.querySelector("#edition-delete");
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -195,6 +201,11 @@ function activateTab(name) {
 
 function updateReloadDescriptionControl() {
   reloadDescriptionButton.disabled = descriptionReloading || !activeRobot || !activeEdition;
+  importMjcfEditionButton.disabled = !activeRobot;
+  editionSetDefaultButton.disabled = !activeEdition || activeEdition.default;
+  editionDuplicateButton.disabled = !activeEdition;
+  editionRenameButton.disabled = !activeEdition;
+  editionDeleteButton.disabled = !activeEdition || activeEdition.default;
 }
 
 function updateNativeViewerControl() {
@@ -293,10 +304,25 @@ function renderMjcfPanel() {
     return;
   }
   const authorized = activeRobot.workbench_loadable;
-  mjcfTitle.textContent = authorized ? "Authorized MJCF" : "URDF-to-MJCF review";
-  mjcfSource.textContent = authorized
-    ? `Authorized candidate: ${activeRobot.mjcf_provenance?.candidate_id || "legacy MJCF"}. Generate another review candidate without replacing this MJCF.`
-    : `URDF revision ${activeRobot.source_revision.slice(0, 12)}. Generate a review candidate for ${activeRobot.name}.`;
+  const retargetingReference = activeEdition?.kind === "retargeting-reference";
+  const officialDefault = activeEdition?.default && activeEdition.kind === "official";
+  if (retargetingReference) {
+    mjcfTitle.textContent = "Retargeting reference";
+    mjcfSource.textContent = "ProtoMotions retargeting reference. It is a separate non-default MJCF edition.";
+  } else if (officialDefault) {
+    mjcfTitle.textContent = "Official MJCF";
+    mjcfSource.textContent = "Official packaged MJCF. Generate another review candidate without replacing this MJCF.";
+  } else if (authorized) {
+    mjcfTitle.textContent = "MJCF workspace";
+    mjcfSource.textContent = activeEdition
+      ? `Selected MJCF edition: ${activeEdition.label}. Generate another review candidate without replacing it.`
+      : activeRobot.source_provenance?.repository
+        ? "Official packaged MJCF available. Choose an edition to inspect or edit it."
+        : `Authorized candidate: ${activeRobot.mjcf_provenance?.candidate_id || "packaged MJCF"}. Choose an edition to inspect or edit it.`;
+  } else {
+    mjcfTitle.textContent = "URDF-to-MJCF review";
+    mjcfSource.textContent = `URDF revision ${activeRobot.source_revision.slice(0, 12)}. Generate a review candidate for ${activeRobot.name}.`;
+  }
   mjcfGenerate.disabled = false;
   for (const record of mjcfCandidates) {
     // Manually named XML editions are intentionally selectable from the
@@ -830,8 +856,8 @@ function renderRobotList() {
     if (!errors && warnings) button.querySelector(".badge").classList.add("warning");
     if (!robot.workbench_loadable) {
       button.classList.add("requires-mjcf");
-      button.title = "MJCF required — open the MJCF panel to create a review candidate.";
-      button.querySelector(".robot-meta").textContent = `${robot.dof} DOF · MJCF required`;
+      button.title = "No MJCF editions yet — import an edition or create one from the URDF.";
+      button.querySelector(".robot-meta").textContent = `${robot.dof} DOF · no MJCF editions`;
     }
     button.addEventListener("click", () => {
       if (robot.id !== activeRobot?.id) selectRobot(robot.id);
@@ -843,7 +869,7 @@ function renderRobotList() {
       if (!mjcfEditions.length) {
         const empty = document.createElement("span");
         empty.className = "edition-empty";
-        empty.textContent = "No selectable MJCF editions.";
+        empty.textContent = "No MJCF editions. Import one to visualize or edit this variant.";
         editions.append(empty);
       }
       for (const edition of mjcfEditions) {
@@ -851,8 +877,8 @@ function renderRobotList() {
         option.className = `edition-row ${edition.id === activeEdition?.id ? "active" : ""}`;
         const stamp = edition.modified_at || edition.created_at;
         option.innerHTML = `<span class="edition-row-name"></span><span class="edition-row-meta"></span>`;
-        option.querySelector(".edition-row-name").textContent = edition.role === "authorized"
-          ? `Authorized MJCF · ${edition.source_id || edition.id}`
+        option.querySelector(".edition-row-name").textContent = edition.default
+          ? `Default MJCF · ${edition.source_id || edition.id}`
           : edition.label;
         option.querySelector(".edition-row-meta").textContent = `${edition.kind}${stamp ? ` · ${new Date(stamp).toLocaleString()}` : ""}`;
         option.addEventListener("click", () => selectEdition(edition.id));
@@ -1997,6 +2023,75 @@ function restoreViewerView(view) {
   controls.update();
 }
 
+async function refreshCatalogAndSelect(variantId, editionId = null) {
+  const data = await api("/api/robots");
+  catalog = data.robots;
+  await selectRobot(variantId);
+  if (editionId) await selectEdition(editionId);
+}
+
+async function addRobotVariant() {
+  const variantId = window.prompt("Variant ID (lowercase, for example custom_robot):");
+  if (!variantId) return;
+  const format = window.prompt("Import format: MJCF or URDF", "MJCF")?.trim().toLowerCase();
+  if (format !== "mjcf" && format !== "urdf") return setMjcfStatus("Choose MJCF or URDF.", true);
+  const sourcePath = window.prompt(`Path to the ${format.toUpperCase()} file to copy into Menagerie Workbench:`);
+  if (!sourcePath) return;
+  try {
+    setMjcfStatus(`Importing ${variantId} into managed workspace…`);
+    const result = await apiRequest(`/api/variants/import-${format}`, "POST", { variant_id: variantId, source_path: sourcePath });
+    await refreshCatalogAndSelect(result.variant, result.edition_id);
+    setMjcfStatus(`Imported ${result.variant}; ${result.edition_id} is its default edition.`);
+  } catch (error) {
+    setMjcfStatus(`Could not import variant: ${error.message}`, true);
+  }
+}
+
+async function importMjcfEdition() {
+  if (!activeRobot) return;
+  const sourcePath = window.prompt("Path to the MJCF file to copy into this variant workspace:");
+  if (!sourcePath) return;
+  const editionId = window.prompt("Edition name (without .xml):", "imported-edition");
+  if (!editionId) return;
+  try {
+    const result = await apiRequest(`/api/robots/${encodeURIComponent(activeRobot.id)}/editions/import`, "POST", { source_path: sourcePath, edition_id: editionId });
+    await refreshMjcfCandidates();
+    await selectEdition(result.edition_id);
+    setMjcfStatus(`Imported ${result.edition_id} into ${activeRobot.name}.`);
+  } catch (error) {
+    setMjcfStatus(`Could not import MJCF edition: ${error.message}`, true);
+  }
+}
+
+async function mutateEdition(operation) {
+  if (!activeRobot || !activeEdition) return;
+  const originalId = activeEdition.id;
+  if (operation === "delete" && !window.confirm(`Delete ${originalId}? This removes only the managed MJCF edition.`)) return;
+  let payload = {};
+  if (operation === "duplicate" || operation === "rename") {
+    const editionId = window.prompt(`${operation === "duplicate" ? "New copy" : "New"} edition name:`, `${originalId}-copy`);
+    if (!editionId) return;
+    payload = { edition_id: editionId };
+  }
+  try {
+    const path = operation === "delete" ? editionBase() : `${editionBase()}/${operation}`;
+    const result = await apiRequest(path, operation === "delete" ? "DELETE" : "POST", payload);
+    await refreshMjcfCandidates();
+    if (operation === "delete") {
+      activeEdition = null;
+      updateReloadDescriptionControl();
+      renderRobotList();
+    } else if (operation === "set-default") {
+      await refreshCatalogAndSelect(activeRobot.id, result.edition_id);
+    } else {
+      await selectEdition(result.edition_id);
+    }
+    setMjcfStatus(`${operation.replace("-", " ")} completed.`);
+  } catch (error) {
+    setMjcfStatus(`Could not ${operation} edition: ${error.message}`, true);
+  }
+}
+
 async function selectRobot(id) {
   if (id !== activeRobot?.id && collisionDraftHasChanges() && !window.confirm("Discard the unsaved temporary collision draft and change robot variant?")) return;
   leaveCollisionMode();
@@ -2355,6 +2450,12 @@ collisionMirrorRightToLeft.addEventListener("click", () => mirrorCollisionDraft(
 collisionExport.addEventListener("click", exportCollisionDraft);
 collisionOverwrite.addEventListener("click", overwriteCollisionDraft);
 mjcfGenerate.addEventListener("click", generateMjcfCandidate);
+addRobotVariantButton.addEventListener("click", addRobotVariant);
+importMjcfEditionButton.addEventListener("click", importMjcfEdition);
+editionSetDefaultButton.addEventListener("click", () => mutateEdition("set-default"));
+editionDuplicateButton.addEventListener("click", () => mutateEdition("duplicate"));
+editionRenameButton.addEventListener("click", () => mutateEdition("rename"));
+editionDeleteButton.addEventListener("click", () => mutateEdition("delete"));
 collisionLink.addEventListener("change", () => { renderCollisionPanel(); refreshCollisionObjectStyles(); });
 for (const button of document.querySelectorAll("[data-collision-add]")) button.addEventListener("click", () => addPrimitiveCollision(button.dataset.collisionAdd));
 window.addEventListener("pagehide", () => {

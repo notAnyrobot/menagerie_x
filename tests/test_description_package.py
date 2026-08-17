@@ -18,7 +18,7 @@ class AssetManifestTests(unittest.TestCase):
     def test_manifest_lists_expected_variants(self):
         parsed = variants(ROOT)
 
-        self.assertEqual(sorted(parsed), ["astro_v1", "astro_v1_27dof", "astro_v2", "astro_with_racket"])
+        self.assertEqual(sorted(parsed), ["astro_v1", "astro_v1_27dof", "astro_v2", "astro_with_racket", "unitree_g1"])
         self.assertEqual(get_variant(root=ROOT).name, "astro_v2")
         self.assertEqual(parsed["astro_v1"].dof, 30)
         self.assertTrue(parsed["astro_v1"].urdf.exists())
@@ -28,7 +28,7 @@ class AssetManifestTests(unittest.TestCase):
         self.assertEqual(parsed["astro_v2"].dof, 30)
         self.assertTrue(parsed["astro_v2"].urdf.exists())
         self.assertTrue(parsed["astro_v2"].mjcf.exists())
-        self.assertEqual(parsed["astro_v2"].mjcf, ASSET_ROOT / "astro_v2" / "mjcf" / "astro_v2-review.xml")
+        self.assertEqual(parsed["astro_v2"].mjcf, ASSET_ROOT / "astro_v2" / "mjcf" / "astro_v2_primitive_collision.xml")
         self.assertTrue((ASSET_ROOT / "astro_v2" / "urdf").is_dir())
         self.assertTrue((ASSET_ROOT / "astro_v2" / "meshes").is_dir())
 
@@ -59,7 +59,7 @@ class MujocoPackageTests(unittest.TestCase):
         result = check_mujoco(root=ROOT)
 
         self.assertEqual(result["variant"], "astro_v2")
-        self.assertEqual(result["mjcf"], str(ASSET_ROOT / "astro_v2" / "mjcf" / "astro_v2-review.xml"))
+        self.assertEqual(result["mjcf"], str(ASSET_ROOT / "astro_v2" / "mjcf" / "astro_v2_primitive_collision.xml"))
         self.assertGreater(result["nbody"], 1)
         self.assertGreater(result["ngeom"], 1)
 

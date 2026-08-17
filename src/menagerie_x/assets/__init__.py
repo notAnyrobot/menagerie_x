@@ -16,7 +16,7 @@ class Variant:
     name: str
     robot_version: str
     dof: int
-    urdf: Path
+    urdf: Path | None
     mjcf: Path | None
     meshes_dir: Path
     status: str
@@ -24,6 +24,7 @@ class Variant:
     default_scene: str | None = None
     spawn: dict[str, Any] = dataclasses.field(default_factory=lambda: {"scene_frame": "robot_spawn", "xyz": [0.0, 0.0, 0.75], "rpy": [0.0, 0.0, 0.0]})
     mjcf_provenance: dict[str, Any] | None = None
+    source_provenance: dict[str, Any] | None = None
 
     @property
     def workbench_loadable(self) -> bool:
@@ -31,15 +32,15 @@ class Variant:
         return self.mjcf is not None and self.mjcf.is_file()
 
     @property
-    def urdf_revision(self) -> str:
-        return hashlib.sha256(self.urdf.read_bytes()).hexdigest()
+    def urdf_revision(self) -> str | None:
+        return hashlib.sha256(self.urdf.read_bytes()).hexdigest() if self.urdf is not None and self.urdf.is_file() else None
 
     @property
     def source_drift_warning(self) -> str | None:
         if not self.mjcf_provenance:
             return None
         revision = self.mjcf_provenance.get("source_revision")
-        if isinstance(revision, str) and revision != self.urdf_revision:
+        if isinstance(revision, str) and self.urdf_revision is not None and revision != self.urdf_revision:
             return "URDF source has changed since the authorized MJCF was reviewed. Workbench continues to use the authorized MJCF."
         return None
 
@@ -129,7 +130,7 @@ def variants(root: Path | None = None) -> dict[str, Variant]:
             name=name,
             robot_version=robot_version,
             dof=int(raw["dof"]),
-            urdf=robot_root / str(raw["urdf"]),
+            urdf=robot_root / raw["urdf"] if isinstance(raw.get("urdf"), str) and raw["urdf"] else None,
             mjcf=robot_root / str(mjcf_value) if mjcf_value else None,
             meshes_dir=robot_root / "meshes",
             status=str(raw.get("status", "unknown")),
@@ -137,6 +138,7 @@ def variants(root: Path | None = None) -> dict[str, Variant]:
             default_scene=str(raw["default_scene"]) if raw.get("default_scene") is not None else None,
             spawn=dict(raw.get("spawn", {"scene_frame": "robot_spawn", "xyz": [0.0, 0.0, 0.75], "rpy": [0.0, 0.0, 0.0]})),
             mjcf_provenance=dict(raw["mjcf_provenance"]) if isinstance(raw.get("mjcf_provenance"), dict) else None,
+            source_provenance=dict(raw["source_provenance"]) if isinstance(raw.get("source_provenance"), dict) else None,
         )
     return parsed
 
@@ -169,7 +171,7 @@ def validate_assets(root: Path | None = None) -> list[str]:
     for variant in variants(paths.root).values():
         if not variant.meshes_dir.is_dir():
             errors.append(f"{variant.name}: missing mesh directory: {variant.meshes_dir}")
-        if not variant.urdf.is_file():
+        if variant.urdf is not None and not variant.urdf.is_file():
             errors.append(f"{variant.name}: missing URDF {variant.urdf}")
         if variant.mjcf is not None and not variant.mjcf.is_file():
             errors.append(f"{variant.name}: missing MJCF {variant.mjcf}")
@@ -185,11 +187,26 @@ def validate_assets(root: Path | None = None) -> list[str]:
 
 
 from .inspection import RobotDescription, RobotInspection, ValidationIssue, inspect_variant
+from .editions import (
+    MjcfEditionError,
+    delete_mjcf_edition,
+    duplicate_mjcf_edition,
+    edition_directory,
+    edition_path,
+    import_mjcf_edition,
+    import_mjcf_variant,
+    import_urdf_variant,
+    list_mjcf_editions,
+    rename_mjcf_edition,
+    set_default_mjcf_edition,
+    validate_mjcf_edition,
+)
 from .scenes import ResolvedScene, SceneDescription, TerrainDescription, load_scene, load_terrain, resolve_scene
 
 __all__ = [
     "AssetError",
     "AssetPaths",
+    "MjcfEditionError",
     "RobotDescription",
     "RobotInspection",
     "ResolvedScene",
@@ -200,12 +217,23 @@ __all__ = [
     "default_robot_root",
     "get_asset_paths",
     "get_variant",
+    "delete_mjcf_edition",
+    "duplicate_mjcf_edition",
+    "edition_directory",
+    "edition_path",
+    "import_mjcf_edition",
+    "import_mjcf_variant",
+    "import_urdf_variant",
     "inspect_variant",
     "load_manifest",
+    "list_mjcf_editions",
     "load_scene",
     "load_terrain",
     "package_root",
     "resolve_scene",
+    "rename_mjcf_edition",
+    "set_default_mjcf_edition",
     "validate_assets",
+    "validate_mjcf_edition",
     "variants",
 ]

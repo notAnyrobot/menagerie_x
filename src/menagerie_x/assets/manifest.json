@@ -76,7 +76,7 @@
     "astro_v2": {
       "default_scene": "flat_floor",
       "dof": 30,
-      "mjcf": "mjcf/astro_v2-review.xml",
+      "mjcf": "mjcf/astro_v2_primitive_collision.xml",
       "mjcf_provenance": {
         "authorized_at": "2026-08-14T08:34:49.522552+00:00",
         "candidate_id": "astro_v2-review",
