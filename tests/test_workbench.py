@@ -320,6 +320,16 @@ class WorkbenchTests(unittest.TestCase):
         self.assertIn("throw error;", app)
         self.assertIn("const loaded = await loadMujocoModel", app)
 
+    def test_workbench_uses_menagerie_workbench_branding(self):
+        page = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+        server = (ROOT / "src" / "menagerie_x" / "workbench" / "server.py").read_text(encoding="utf-8")
+
+        self.assertIn("<title>Menagerie Workbench</title>", page)
+        self.assertIn("<h1>Menagerie Workbench</h1>", page)
+        self.assertNotIn("Robot Menagerie", page)
+        self.assertIn("Serving Menagerie Workbench", server)
+        self.assertIn("Stopping Menagerie Workbench", server)
+
     def test_native_viewer_control_uses_saved_editions_and_warns_about_dirty_drafts(self):
         app = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
         page = (WEB_ROOT / "index.html").read_text(encoding="utf-8")

@@ -848,13 +848,13 @@ def main(argv: list[str] | None = None) -> int:
     server = create_server(args.root, args.host, args.port)
     host, port = server.server_address
     url = f"http://{host}:{port}"
-    print(f"Serving Robot Menagerie Workbench at {url}", flush=True)
+    print(f"Serving Menagerie Workbench at {url}", flush=True)
     if not args.no_browser:
         webbrowser.open(url)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        print("\nStopping Robot Menagerie Workbench.")
+        print("\nStopping Menagerie Workbench.")
     finally:
         server.server_close()
     return 0
