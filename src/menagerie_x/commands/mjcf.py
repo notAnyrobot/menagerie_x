@@ -82,14 +82,22 @@ def _candidate_metadata_from_xml(model_path: Path) -> dict[str, Any]:
     return metadata
 
 
-def write_candidate_metadata(model_path: Path, metadata: dict[str, Any]) -> None:
-    """Embed review provenance in the sole candidate XML artifact."""
-    source = model_path.read_bytes()
+def candidate_metadata_payload(source: bytes, metadata: dict[str, Any]) -> bytes:
+    """Return MJCF bytes with exactly one portable review-provenance comment."""
     source = _CANDIDATE_COMMENT.sub(b"", source)
     comment = b"<!-- menagerie_x_candidate: " + json.dumps(metadata, sort_keys=True, separators=(",", ":")).encode("utf-8") + b" -->\n"
     declaration_end = source.find(b"?>")
-    payload = source[:declaration_end + 2] + b"\n" + comment + source[declaration_end + 2:] if declaration_end >= 0 else comment + source
-    _atomic_write(model_path, payload)
+    return source[:declaration_end + 2] + b"\n" + comment + source[declaration_end + 2:] if declaration_end >= 0 else comment + source
+
+
+def write_candidate_metadata(model_path: Path, metadata: dict[str, Any]) -> None:
+    """Embed review provenance in the sole candidate XML artifact."""
+    _atomic_write(model_path, candidate_metadata_payload(model_path.read_bytes(), metadata))
+
+
+def read_candidate_metadata_file(model_path: Path) -> dict[str, Any]:
+    """Read metadata from an MJCF artifact without resolving it as a candidate."""
+    return _candidate_metadata_from_xml(model_path)
 
 
 def _vector(raw: str | None, size: int, default: tuple[float, ...]) -> tuple[float, ...]:
@@ -311,8 +319,58 @@ def managed_candidate_path(source_variant: str, candidate_id: str, root: Path | 
     raise MjcfCandidateError(f"candidate {candidate_id!r} does not exist for {variant.name}")
 
 
+def read_managed_candidate_metadata(source_variant: str, candidate_id: str, root: Path | None = None) -> tuple[dict[str, Any], Path]:
+    """Read portable candidate provenance without requiring native MuJoCo."""
+    variant = get_variant(source_variant, root)
+    candidate = managed_candidate_path(source_variant, candidate_id, root)
+    metadata, model = _candidate_metadata(candidate)
+    if metadata.get("source_variant") != variant.name:
+        raise MjcfCandidateError("candidate source variant does not match target")
+    return metadata, model
+
+
+def _manual_edition_record(candidate: Path, target: Variant) -> dict[str, Any]:
+    """Describe a manually named MJCF edition without treating it as authorizable.
+
+    Operators sometimes keep a collision-editing checkpoint by renaming the XML
+    file directly.  Such a file has no portable candidate provenance comment,
+    but it remains safe to inspect and continue editing when it is a complete
+    local MJCF model.  It deliberately cannot be authorized through the
+    candidate workflow without explicit provenance.
+    """
+    model_path = _candidate_model_path(candidate)
+    source = model_path.read_bytes()
+    if _CANDIDATE_COMMENT.search(source):
+        raise MjcfCandidateError("candidate provenance comment is invalid")
+    try:
+        root = ET.fromstring(source)
+    except ET.ParseError as exc:
+        raise MjcfCandidateError("manual MJCF edition is not valid XML") from exc
+    if root.tag != "mujoco":
+        raise MjcfCandidateError("manual MJCF edition is not an MJCF document")
+    free_roots = len(root.findall(".//freejoint")) + len(root.findall(".//joint[@type='free']"))
+    if free_roots != 1:
+        raise MjcfCandidateError(f"manual MJCF edition must contain exactly one free root, found {free_roots}")
+    mesh_files = [mesh.get("file") for mesh in root.findall(".//asset/mesh") if mesh.get("file")]
+    missing_meshes = [filename for filename in mesh_files if not (target.meshes_dir / filename).is_file()]
+    if missing_meshes:
+        raise MjcfCandidateError(f"manual MJCF edition references missing mesh: {missing_meshes[0]}")
+    edition_id = candidate.stem if candidate.is_file() else candidate.name
+    model = {"nbody": len(root.findall(".//body")), "ngeom": len(root.findall(".//geom"))}
+    return {
+        "id": edition_id,
+        "candidate": {"candidate_id": edition_id, "source_variant": target.name, "kind": "manual"},
+        "report": {"candidate_id": edition_id, "model": model, "manual": True},
+        "model": model,
+        "manual": True,
+        "valid": True,
+        "modified_at": dt.datetime.fromtimestamp(model_path.stat().st_mtime, dt.UTC).isoformat(),
+        "output_path": str(model_path.resolve()),
+    }
+
+
 def list_managed_candidates(source_variant: str, root: Path | None = None) -> list[dict[str, Any]]:
-    """List review candidates, retaining invalid artifacts for visible repair feedback."""
+    """List review candidates and structurally sound manually named editions."""
     variant = get_variant(source_variant, root)
     records: list[dict[str, Any]] = []
     directory = get_asset_paths(root).robot_dir(variant.robot_version) / "mjcf"
@@ -327,17 +385,24 @@ def list_managed_candidates(source_variant: str, root: Path | None = None) -> li
             checked = validate_candidate(candidate_path, variant)
             candidate = dict(checked["candidate"])
             records.append({
-                "id": candidate["candidate_id"],
+                # The filename is the addressable workbench edition ID. This
+                # permits a reviewed XML to be renamed without making the old
+                # embedded candidate ID point to a non-existent file.
+                "id": candidate_path.stem if candidate_path.is_file() else candidate_path.name,
                 "candidate": candidate,
                 "report": checked["report"],
                 "model": checked["model"],
                 "source_drift_warning": checked["source_drift_warning"],
                 "valid": True,
+                "modified_at": dt.datetime.fromtimestamp(_candidate_model_path(candidate_path).stat().st_mtime, dt.UTC).isoformat(),
                 "output_path": str(_candidate_model_path(candidate_path).resolve()),
             })
         except MjcfCandidateError as exc:
-            records.append({"id": candidate_path.stem, "valid": False, "error": str(exc), "output_path": str(candidate_path.resolve())})
-    return sorted(records, key=lambda record: str(record.get("candidate", {}).get("created_at", "")), reverse=True)
+            try:
+                records.append(_manual_edition_record(candidate_path, variant))
+            except MjcfCandidateError:
+                records.append({"id": candidate_path.stem, "valid": False, "error": str(exc), "output_path": str(candidate_path.resolve())})
+    return sorted(records, key=lambda record: str(record.get("modified_at") or record.get("candidate", {}).get("created_at", "")), reverse=True)
 
 
 def authorize_managed_candidate(source_variant: str, candidate_id: str, expected_source_revision: str, root: Path | None = None) -> dict[str, Any]:

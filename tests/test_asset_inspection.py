@@ -38,7 +38,7 @@ class AssetInspectionTests(unittest.TestCase):
         self.assertIsNone(inspection.description.links[0]["inertial"])
 
     def test_urdf_only_variant_reports_missing_authored_mjcf(self):
-        inspection = inspect_variant(variants(ROOT)["astro_v2"])
+        inspection = inspect_variant(variants(ROOT)["astro_with_racket"])
 
         self.assertTrue(any(issue.code == "mjcf-unavailable" for issue in inspection.issues))
 

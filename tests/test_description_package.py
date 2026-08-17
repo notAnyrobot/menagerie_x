@@ -1,8 +1,12 @@
+import contextlib
+import io
 import pathlib
+import tempfile
 import unittest
 
-from menagerie_x.assets import get_variant, load_scene, resolve_scene, validate_assets, variants
+from menagerie_x.assets import AssetError, get_variant, load_scene, resolve_scene, validate_assets, variants
 from menagerie_x.commands.mujoco import check_mujoco
+from menagerie_x.cli import main as cli_main
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -15,7 +19,7 @@ class AssetManifestTests(unittest.TestCase):
         parsed = variants(ROOT)
 
         self.assertEqual(sorted(parsed), ["astro_v1", "astro_v1_27dof", "astro_v2", "astro_with_racket"])
-        self.assertEqual(get_variant(root=ROOT).name, "astro_v1")
+        self.assertEqual(get_variant(root=ROOT).name, "astro_v2")
         self.assertEqual(parsed["astro_v1"].dof, 30)
         self.assertTrue(parsed["astro_v1"].urdf.exists())
         self.assertTrue(parsed["astro_v1"].mjcf.exists())
@@ -23,7 +27,8 @@ class AssetManifestTests(unittest.TestCase):
         self.assertEqual(parsed["astro_v2"].robot_version, "astro_v2")
         self.assertEqual(parsed["astro_v2"].dof, 30)
         self.assertTrue(parsed["astro_v2"].urdf.exists())
-        self.assertIsNone(parsed["astro_v2"].mjcf)
+        self.assertTrue(parsed["astro_v2"].mjcf.exists())
+        self.assertEqual(parsed["astro_v2"].mjcf, ASSET_ROOT / "astro_v2" / "mjcf" / "astro_v2-review.xml")
         self.assertTrue((ASSET_ROOT / "astro_v2" / "urdf").is_dir())
         self.assertTrue((ASSET_ROOT / "astro_v2" / "meshes").is_dir())
 
@@ -53,7 +58,8 @@ class MujocoPackageTests(unittest.TestCase):
     def test_check_mujoco_loads_default_variant(self):
         result = check_mujoco(root=ROOT)
 
-        self.assertEqual(result["variant"], "astro_v1")
+        self.assertEqual(result["variant"], "astro_v2")
+        self.assertEqual(result["mjcf"], str(ASSET_ROOT / "astro_v2" / "mjcf" / "astro_v2-review.xml"))
         self.assertGreater(result["nbody"], 1)
         self.assertGreater(result["ngeom"], 1)
 
@@ -61,6 +67,35 @@ class MujocoPackageTests(unittest.TestCase):
         parsed = variants()
 
         self.assertEqual(parsed["astro_v1"].urdf, ROBOT_ROOT / "urdf" / "astro_v1.urdf")
+
+    def test_check_mujoco_accepts_an_exact_manual_xml_path(self):
+        path = ASSET_ROOT / "astro_v2" / "mjcf" / "astro_v2-review.xml"
+
+        result = check_mujoco(root=ROOT, mjcf_path=path)
+
+        self.assertIsNone(result["variant"])
+        self.assertEqual(result["mjcf"], str(path))
+        self.assertGreater(result["nbody"], 1)
+
+    def test_check_mujoco_rejects_non_xml_and_missing_paths(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = pathlib.Path(temp)
+            text = directory / "not-mjcf.txt"
+            text.write_text("not xml", encoding="utf-8")
+            with self.assertRaisesRegex(AssetError, "must use the .xml extension"):
+                check_mujoco(root=ROOT, mjcf_path=text)
+            with self.assertRaisesRegex(AssetError, "is not a file"):
+                check_mujoco(root=ROOT, mjcf_path=directory)
+            with self.assertRaisesRegex(AssetError, "does not exist"):
+                check_mujoco(root=ROOT, mjcf_path=directory / "missing.xml")
+
+    def test_mujoco_cli_rejects_conflicting_selectors(self):
+        errors = io.StringIO()
+        with contextlib.redirect_stderr(errors), self.assertRaises(SystemExit) as raised:
+            cli_main(["mujoco", "--variant", "astro_v2", "--mjcf", "any.xml", "--check"])
+
+        self.assertEqual(raised.exception.code, 2)
+        self.assertIn("not allowed with argument", errors.getvalue())
 
 
 if __name__ == "__main__":

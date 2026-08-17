@@ -191,7 +191,7 @@ Default root height: **0.75 m**
 
 | Purpose | File |
 |---|---|
-| Simulation (legacy MJCF) | `src/menagerie_x/assets/astro_v1/legacy/mjcf/astro_v1.xml` |
+| Simulation (legacy MJCF) | `src/menagerie_x/assets/astro_v1/mjcf/astro_v1.xml` |
 | Retargeting (URDF) | `src/menagerie_x/assets/astro_v1/urdf/astro_v1.urdf` |
 | Racket variant (URDF) | `src/menagerie_x/assets/astro_v1/urdf/astro_with_racket.urdf` |
 

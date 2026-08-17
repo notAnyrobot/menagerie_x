@@ -1,6 +1,6 @@
 {
-  "default_variant": "astro_v1",
-  "default_version": "astro_v1",
+  "default_variant": "astro_v2",
+  "default_version": "astro_v2",
   "name": "Astro",
   "package_version": "0.1.0",
   "robot_versions": {
@@ -28,7 +28,7 @@
     "astro_v1": {
       "default_scene": "flat_floor",
       "dof": 30,
-      "mjcf": "legacy/mjcf/astro_v1.xml",
+      "mjcf": "mjcf/astro_v1.xml",
       "notes": "Full Astro V1 model with head yaw.",
       "robot_version": "astro_v1",
       "spawn": {
@@ -50,7 +50,7 @@
     "astro_v1_27dof": {
       "default_scene": "flat_floor",
       "dof": 27,
-      "mjcf": "legacy/mjcf/astro_v1_27dof.xml",
+      "mjcf": "mjcf/astro_v1_27dof.xml",
       "notes": "Reduced-DOF description kept for consumers that require the legacy joint set.",
       "robot_version": "astro_v1",
       "spawn": {

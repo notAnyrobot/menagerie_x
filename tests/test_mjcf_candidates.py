@@ -82,6 +82,25 @@ class MjcfCandidateTests(unittest.TestCase):
         discard_managed_candidate("astro_v2", "v2-review", self.assets)
         self.assertFalse(candidate.exists())
 
+    def test_manually_renamed_mjcf_is_listed_as_a_selectable_manual_edition(self):
+        original = self.assets / "astro_v2" / "mjcf" / "v2-review.xml"
+        original.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ASSETS / "astro_v2" / "mjcf" / "astro_v2-review.xml", original)
+        manual = original.with_name("astro_v2_primitive_collision.xml")
+        source = original.read_text(encoding="utf-8")
+        comment_start = source.index("<!-- menagerie_x_candidate:")
+        comment_end = source.index("-->", comment_start) + 3
+        manual.write_text(source[:comment_start] + source[comment_end:], encoding="utf-8")
+        original.unlink()
+
+        listed = list_managed_candidates("astro_v2", self.assets)
+        record = next(item for item in listed if item["id"] == "astro_v2_primitive_collision")
+
+        self.assertTrue(record["valid"])
+        self.assertTrue(record["manual"])
+        self.assertGreater(record["model"]["nbody"], 1)
+        self.assertEqual(managed_candidate_path("astro_v2", "astro_v2_primitive_collision", self.assets), manual)
+
     def test_managed_candidate_generation_stays_available_after_authorization(self):
         create_managed_candidate("astro_v2", "v2-review", self.assets)
         authorized = authorize_candidate(
@@ -101,7 +120,7 @@ class MjcfCandidateTests(unittest.TestCase):
         import mujoco
         import numpy as np
 
-        source = ASSETS / "astro_v1" / "legacy" / "mjcf" / "astro_v1.xml"
+        source = ASSETS / "astro_v1" / "mjcf" / "astro_v1.xml"
         root = ET.fromstring(source.read_text(encoding="utf-8"))
         root.find("compiler").set("meshdir", str((ASSETS / "astro_v1" / "meshes").resolve()))
         model = mujoco.MjModel.from_xml_string(ET.tostring(root, encoding="unicode"))

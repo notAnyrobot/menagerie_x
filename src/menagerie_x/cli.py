@@ -26,8 +26,10 @@ def main(argv: list[str] | None = None) -> None:
     subparsers.add_parser("variants", help="List known URDF/MJCF variants")
     subparsers.add_parser("validate", help="Validate manifest, asset paths, and mesh files")
 
-    mujoco_parser = subparsers.add_parser("mujoco", help="Launch or check the MuJoCo model")
-    mujoco_parser.add_argument("--variant", default=None)
+    mujoco_parser = subparsers.add_parser("mujoco", help="Launch or check a manifest MJCF or exact MJCF XML file")
+    mujoco_target = mujoco_parser.add_mutually_exclusive_group()
+    mujoco_target.add_argument("--variant", default=None, help="Manifest variant (defaults to the manifest default variant)")
+    mujoco_target.add_argument("--mjcf", type=Path, default=None, help="Exact existing .xml file to load")
     mujoco_parser.add_argument("--check", action="store_true", help="Load the model and print dimensions without opening a viewer")
     mujoco_parser.add_argument("--seconds", type=float, default=None, help="Close passive viewer after this many seconds")
 
@@ -89,9 +91,9 @@ def main(argv: list[str] | None = None) -> None:
             print("Menagerie assets are valid")
         elif args.command == "mujoco":
             if args.check:
-                _print_json(check_mujoco(args.variant, args.root))
+                _print_json(check_mujoco(args.variant, args.root, args.mjcf))
             else:
-                launch_mujoco(args.variant, args.root, args.seconds)
+                launch_mujoco(args.variant, args.root, args.seconds, args.mjcf)
         elif args.command == "mjcf":
             if args.mjcf_command == "convert":
                 _print_json(convert_variant_to_candidate(args.source, args.candidate_id, args.output, args.root))
