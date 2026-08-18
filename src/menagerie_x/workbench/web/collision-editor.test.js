@@ -7,6 +7,7 @@ import {
   defaultCollision,
   degreesToRadians,
   isPickableSceneObject,
+  pickInteractionHit,
   POSITION_SLIDER_LIMIT,
   positionSliderValue,
   primitiveDimensions,
@@ -39,7 +40,7 @@ test("dimension mapping and degree conversion are exact", () => {
   assert.equal(radiansToDegrees(degreesToRadians(90)), 90);
 });
 
-test("hidden collision overlays cannot capture robot push picking", () => {
+test("visible collision overlays can drive robot push picking", () => {
   const group = new THREE.Group();
   const hiddenOverlay = new THREE.Mesh(new THREE.PlaneGeometry(10, 10), new THREE.MeshBasicMaterial());
   hiddenOverlay.visible = false;
@@ -59,7 +60,21 @@ test("hidden collision overlays cannot capture robot push picking", () => {
   assert.equal(isPickableSceneObject(visibleMesh, false), true);
   assert.equal(isPickableSceneObject(visibleMesh, true), false);
   assert.equal(isPickableSceneObject(visibleEditorShape, true), true);
+  assert.equal(isPickableSceneObject(visibleCollisionOverlay, false), true);
   assert.equal(isPickableSceneObject(visibleCollisionOverlay, true), true);
+  assert.equal(
+    pickInteractionHit([
+      { object: visibleMesh },
+      { object: visibleCollisionOverlay },
+    ], false).object,
+    visibleCollisionOverlay,
+    "the collision hit is authoritative even when a visual mesh is closer",
+  );
+  assert.equal(
+    pickInteractionHit([{ object: visibleMesh }], false).object,
+    visibleMesh,
+    "visual meshes remain a fallback when no collision shape is visible",
+  );
   hiddenOverlay.geometry.dispose();
   hiddenOverlay.material.dispose();
 });

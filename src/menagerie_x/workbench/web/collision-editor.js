@@ -45,7 +45,19 @@ export function isPickableSceneObject(object, collisionMode) {
   const layer = object.userData.layer;
   return collisionMode
     ? layer === "collision-editor" || layer === "collision-overlay"
-    : layer === "visual-mesh";
+    : layer === "visual-mesh" || layer === "collision-overlay";
+}
+
+/**
+ * Select the geometry that represents the physical contact surface first.
+ * A visual mesh remains a convenient fallback only when collision geometry is
+ * hidden or unavailable for that part of the model.
+ */
+export function pickInteractionHit(intersections, collisionMode) {
+  const hits = intersections.filter(result => !result.object.userData.visualDiagnostic && isPickableSceneObject(result.object, collisionMode));
+  if (collisionMode) return hits[0];
+  return hits.find(result => result.object.userData.layer === "collision-overlay")
+    || hits.find(result => result.object.userData.layer === "visual-mesh");
 }
 
 export function degreesToRadians(value) {

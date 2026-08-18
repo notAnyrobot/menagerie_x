@@ -69,7 +69,7 @@ class MujocoPackageTests(unittest.TestCase):
         self.assertEqual(parsed["astro_v1"].urdf, ROBOT_ROOT / "urdf" / "astro_v1.urdf")
 
     def test_check_mujoco_accepts_an_exact_manual_xml_path(self):
-        path = ASSET_ROOT / "astro_v2" / "mjcf" / "astro_v2-review.xml"
+        path = ASSET_ROOT / "astro_v2" / "mjcf" / "astro_v2_mesh_collision.xml"
 
         result = check_mujoco(root=ROOT, mjcf_path=path)
 

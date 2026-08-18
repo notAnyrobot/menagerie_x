@@ -8,7 +8,7 @@ import {
   createCollisionMaterial,
   defaultCollision,
   degreesToRadians,
-  isPickableSceneObject,
+  pickInteractionHit,
   positionSliderValue,
   primitiveGeometry,
   radiansToDegrees,
@@ -838,6 +838,11 @@ function displayName(robot) {
   return `${robot.name.replaceAll("_", " ")} · ${robot.dof} DOF`;
 }
 
+function editionDisplayName(edition) {
+  const name = edition.label || edition.id;
+  return edition.default ? `Default MJCF · ${name}` : name;
+}
+
 function renderRobotList() {
   robotList.replaceChildren();
   for (const robot of catalog) {
@@ -877,9 +882,7 @@ function renderRobotList() {
         option.className = `edition-row ${edition.id === activeEdition?.id ? "active" : ""}`;
         const stamp = edition.modified_at || edition.created_at;
         option.innerHTML = `<span class="edition-row-name"></span><span class="edition-row-meta"></span>`;
-        option.querySelector(".edition-row-name").textContent = edition.default
-          ? `Default MJCF · ${edition.source_id || edition.id}`
-          : edition.label;
+        option.querySelector(".edition-row-name").textContent = editionDisplayName(edition);
         option.querySelector(".edition-row-meta").textContent = `${edition.kind}${stamp ? ` · ${new Date(stamp).toLocaleString()}` : ""}`;
         option.addEventListener("click", () => selectEdition(edition.id));
         editions.append(option);
@@ -2176,7 +2179,7 @@ async function selectEdition(editionId, continueCollisionEditing = false, option
   updateReloadDescriptionControl();
   updateNativeViewerControl();
   selectedKind = null;
-  selectedTitle.textContent = `${displayName(activeRobot)} · ${edition.role === "authorized" ? `Authorized MJCF · ${edition.source_id || edition.id}` : edition.label}`;
+  selectedTitle.textContent = `${displayName(activeRobot)} · ${editionDisplayName(edition)}`;
   selectedElement.textContent = "None";
   selectedSource.textContent = edition.role === "authorized" ? "MJCF (authorized)" : "MJCF edition";
   viewerEmpty.hidden = false;
@@ -2344,7 +2347,7 @@ function pickRobotPart(event) {
   pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
   pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
   raycaster.setFromCamera(pointer, camera);
-  return raycaster.intersectObject(robotGroup, true).find(result => !result.object.userData.visualDiagnostic && isPickableSceneObject(result.object, collisionMode));
+  return pickInteractionHit(raycaster.intersectObject(robotGroup, true), collisionMode);
 }
 
 canvas.addEventListener("pointerdown", event => {

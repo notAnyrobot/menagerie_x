@@ -19,7 +19,7 @@ from menagerie_x.workbench.mjcf_collisions import (
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "src" / "menagerie_x" / "assets" / "astro_v1" / "mjcf" / "astro_v1.xml"
-CANDIDATE = ROOT / "src" / "menagerie_x" / "assets" / "astro_v2" / "mjcf" / "astro_v2-review.xml"
+CANDIDATE = ROOT / "src" / "menagerie_x" / "assets" / "astro_v2" / "mjcf" / "astro_v2_mesh_collision.xml"
 HALFWAY = ROOT / "src" / "menagerie_x" / "assets" / "astro_v2" / "mjcf" / "astro_v2_primitive_collision_halfway.xml"
 
 

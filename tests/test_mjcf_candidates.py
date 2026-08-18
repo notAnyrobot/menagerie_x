@@ -85,7 +85,7 @@ class MjcfCandidateTests(unittest.TestCase):
     def test_manually_renamed_mjcf_is_listed_as_a_selectable_manual_edition(self):
         original = self.assets / "astro_v2" / "mjcf" / "v2-review.xml"
         original.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(ASSETS / "astro_v2" / "mjcf" / "astro_v2-review.xml", original)
+        shutil.copyfile(ASSETS / "astro_v2" / "mjcf" / "astro_v2_mesh_collision.xml", original)
         manual = original.with_name("astro_v2_primitive_collision.xml")
         source = original.read_text(encoding="utf-8")
         comment_start = source.index("<!-- menagerie_x_candidate:")
