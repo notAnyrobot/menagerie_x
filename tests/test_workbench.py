@@ -336,7 +336,7 @@ class WorkbenchTests(unittest.TestCase):
 
         self.assertEqual(
             [robot["id"] for robot in catalog["robots"]],
-            ["atom_p3", "astro_v1", "astro_v1_27dof", "astro_v2", "astro_with_racket", "unitree_g1"],
+            ["atom_p3", "astro_v1", "astro_v1_27dof", "astro_v2", "astro_with_racket", "soma23", "unitree_g1"],
         )
         robots = {robot["id"]: robot for robot in catalog["robots"]}
         self.assertEqual(robots["astro_v1"]["formats"], {"urdf": True, "mjcf": True})
@@ -349,6 +349,10 @@ class WorkbenchTests(unittest.TestCase):
         self.assertEqual(robots["unitree_g1"]["dof"], 43)
         self.assertEqual(robots["unitree_g1"]["formats"], {"urdf": True, "mjcf": True})
         self.assertEqual(robots["unitree_g1"]["source_provenance"]["repository"], "https://github.com/unitreerobotics/unitree_ros")
+        self.assertEqual(robots["soma23"]["dof"], 66)
+        self.assertEqual(robots["soma23"]["formats"], {"urdf": False, "mjcf": True})
+        self.assertTrue(robots["soma23"]["workbench_loadable"])
+        self.assertEqual(robots["soma23"]["source_provenance"]["repository"], "https://github.com/NVlabs/ProtoMotions")
 
     def test_unitree_g1_editions_report_official_metadata_and_exclude_retargeting_reference_from_candidates(self):
         editions = self._get_json("/api/robots/unitree_g1/editions")["editions"]

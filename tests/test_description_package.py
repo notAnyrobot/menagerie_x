@@ -21,7 +21,7 @@ class AssetManifestTests(unittest.TestCase):
     def test_manifest_lists_expected_variants(self):
         parsed = variants(ROOT)
 
-        self.assertEqual(sorted(parsed), ["astro_v1", "astro_v1_27dof", "astro_v2", "astro_with_racket", "atom_p3", "unitree_g1"])
+        self.assertEqual(sorted(parsed), ["astro_v1", "astro_v1_27dof", "astro_v2", "astro_with_racket", "atom_p3", "soma23", "unitree_g1"])
         self.assertEqual(get_variant(root=ROOT).name, "astro_v2")
         self.assertEqual(parsed["astro_v1"].dof, 30)
         self.assertTrue(parsed["astro_v1"].urdf.exists())
@@ -34,6 +34,9 @@ class AssetManifestTests(unittest.TestCase):
         self.assertEqual(parsed["astro_v2"].mjcf, ASSET_ROOT / "astro_v2" / "mjcf" / "astro_v2_primitive_collision.xml")
         self.assertTrue((ASSET_ROOT / "astro_v2" / "urdf").is_dir())
         self.assertTrue((ASSET_ROOT / "astro_v2" / "meshes").is_dir())
+        self.assertEqual(parsed["soma23"].dof, 66)
+        self.assertIsNone(parsed["soma23"].urdf)
+        self.assertEqual(parsed["soma23"].mjcf, ASSET_ROOT / "soma23" / "mjcf" / "soma23_humanoid.xml")
 
     def test_validate_assets_accepts_current_checkout(self):
         self.assertEqual(validate_assets(ROOT), [])
