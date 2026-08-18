@@ -217,7 +217,7 @@ def _serialize_inspection(inspection: RobotInspection, root: Path | None = None)
         "dof": variant.dof,
         "status": variant.status,
         "notes": variant.notes,
-        "formats": {"urdf": True, "mjcf": bool(editions)},
+        "formats": {"urdf": variant.urdf is not None, "mjcf": bool(editions)},
         "workbench_loadable": bool(editions),
         "conversion_guidance": None if editions else "Import an MJCF edition or convert this variant's URDF into its first edition.",
         "mjcf_provenance": variant.mjcf_provenance,

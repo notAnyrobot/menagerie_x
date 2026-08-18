@@ -61,7 +61,7 @@ def main(argv: list[str] | None = None) -> None:
     heights_parser.add_argument("--config", default="knees_bent", choices=("home", "zero", "knees_bent", "t_pose"))
 
     pd_parser = subparsers.add_parser("pd-tool", help="Launch the browser PD-parameter editor")
-    pd_parser.add_argument("--doc", type=Path, default=Path("docs/robot_configuration.md"))
+    pd_parser.add_argument("--doc", type=Path, default=Path("docs/robots/astro.md"))
     pd_parser.add_argument("--host", default="127.0.0.1")
     pd_parser.add_argument("--port", type=int, default=0)
     pd_parser.add_argument("--no-browser", action="store_true")
@@ -75,7 +75,7 @@ def main(argv: list[str] | None = None) -> None:
                 {
                     name: {
                         "dof": variant.dof,
-                        "urdf": str(variant.urdf),
+                        "urdf": str(variant.urdf) if variant.urdf else None,
                         "mjcf": str(variant.mjcf) if variant.mjcf else None,
                         "status": variant.status,
                     }

@@ -214,6 +214,19 @@ class WorkbenchTests(unittest.TestCase):
     def _post_json(self, path: str, payload: dict) -> tuple[int, dict]:
         return self._json_request(path, payload, "POST")
 
+    def _post_rendering(self, filename: str, content: bytes, content_type: str = "video/mp4") -> tuple[int, dict]:
+        request = urllib.request.Request(
+            f"{self.base_url}/api/renderings",
+            data=content,
+            headers={"Content-Type": content_type, "X-Menagerie-Rendering-Filename": filename},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request) as response:
+                return response.status, json.loads(response.read())
+        except urllib.error.HTTPError as error:
+            return error.code, json.loads(error.read())
+
     def _json_request(self, path: str, payload: dict, method: str) -> tuple[int, dict]:
         request = urllib.request.Request(
             f"{self.base_url}{path}",

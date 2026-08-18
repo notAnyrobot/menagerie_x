@@ -162,9 +162,17 @@ def validate_assets(root: Path | None = None) -> list[str]:
     if not isinstance(raw_versions, dict) or not raw_versions:
         errors.append("manifest must define a non-empty robot_versions object")
     else:
-        for robot_version in sorted(raw_versions):
+        for robot_version, version in sorted(raw_versions.items()):
             robot_root = paths.robot_dir(robot_version)
-            for directory in (robot_root / "urdf", robot_root / "meshes"):
+            source_format = version.get("source_format") if isinstance(version, dict) else None
+            required_directories = {
+                "urdf": (robot_root / "urdf", robot_root / "meshes"),
+                "mjcf": (robot_root / "mjcf", robot_root / "meshes"),
+            }.get(source_format)
+            if required_directories is None:
+                errors.append(f"{robot_version}: unsupported or missing source_format: {source_format!r}")
+                continue
+            for directory in required_directories:
                 if not directory.is_dir():
                     errors.append(f"{robot_version}: missing asset directory: {directory}")
 
@@ -180,7 +188,10 @@ def validate_assets(root: Path | None = None) -> list[str]:
         except AssetError as exc:
             errors.append(f"{variant.name}: invalid default scene: {exc}")
     for robot_version in sorted(raw_versions) if isinstance(raw_versions, dict) else ():
-        for mesh in sorted(paths.robot_dir(robot_version).joinpath("meshes").glob("*.stl")):
+        for mesh in sorted(
+            (path for path in paths.robot_dir(robot_version).joinpath("meshes").rglob("*") if path.is_file() and path.suffix.lower() == ".stl"),
+            key=lambda path: str(path).casefold(),
+        ):
             if mesh.stat().st_size == 0:
                 errors.append(f"empty mesh file: {mesh}")
     return errors

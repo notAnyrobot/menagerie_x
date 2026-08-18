@@ -689,7 +689,7 @@ def make_handler(readme_path: pathlib.Path) -> type[PDParameterRequestHandler]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Interactive Astro PD parameter table editor")
-    parser.add_argument("--doc", type=pathlib.Path, default=pathlib.Path("docs/robot_configuration.md"))
+    parser.add_argument("--doc", type=pathlib.Path, default=pathlib.Path("docs/robots/astro.md"))
     parser.add_argument("--readme", type=pathlib.Path, default=None, help=argparse.SUPPRESS)
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=0)

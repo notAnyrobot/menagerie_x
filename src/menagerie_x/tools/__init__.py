@@ -1,1 +1,1 @@
-"""Importable tool modules used by the Astro CLI."""
+"""Importable robot-specific tools exposed by the ``menagerie_x`` CLI."""

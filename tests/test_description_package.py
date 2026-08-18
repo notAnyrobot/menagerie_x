@@ -4,7 +4,7 @@ import pathlib
 import tempfile
 import unittest
 
-from menagerie_x.assets import AssetError, get_variant, load_scene, resolve_scene, validate_assets, variants
+from menagerie_x.assets import AssetError, get_variant, load_manifest, load_scene, resolve_scene, validate_assets, variants
 from menagerie_x.commands.mujoco import check_mujoco
 from menagerie_x.cli import main as cli_main
 
@@ -15,10 +15,13 @@ ROBOT_ROOT = ASSET_ROOT / "astro_v1"
 
 
 class AssetManifestTests(unittest.TestCase):
+    def test_manifest_uses_repository_catalog_identity(self):
+        self.assertEqual(load_manifest(ROOT)["name"], "Menagerie X")
+
     def test_manifest_lists_expected_variants(self):
         parsed = variants(ROOT)
 
-        self.assertEqual(sorted(parsed), ["astro_v1", "astro_v1_27dof", "astro_v2", "astro_with_racket", "unitree_g1"])
+        self.assertEqual(sorted(parsed), ["astro_v1", "astro_v1_27dof", "astro_v2", "astro_with_racket", "atom_p3", "unitree_g1"])
         self.assertEqual(get_variant(root=ROOT).name, "astro_v2")
         self.assertEqual(parsed["astro_v1"].dof, 30)
         self.assertTrue(parsed["astro_v1"].urdf.exists())

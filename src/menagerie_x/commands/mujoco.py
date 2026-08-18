@@ -74,8 +74,10 @@ def check_mujoco(variant_name: str | None = None, root: Path | None = None, mjcf
         "mjcf": str(path),
         "nq": int(model.nq),
         "nv": int(model.nv),
+        "nu": int(model.nu),
         "nbody": int(model.nbody),
         "ngeom": int(model.ngeom),
+        "nsensor": int(model.nsensor),
     }
 
 

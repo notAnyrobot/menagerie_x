@@ -1,4 +1,4 @@
-# Astro Robot Configuration
+# Astro robot configuration
 
 This document describes the detailed control configuration, joint layout, key assets, and simulator settings for the **Astro** humanoid robot.
 

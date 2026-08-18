@@ -288,7 +288,6 @@ def import_mjcf_variant(variant_id: str, source: Path, root: Path | None = None)
     try:
         (robot_dir / "mjcf").mkdir(parents=True)
         (robot_dir / "meshes").mkdir()
-        (robot_dir / "urdf").mkdir()
         # Build a temporary Variant-shaped view so import validation shares the
         # exact same mesh and path rules as existing workspaces.
         from . import Variant

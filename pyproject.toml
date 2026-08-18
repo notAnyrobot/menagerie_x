@@ -1,11 +1,14 @@
 [project]
 name = "menagerie_x"
 version = "0.1.0"
-description = "Robot-description asset menagerie and browser workbench for the Dobot Astro humanoid"
+description = "Multi-robot description asset catalog and browser workbench"
 requires-python = ">=3.12"
 dependencies = [
     "mujoco==3.11.0",
 ]
+
+[project.urls]
+Repository = "https://github.com/notAnyrobot/menagerie_x"
 
 [project.optional-dependencies]
 viz = [

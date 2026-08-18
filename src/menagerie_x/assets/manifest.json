@@ -1,9 +1,14 @@
 {
   "default_variant": "astro_v2",
   "default_version": "astro_v2",
-  "name": "Astro",
+  "name": "Menagerie X",
   "package_version": "0.1.0",
   "robot_versions": {
+    "atom_p3": {
+      "legacy_formats": [],
+      "source_format": "mjcf",
+      "status": "imported"
+    },
     "astro_v1": {
       "legacy_formats": [
         "mjcf",
@@ -29,6 +34,38 @@
     "flat_floor": "terrains/flat_floor/terrain.json"
   },
   "variants": {
+    "atom_p3": {
+      "default_scene": "flat_floor",
+      "dof": 27,
+      "mjcf": "mjcf/atom_p3_27dof_capsule_foot.xml",
+      "mjcf_provenance": {
+        "authorized_at": "2026-08-18T03:20:39+00:00",
+        "mujoco_version": "3.11.0",
+        "source_revision": "f8d27bb5d9002bb3899136a407b9492f63762ec0f1d71508fd9005abfc2c48cd"
+      },
+      "notes": "Atom P3 27-DOF imported MJCF-only description. It declares sensors but no MuJoCo actuators (nu=0).",
+      "robot_version": "atom_p3",
+      "source_provenance": {
+        "kind": "internal",
+        "sha256": "f8d27bb5d9002bb3899136a407b9492f63762ec0f1d71508fd9005abfc2c48cd",
+        "source_path": "mjcf/atom_p3_27dof_capsule_foot.xml"
+      },
+      "spawn": {
+        "rpy": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scene_frame": "robot_spawn",
+        "xyz": [
+          0.0,
+          0.0,
+          0.98
+        ]
+      },
+      "status": "imported",
+      "urdf": null
+    },
     "astro_v1": {
       "default_scene": "flat_floor",
       "dof": 30,

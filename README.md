@@ -1,8 +1,8 @@
-# menagerie_x
+# Menagerie X
 
-`menagerie_x` packages the Dobot **Astro** humanoid robot descriptions and a browser workbench as a `uv`-managed Python project. URDF remains the maintained source format; reviewed MJCF editions are used by the Workbench and native MuJoCo viewer.
+`menagerie_x` is a multi-robot description catalog and local browser workbench. It packages robot-specific URDF and MJCF descriptions, meshes, provenance, scenes, and utilities behind one manifest-driven Python interface. The current catalog includes Dobot Astro variants, Atom P3, and the Unitree G1, and is structured so additional robot families can be added without changing the package namespace.
 
-For detailed robot configuration, joint order, actuator constants, PD gains, default poses, body mapping, and simulator settings, see [Robot Configuration](docs/robot_configuration.md).
+For Astro-specific joint order, actuator constants, PD gains, default poses, body mapping, and simulator settings, see [Astro robot configuration](docs/robots/astro.md).
 
 ## Quickstart
 
@@ -20,20 +20,20 @@ uv run menagerie_x variants
 uv run menagerie_x mujoco --check
 ```
 
-`menagerie_x validate` checks the packaged manifest and asset paths. `menagerie_x variants` lists available URDF/MJCF variants. `menagerie_x mujoco --check` loads the default MJCF without opening a viewer.
+`menagerie_x validate` checks the packaged manifest and asset paths. `menagerie_x variants` lists available URDF/MJCF variants. `menagerie_x mujoco --check` loads the catalog's default MJCF without opening a viewer.
 
-## Visualize Astro
+## Visualize a robot
 
-Open the native MuJoCo viewer:
+Open the catalog's default variant in the native MuJoCo viewer:
 
 ```bash
 uv run menagerie_x mujoco
 ```
 
-Open a non-default MJCF-backed variant:
+Open a specific MJCF-backed variant:
 
 ```bash
-uv run menagerie_x mujoco --variant astro_v1_27dof
+uv run menagerie_x mujoco --variant unitree_g1
 ```
 
 Open one exact manual MJCF edition without changing the manifest:
@@ -42,9 +42,9 @@ Open one exact manual MJCF edition without changing the manifest:
 uv run menagerie_x mujoco --mjcf src/menagerie_x/assets/astro_v2/mjcf/astro_v2_primitive_collision.xml
 ```
 
-`--variant` and `--mjcf` are mutually exclusive. With neither selector, MuJoCo opens the manifest default: Astro V2's reviewed `mjcf/astro_v2-review.xml`.
+`--variant` and `--mjcf` are mutually exclusive. With neither selector, MuJoCo opens the manifest's `default_variant`, currently `astro_v2`.
 
-For browser visualization with Viser, install optional visualization dependencies:
+The lightweight Viser command currently targets the legacy Astro V1 mesh set. To use that robot-specific viewer, install the optional visualization dependencies:
 
 ```bash
 uv sync --extra viz
@@ -101,7 +101,7 @@ The manifest's `mjcf` path is the authorized edition for a variant. Additional c
 
 Manual editions can be visualized and collision-edited, but are not authorizable until exported as a managed edition with review provenance.
 
-### Third-party robot descriptions
+### Included third-party descriptions
 
 `assets/unitree_g1/` packages the official Unitree G1
 `g1_29dof_with_hand_rev_1_0` URDF and MJCF, plus only the meshes they
@@ -114,33 +114,40 @@ its BSD 3-Clause terms.  The packaged MJCF changes only its relative
 
 Use the Simulation panel or press `P` to toggle physics, `R` to reset the model, and `F` to toggle camera follow. Drag empty space to orbit; drag a robot link to apply a push.
 
-## Repository Layout
+## Repository layout
 
-Robot assets are grouped first by Astro version. This lets one package release expose both robot generations without making a Git branch part of the runtime interface.
+Robot assets are grouped by robot family or version. Each manifest variant points to its owning `robot_version`, so one package release can expose descriptions from multiple vendors and generations without encoding a particular robot in the package interface.
 
 ```text
 src/menagerie_x/
   assets/
-    manifest.json         # catalog across robot versions
+    manifest.json         # catalog of robot versions, variants, scenes, and defaults
     astro_v1/
-      urdf/               # maintained V1 source descriptions
-      meshes/             # V1 STL visual/collision meshes
-      legacy/
-        mjcf/             # V1 MuJoCo descriptions
-        isaac/            # V1 Isaac integration
+      urdf/
+      mjcf/
+      meshes/
+      legacy/isaac/
     astro_v2/
-      urdf/               # V2 maintained source descriptions
-      meshes/             # V2 URDF-referenced geometry
+      urdf/
+      mjcf/
+      meshes/
+    unitree_g1/
+      urdf/
+      mjcf/
+      meshes/
   workbench/              # browser server and static workbench UI
   commands/               # implementations behind `uv run menagerie_x ...`
-  tools/                  # reusable utilities
+  tools/                  # reusable and robot-specific utilities
 docs/
-  robot_configuration.md  # detailed robot configuration reference
+  robots/
+    astro.md              # Astro-specific configuration reference
 ```
 
-There is intentionally no top-level `scripts/`, `mjcf/`, `urdf/`, or `meshes/` directory. Use the `menagerie_x` CLI and the manifest rather than hard-coded checkout-root paths. V2 ships as a URDF-only description with its referenced meshes.
+There is intentionally no top-level `scripts/`, `mjcf/`, `urdf/`, or `meshes/` directory. Use the `menagerie_x` CLI and manifest rather than hard-coded checkout-root paths. A robot version may choose its own maintained source format and retain other formats as imported, generated, or legacy assets; declare that policy in `manifest.json`.
 
-## Common Commands
+## Robot-specific commands
+
+Some utilities predate the multi-robot catalog and intentionally operate on Astro assets.
 
 Compute keyframe body heights:
 
@@ -148,7 +155,7 @@ Compute keyframe body heights:
 uv run menagerie_x heights --config knees_bent
 ```
 
-Launch the PD parameter editor for [Robot Configuration](docs/robot_configuration.md):
+Launch the PD parameter editor for [Astro robot configuration](docs/robots/astro.md):
 
 ```bash
 uv run menagerie_x pd-tool
