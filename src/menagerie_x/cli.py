@@ -49,8 +49,14 @@ def main(argv: list[str] | None = None) -> None:
 
     workbench_parser = subparsers.add_parser("workbench", help="Launch the browser robot asset workbench")
     workbench_parser.add_argument("--host", default="127.0.0.1")
-    workbench_parser.add_argument("--port", type=int, default=0)
-    workbench_parser.add_argument("--no-browser", action="store_true")
+    workbench_parser.add_argument("--port", type=int, default=8000, help="Stable local port for browser-refresh-friendly restarts")
+    workbench_browser_mode = workbench_parser.add_mutually_exclusive_group()
+    workbench_browser_mode.add_argument(
+        "--open-browser",
+        action="store_true",
+        help="Open the workbench URL in a browser after starting (off by default).",
+    )
+    workbench_browser_mode.add_argument("--no-browser", action="store_true", help=argparse.SUPPRESS)
 
     capsules_parser = subparsers.add_parser("urdf-capsules", help="Generate URDF extension capsule collisions from MJCF capsules")
     capsules_parser.add_argument("--urdf", type=Path, default=None)
@@ -105,8 +111,8 @@ def main(argv: list[str] | None = None) -> None:
             workbench_args = ["--host", args.host, "--port", str(args.port)]
             if args.root is not None:
                 workbench_args.extend(["--root", str(args.root)])
-            if args.no_browser:
-                workbench_args.append("--no-browser")
+            if args.open_browser:
+                workbench_args.append("--open-browser")
             raise SystemExit(workbench_main(workbench_args))
         elif args.command == "urdf-capsules":
             paths = get_asset_paths(args.root)

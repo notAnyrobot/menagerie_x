@@ -2,14 +2,18 @@ import json
 import pathlib
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import unittest
 import urllib.error
 import urllib.request
+from unittest import mock
 
 from menagerie_x.assets import variants
+from menagerie_x import cli as menagerie_cli
 from menagerie_x.workbench import create_server
+from menagerie_x.workbench import server as workbench_server
 from menagerie_x.workbench.server import NativeViewerAlreadyRunningError, NativeViewerProcessManager, WorkbenchRequestHandler
 
 
@@ -118,7 +122,7 @@ class NativeViewerEndpointTests(unittest.TestCase):
             cls.processes.append(process)
             return process
 
-        cls.server = create_server(ROOT, process_factory=factory)
+        cls.server = create_server(ROOT, port=0, process_factory=factory)
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
         cls.thread.start()
         host, port = cls.server.server_address
@@ -170,7 +174,7 @@ class NativeViewerEndpointTests(unittest.TestCase):
 
     def test_remote_binding_refuses_native_viewer_launch(self):
         processes = []
-        remote_server = create_server(ROOT, host="0.0.0.0", process_factory=lambda *_args, **_kwargs: processes.append(FakeNativeViewerProcess()) or processes[-1])
+        remote_server = create_server(ROOT, host="0.0.0.0", port=0, process_factory=lambda *_args, **_kwargs: processes.append(FakeNativeViewerProcess()) or processes[-1])
         remote_thread = threading.Thread(target=remote_server.serve_forever, daemon=True)
         remote_thread.start()
         try:
@@ -192,10 +196,96 @@ class NativeViewerEndpointTests(unittest.TestCase):
             remote_thread.join(timeout=2)
 
 
+class WorkbenchStartupTests(unittest.TestCase):
+    @staticmethod
+    def _server() -> mock.Mock:
+        server = mock.Mock()
+        server.server_address = ("127.0.0.1", 43123)
+        server.serve_forever.side_effect = KeyboardInterrupt
+        return server
+
+    def test_startup_does_not_open_a_duplicate_browser_tab_by_default(self):
+        server = self._server()
+        with mock.patch.object(workbench_server, "create_server", return_value=server) as create_server, mock.patch.object(workbench_server.webbrowser, "open") as open_browser:
+            self.assertEqual(workbench_server.main([]), 0)
+
+        open_browser.assert_not_called()
+        self.assertEqual(create_server.call_args.args[2], 8000)
+        server.server_close.assert_called_once()
+
+    def test_open_browser_is_explicit_opt_in(self):
+        server = self._server()
+        with mock.patch.object(workbench_server, "create_server", return_value=server), mock.patch.object(workbench_server.webbrowser, "open") as open_browser:
+            self.assertEqual(workbench_server.main(["--open-browser"]), 0)
+
+        open_browser.assert_called_once_with("http://127.0.0.1:43123")
+
+    def test_top_level_cli_forwards_the_explicit_browser_option(self):
+        with mock.patch.object(menagerie_cli, "workbench_main", return_value=0) as workbench_main:
+            with self.assertRaises(SystemExit) as exited:
+                menagerie_cli.main(["workbench", "--open-browser"])
+
+        self.assertEqual(exited.exception.code, 0)
+        self.assertEqual(workbench_main.call_args.args[0][-1], "--open-browser")
+        self.assertIn("8000", workbench_main.call_args.args[0])
+
+
+class WorkbenchRenderingConfigurationTests(unittest.TestCase):
+    def test_renderings_default_to_the_workbench_videos_directory(self):
+        server = create_server(ROOT, port=0)
+        try:
+            self.assertEqual(
+                server.RequestHandlerClass.renderings_directory,
+                pathlib.Path.home() / "Videos" / "menagerie_workbench" / "renderings",
+            )
+        finally:
+            server.server_close()
+
+
+class WorkbenchRestartEndpointTests(unittest.TestCase):
+    def setUp(self):
+        self.commands: list[list[str]] = []
+        self.restarted = threading.Event()
+
+        def restart_executor(command: list[str]) -> None:
+            self.commands.append(command)
+            self.restarted.set()
+
+        self.server = create_server(ROOT, port=0, restart_executor=restart_executor)
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+        host, port = self.server.server_address
+        self.base_url = f"http://{host}:{port}"
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join(timeout=2)
+
+    def test_restart_endpoint_reexecutes_the_local_workbench_after_acknowledging(self):
+        request = urllib.request.Request(
+            f"{self.base_url}/api/restart",
+            data=b"{}",
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(request) as response:
+            payload = json.loads(response.read())
+
+        self.assertEqual(response.status, 202)
+        self.assertTrue(payload["ok"])
+        self.assertTrue(self.restarted.wait(1))
+        command = self.commands[0]
+        self.assertEqual(command[:3], [sys.executable, "-m", "menagerie_x.cli"])
+        self.assertEqual(command[3:7], ["--root", str((ROOT / "src" / "menagerie_x" / "assets").resolve()), "workbench", "--host"])
+        self.assertEqual(command[-2:], ["--port", str(self.server.server_address[1])])
+
+
 class WorkbenchTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.server = create_server(ROOT)
+        cls.renderings = tempfile.TemporaryDirectory()
+        cls.server = create_server(ROOT, port=0, renderings_directory=pathlib.Path(cls.renderings.name))
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
         cls.thread.start()
         host, port = cls.server.server_address
@@ -206,6 +296,7 @@ class WorkbenchTests(unittest.TestCase):
         cls.server.shutdown()
         cls.server.server_close()
         cls.thread.join(timeout=2)
+        cls.renderings.cleanup()
 
     def _get_json(self, path: str) -> dict:
         with urllib.request.urlopen(f"{self.base_url}{path}") as response:
@@ -245,18 +336,19 @@ class WorkbenchTests(unittest.TestCase):
 
         self.assertEqual(
             [robot["id"] for robot in catalog["robots"]],
-            ["astro_v1", "astro_v1_27dof", "astro_v2", "astro_with_racket", "unitree_g1"],
+            ["atom_p3", "astro_v1", "astro_v1_27dof", "astro_v2", "astro_with_racket", "unitree_g1"],
         )
-        self.assertEqual(catalog["robots"][0]["formats"], {"urdf": True, "mjcf": True})
-        self.assertTrue(catalog["robots"][2]["scene"]["links"])
-        self.assertTrue(catalog["robots"][0]["scene"]["links"][0]["collisions"])
-        self.assertIn("inertial", catalog["robots"][0]["scene"]["links"][0])
-        self.assertEqual(catalog["robots"][0]["default_scene"], "flat_floor")
-        self.assertEqual(catalog["robots"][2]["scene_description"]["id"], "flat_floor")
-        self.assertEqual(catalog["robots"][2]["scene_description"]["robot_spawn"]["xyz"], [0.0, 0.0, 0.75])
-        self.assertEqual(catalog["robots"][4]["dof"], 43)
-        self.assertEqual(catalog["robots"][4]["formats"], {"urdf": True, "mjcf": True})
-        self.assertEqual(catalog["robots"][4]["source_provenance"]["repository"], "https://github.com/unitreerobotics/unitree_ros")
+        robots = {robot["id"]: robot for robot in catalog["robots"]}
+        self.assertEqual(robots["astro_v1"]["formats"], {"urdf": True, "mjcf": True})
+        self.assertTrue(robots["astro_v2"]["scene"]["links"])
+        self.assertTrue(robots["astro_v1"]["scene"]["links"][0]["collisions"])
+        self.assertIn("inertial", robots["astro_v1"]["scene"]["links"][0])
+        self.assertEqual(robots["astro_v1"]["default_scene"], "flat_floor")
+        self.assertEqual(robots["astro_v2"]["scene_description"]["id"], "flat_floor")
+        self.assertEqual(robots["astro_v2"]["scene_description"]["robot_spawn"]["xyz"], [0.0, 0.0, 0.75])
+        self.assertEqual(robots["unitree_g1"]["dof"], 43)
+        self.assertEqual(robots["unitree_g1"]["formats"], {"urdf": True, "mjcf": True})
+        self.assertEqual(robots["unitree_g1"]["source_provenance"]["repository"], "https://github.com/unitreerobotics/unitree_ros")
 
     def test_unitree_g1_editions_report_official_metadata_and_exclude_retargeting_reference_from_candidates(self):
         editions = self._get_json("/api/robots/unitree_g1/editions")["editions"]
@@ -321,6 +413,71 @@ class WorkbenchTests(unittest.TestCase):
         self.assertTrue(all(len(record["revision"]) == 64 for record in editions))
         self.assertTrue(all("source_drift_warning" in record for record in editions))
 
+    def test_default_edition_label_uses_its_selected_filename_not_its_provenance_id(self):
+        """A default can retain an older review ID without mislabeling its XML."""
+        editions = self._get_json("/api/robots/astro_v2/editions")["editions"]
+        default = next(record for record in editions if record["default"])
+        app = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+
+        self.assertEqual(default["id"], "astro_v2_primitive_collision")
+        self.assertEqual(default["source_id"], "astro_v2-review")
+        self.assertIn("function editionDisplayName(edition)", app)
+        self.assertIn("return edition.default ? `Default MJCF · ${name}` : name;", app)
+        self.assertIn("${editionDisplayName(edition)}", app)
+        self.assertNotIn("? `Default MJCF · ${edition.source_id || edition.id}`", app)
+
+    def test_scene_recording_captures_the_viewer_canvas_not_workbench_panels(self):
+        page = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+        app = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+        recorder = (WEB_ROOT / "scene-recording.js").read_text(encoding="utf-8")
+
+        self.assertIn('id="scene-recording-toggle"', page)
+        self.assertIn('id="robot-canvas"', page)
+        self.assertIn("new SceneRecorder({", app)
+        self.assertIn("canvas,", app)
+        self.assertIn("canvas.captureStream(this.frameRate)", recorder)
+        self.assertIn('fetch("/api/renderings"', app)
+        self.assertIn('"X-Menagerie-Rendering-Filename": filename', app)
+
+    def test_restart_workbench_is_a_confirmed_distinct_toolbar_action(self):
+        page = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+        app = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+        styles = (WEB_ROOT / "styles.css").read_text(encoding="utf-8")
+
+        self.assertIn('id="restart-workbench" class="restart-workbench"', page)
+        self.assertIn("async function restartWorkbench()", app)
+        self.assertIn("Unsaved collision edits and the current browser state will be discarded.", app)
+        self.assertIn('apiRequest("/api/restart", "POST", {})', app)
+        self.assertIn("window.location.reload()", app)
+        self.assertIn(".restart-workbench", styles)
+
+    def test_scene_recordings_save_to_the_workbench_renderings_directory(self):
+        status, response = self._post_rendering("astro-scene.mp4", b"fake-mp4")
+
+        output = pathlib.Path(response["output_path"])
+        self.assertEqual(status, 201)
+        self.assertTrue(response["ok"])
+        self.assertEqual(output, pathlib.Path(self.renderings.name) / "astro-scene.mp4")
+        self.assertEqual(output.read_bytes(), b"fake-mp4")
+        self.assertEqual(self._post_rendering("../outside.mp4", b"fake-mp4")[0], 404)
+
+    def test_scene_recording_lives_in_toolbar_and_reset_view_lives_in_simulation_panel(self):
+        page = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+
+        simulation_start = page.index('<section class="simulation-panel"')
+        simulation_end = page.index("</section>", simulation_start)
+        toolbar_start = page.index('<header class="toolbar">')
+        toolbar_end = page.index("</header>", toolbar_start)
+        recording_position = page.index('id="scene-recording-toggle"')
+        reset_view_position = page.index('id="reset-camera"')
+
+        self.assertLess(simulation_start, reset_view_position)
+        self.assertLess(reset_view_position, simulation_end)
+        self.assertLess(toolbar_start, recording_position)
+        self.assertLess(recording_position, toolbar_end)
+        self.assertIn('aria-describedby="scene-recording-state"', page)
+        self.assertIn('aria-live="polite"', page)
+
     def test_workbench_starts_without_loading_a_default_edition(self):
         app = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
         page = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
@@ -380,6 +537,13 @@ class WorkbenchTests(unittest.TestCase):
             source = response.read().decode("utf-8")
 
         self.assertIn("createVisualDiagnostics", source)
+
+    def test_scene_recording_module_is_served_for_workbench_bootstrap(self):
+        """Every static module imported by app.js must be reachable at startup."""
+        with urllib.request.urlopen(f"{self.base_url}/scene-recording.js") as response:
+            source = response.read().decode("utf-8")
+
+        self.assertIn("export class SceneRecorder", source)
 
     def test_contact_visualizer_module_is_served(self):
         with urllib.request.urlopen(f"{self.base_url}/contact-visualizer.js") as response:

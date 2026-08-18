@@ -4,10 +4,12 @@ import argparse
 import ipaddress
 import json
 import mimetypes
+import os
 import subprocess
 import sys
 import tempfile
 import threading
+import time
 import urllib.parse
 import webbrowser
 import xml.etree.ElementTree as ET
@@ -71,6 +73,26 @@ class NativeViewerLaunchError(WorkbenchError):
 
 class NativeViewerRequestError(WorkbenchError):
     """Raised when a native viewer request contains unsupported input."""
+
+
+def _workbench_restart_command(asset_root: Path, host: str, port: int) -> list[str]:
+    """Return the exact local command used to restart this workbench server."""
+    return [
+        sys.executable,
+        "-m",
+        "menagerie_x.cli",
+        "--root",
+        str(asset_root),
+        "workbench",
+        "--host",
+        host,
+        "--port",
+        str(port),
+    ]
+
+
+def _exec_workbench_restart(command: list[str]) -> None:
+    os.execv(command[0], command)
 
 
 def _loopback_host(host: str) -> bool:
@@ -246,6 +268,11 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
     asset_root: Path
     draft_store: MjcfCollisionDraftStore
     native_viewer: NativeViewerProcessManager
+    renderings_directory: Path
+    restart_command: list[str]
+    restart_executor: Callable[[list[str]], None]
+    restart_lock: threading.Lock
+    restart_scheduled: bool
 
     def _native_viewer_status(self) -> dict[str, Any]:
         status = self.native_viewer.status()
@@ -281,6 +308,65 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
         if not isinstance(payload, dict):
             raise WorkbenchError("request body must be a JSON object")
         return payload
+
+    def _save_rendering(self) -> Path:
+        """Stream a browser-recorded video into the local renderings directory."""
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError as exc:
+            raise WorkbenchError("invalid request length") from exc
+        if length <= 0 or length > 2_000_000_000:
+            raise WorkbenchError("rendering must be between 1 byte and 2 GB")
+
+        filename = self.headers.get("X-Menagerie-Rendering-Filename", "")
+        if not filename or Path(filename).name != filename:
+            raise WorkbenchError("rendering filename must not include a path")
+        content_type = self.headers.get("Content-Type", "").split(";", 1)[0].lower()
+        extensions = {"video/mp4": ".mp4", "video/webm": ".webm"}
+        expected_extension = extensions.get(content_type)
+        if expected_extension is None or Path(filename).suffix.lower() != expected_extension:
+            raise WorkbenchError("rendering must be an MP4 or WebM video with a matching filename extension")
+
+        directory = self.renderings_directory
+        directory.mkdir(parents=True, exist_ok=True)
+        output = directory / filename
+        temporary: Path | None = None
+        remaining = length
+        try:
+            with tempfile.NamedTemporaryFile(dir=directory, prefix=".rendering-", suffix=".part", delete=False) as stream:
+                temporary = Path(stream.name)
+                while remaining:
+                    chunk = self.rfile.read(min(remaining, 1024 * 1024))
+                    if not chunk:
+                        raise WorkbenchError("rendering upload ended before all bytes were received")
+                    stream.write(chunk)
+                    remaining -= len(chunk)
+            temporary.replace(output)
+            return output
+        finally:
+            if temporary is not None and temporary.exists():
+                temporary.unlink()
+
+    def _schedule_restart(self) -> None:
+        with self.restart_lock:
+            if type(self).restart_scheduled:
+                raise WorkbenchError("workbench restart is already in progress")
+            type(self).restart_scheduled = True
+
+        def restart_after_response() -> None:
+            # Let the client receive its accepted response before exec closes the
+            # listening socket. The browser then reloads the restarted server.
+            time.sleep(0.2)
+            try:
+                self.native_viewer.close()
+                self.draft_store.close()
+                type(self).restart_executor(type(self).restart_command)
+            except Exception as exc:  # pragma: no cover - only reached when exec fails
+                with self.restart_lock:
+                    type(self).restart_scheduled = False
+                print(f"Workbench restart failed: {exc}", file=sys.stderr)
+
+        threading.Thread(target=restart_after_response, name="menagerie-workbench-restart", daemon=True).start()
 
     def _variant(self, name: str) -> Variant:
         try:
@@ -383,7 +469,7 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
             if parsed.path == "/":
                 self._serve_web_file("index.html")
                 return
-            if parsed.path in {"/app.js", "/collision-editor.js", "/contact-visualizer.js", "/diagnostics.js", "/mjcf-renderer.js", "/mujoco-visualization.js", "/styles.css"}:
+            if parsed.path in {"/app.js", "/collision-editor.js", "/contact-visualizer.js", "/diagnostics.js", "/mjcf-renderer.js", "/mujoco-visualization.js", "/scene-recording.js", "/styles.css"}:
                 self._serve_web_file(parsed.path.lstrip("/"))
                 return
             if parsed.path.startswith("/vendor/"):
@@ -487,6 +573,22 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
         try:
             parsed = urllib.parse.urlparse(self.path)
             path_parts = [part for part in parsed.path.split("/") if part]
+            if path_parts == ["api", "restart"]:
+                if not _loopback_host(str(self.server.server_address[0])):
+                    self._json(HTTPStatus.FORBIDDEN, {"ok": False, "error": "workbench restart is available only on a loopback-bound workbench"})
+                    return
+                if self._body_json():
+                    raise WorkbenchError("workbench restart requests must use an empty JSON object")
+                self._schedule_restart()
+                self._json(HTTPStatus.ACCEPTED, {"ok": True, "message": "workbench restart scheduled"})
+                return
+            if path_parts == ["api", "renderings"]:
+                if not _loopback_host(str(self.server.server_address[0])):
+                    self._json(HTTPStatus.FORBIDDEN, {"ok": False, "error": "rendering export is available only on a loopback-bound workbench"})
+                    return
+                output = self._save_rendering()
+                self._json(HTTPStatus.CREATED, {"ok": True, "output_path": str(output)})
+                return
             if path_parts in (["api", "variants", "import-mjcf"], ["api", "variants", "import-urdf"]):
                 if not _loopback_host(str(self.server.server_address[0])):
                     self._json(HTTPStatus.FORBIDDEN, {"ok": False, "error": "asset import is available only on a loopback-bound workbench"})
@@ -793,6 +895,8 @@ class WorkbenchServer(ThreadingHTTPServer):
 def _make_handler(
     root: Path | None = None,
     process_factory: Callable[..., Any] = subprocess.Popen,
+    renderings_directory: Path | None = None,
+    restart_executor: Callable[[list[str]], None] = _exec_workbench_restart,
 ) -> type[WorkbenchRequestHandler]:
     class Handler(WorkbenchRequestHandler):
         pass
@@ -800,34 +904,49 @@ def _make_handler(
     Handler.asset_root = get_asset_paths(root).root
     Handler.draft_store = MjcfCollisionDraftStore()
     Handler.native_viewer = NativeViewerProcessManager(Handler.asset_root, process_factory)
+    Handler.renderings_directory = (renderings_directory or Path.home() / "Videos" / "menagerie_workbench" / "renderings").expanduser()
+    Handler.restart_command = _workbench_restart_command(Handler.asset_root, "", 0)
+    Handler.restart_executor = restart_executor
+    Handler.restart_lock = threading.Lock()
+    Handler.restart_scheduled = False
     return Handler
 
 
 def create_server(
     root: Path | None = None,
     host: str = "127.0.0.1",
-    port: int = 0,
+    port: int = 8000,
     process_factory: Callable[..., Any] = subprocess.Popen,
+    renderings_directory: Path | None = None,
+    restart_executor: Callable[[list[str]], None] = _exec_workbench_restart,
 ) -> WorkbenchServer:
-    server = WorkbenchServer((host, port), _make_handler(root, process_factory))
+    server = WorkbenchServer((host, port), _make_handler(root, process_factory, renderings_directory, restart_executor))
     server.draft_store = server.RequestHandlerClass.draft_store
     server.native_viewer = server.RequestHandlerClass.native_viewer
+    bound_host, bound_port = server.server_address
+    server.RequestHandlerClass.restart_command = _workbench_restart_command(server.RequestHandlerClass.asset_root, str(bound_host), bound_port)
     return server
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Browser workbench for Astro robot assets")
+    parser = argparse.ArgumentParser(description="Browser workbench for packaged robot descriptions")
     parser.add_argument("--root", type=Path, default=None, help="Menagerie checkout or asset root")
     parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=0)
-    parser.add_argument("--no-browser", action="store_true")
+    parser.add_argument("--port", type=int, default=8000, help="Stable local port for browser-refresh-friendly restarts")
+    browser_mode = parser.add_mutually_exclusive_group()
+    browser_mode.add_argument(
+        "--open-browser",
+        action="store_true",
+        help="Open the workbench URL in a browser after starting (off by default so restarts reuse an existing tab).",
+    )
+    browser_mode.add_argument("--no-browser", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
 
     server = create_server(args.root, args.host, args.port)
     host, port = server.server_address
     url = f"http://{host}:{port}"
     print(f"Serving Menagerie Workbench at {url}", flush=True)
-    if not args.no_browser:
+    if args.open_browser:
         webbrowser.open(url)
     try:
         server.serve_forever()

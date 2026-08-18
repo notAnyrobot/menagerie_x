@@ -90,7 +90,7 @@ Then launch the workbench:
 uv run menagerie_x workbench
 ```
 
-The workbench loads each selected MJCF edition into the official MuJoCo WASM bindings in the browser. Three.js renders the mesh scene and provides the orbit/click interaction layer; Viser is not required. Use **Reload menagerie** after editing an MJCF file outside the browser to rebuild the selected edition without restarting the Workbench. When it is bound to localhost, **Open in MuJoCo** launches the selected saved edition in one Workbench-owned native MuJoCo viewer; unsaved collision-editor drafts must be overwritten or exported first to appear there.
+The workbench listens at `http://127.0.0.1:8000` and does not open a browser tab by default. Open that address once; use **Restart workbench** in the toolbar when the local server needs restarting. It asks for confirmation, discards unsaved browser state, restarts the local server, and reloads the page. Use `uv run menagerie_x workbench --open-browser` only when you want the server to open a new tab. The workbench loads each selected MJCF edition into the official MuJoCo WASM bindings in the browser. Three.js renders the mesh scene and provides the orbit/click interaction layer; Viser is not required. Use **Reload menagerie** after editing an MJCF file outside the browser to rebuild the selected edition without restarting the Workbench. When it is bound to localhost, **Open in MuJoCo** launches the selected saved edition in one Workbench-owned native MuJoCo viewer; unsaved collision-editor drafts must be overwritten or exported first to appear there.
 
 ### MJCF editions
 
@@ -171,14 +171,19 @@ uv run menagerie_x urdf-capsules --output /tmp/astro_v1_capsules.urdf
 
 Robot-description variants are declared in `src/menagerie_x/assets/manifest.json`.
 
-| Variant | DOFs | URDF | MJCF | Status |
-|---|---:|---|---|---|
-| `astro_v1` | 30 | `astro_v1/urdf/astro_v1.urdf` | `astro_v1/mjcf/astro_v1.xml` | legacy |
-| `astro_v1_27dof` | 27 | `astro_v1/urdf/astro_v1_27dof.urdf` | `astro_v1/mjcf/astro_v1_27dof.xml` | legacy |
-| `astro_with_racket` | 30 | `astro_v1/urdf/astro_with_racket.urdf` | - | variant |
-| `astro_v2` | 30 | `astro_v2/urdf/astro_v2.urdf` | `astro_v2/mjcf/astro_v2-review.xml` | current |
+| Variant | Robot version | DOFs | URDF | MJCF | Status |
+|---|---|---:|---|---|---|
+| `astro_v1` | `astro_v1` | 30 | `urdf/astro_v1.urdf` | `mjcf/astro_v1.xml` | legacy |
+| `astro_v1_27dof` | `astro_v1` | 27 | `urdf/astro_v1_27dof.urdf` | `mjcf/astro_v1_27dof.xml` | legacy |
+| `astro_with_racket` | `astro_v1` | 30 | `urdf/astro_with_racket.urdf` | - | variant |
+| `astro_v2` | `astro_v2` | 30 | `urdf/astro_v2.urdf` | `mjcf/astro_v2_primitive_collision.xml` | current |
+| `unitree_g1` | `unitree_g1` | 43 | `urdf/g1_29dof_with_hand_rev_1_0.urdf` | `mjcf/g1_29dof_with_hand_rev_1_0.xml` | imported |
+| `atom_p3` | `atom_p3` | 27 | - | `mjcf/atom_p3_27dof_capsule_foot.xml` | imported |
 
-Add or retire a version's URDF files by updating the manifest first, then run:
+
+Atom P3 is currently MJCF-only: no URDF was supplied with the imported bundle. Its default MJCF contains sensors but no actuator declarations (`nu=0`), so it is available for inspection and simulation but needs an actuator model before closed-loop control.
+
+Add, update, or retire a robot version through the manifest first, then run:
 
 ```bash
 uv run menagerie_x validate

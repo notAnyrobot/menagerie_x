@@ -17,6 +17,7 @@ import {
 } from "/collision-editor.js";
 import { createVisualDiagnostics } from "/diagnostics.js";
 import { createContactVisualizer } from "/contact-visualizer.js";
+import { recordingFilename, SceneRecorder } from "/scene-recording.js";
 
 const canvas = document.querySelector("#robot-canvas");
 const viewerEmpty = document.querySelector("#viewer-empty");
@@ -68,6 +69,9 @@ const editionSetDefaultButton = document.querySelector("#edition-set-default");
 const editionDuplicateButton = document.querySelector("#edition-duplicate");
 const editionRenameButton = document.querySelector("#edition-rename");
 const editionDeleteButton = document.querySelector("#edition-delete");
+const restartWorkbenchButton = document.querySelector("#restart-workbench");
+const sceneRecordingToggle = document.querySelector("#scene-recording-toggle");
+const sceneRecordingState = document.querySelector("#scene-recording-state");
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -158,6 +162,11 @@ let diagnosticModel = null;
 let diagnosticData = null;
 let diagnosticGeneration = 0;
 let diagnosticController = null;
+let sceneRecorder = null;
+let recordingStartedAt = null;
+let recordingFormat = null;
+let recordingDownloadPending = false;
+let workbenchRestarting = false;
 const meshAssetCache = new Map();
 const visualLinkGroups = new Map();
 const mujocoBodyIds = new Map();
@@ -489,6 +498,97 @@ function updateSimulationControls(message = null) {
   randomPoseButton.disabled = !simulationModel || !limitedJointStates().length;
   followToggle.setAttribute("aria-checked", String(followEnabled));
   if (message) simulationState.textContent = message;
+  updateSceneRecordingControl();
+}
+
+function recordingDurationLabel(milliseconds) {
+  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function updateSceneRecordingControl() {
+  const state = sceneRecorder?.state || "ready";
+  const recording = state === "recording";
+  const finalizing = state === "finalizing" || recordingDownloadPending;
+  sceneRecordingToggle.disabled = (!simulationModel && !recording) || finalizing;
+  sceneRecordingToggle.textContent = recording
+    ? `Stop recording · ${recordingDurationLabel(performance.now() - (recordingStartedAt ?? performance.now()))}`
+    : finalizing
+      ? "Finalizing recording…"
+      : "Record scene";
+  sceneRecordingToggle.classList.toggle("recording", recording);
+  if (recording) {
+    sceneRecordingState.textContent = `Recording the 3D viewer · ${recordingFormat?.label || "video"}.`;
+    sceneRecordingState.classList.remove("error");
+  } else if (!simulationModel && !recordingDownloadPending) {
+    sceneRecordingState.textContent = "Load an MJCF edition before recording the 3D viewer.";
+    sceneRecordingState.classList.remove("error");
+  }
+}
+
+function updateSceneRecordingTimer() {
+  if (sceneRecorder?.state === "recording") updateSceneRecordingControl();
+}
+
+async function saveSceneRecording(result) {
+  const filename = recordingFilename({
+    robotName: activeRobot?.name || "menagerie",
+    editionName: activeEdition?.label || activeEdition?.id || "scene",
+    date: result.startedAt,
+    extension: result.format.extension,
+  });
+  const response = await fetch("/api/renderings", {
+    method: "POST",
+    headers: {
+      "Content-Type": result.blob.type || result.format.mimeType,
+      "X-Menagerie-Rendering-Filename": filename,
+    },
+    body: result.blob,
+  });
+  const saved = await response.json().catch(() => ({ ok: false, error: response.statusText }));
+  if (!response.ok || !saved.ok) throw new Error(saved.error || "Could not save scene recording.");
+  sceneRecordingState.textContent = `${result.format.label} recording saved: ${saved.output_path}`;
+  sceneRecordingState.classList.remove("error");
+}
+
+async function toggleSceneRecording() {
+  if (sceneRecorder?.state === "recording") {
+    recordingDownloadPending = true;
+    updateSceneRecordingControl();
+    try {
+      const result = await sceneRecorder.stop();
+      await saveSceneRecording(result);
+    } catch (error) {
+      sceneRecordingState.textContent = `Could not finalize scene recording: ${error.message || error}`;
+      sceneRecordingState.classList.add("error");
+    } finally {
+      recordingStartedAt = null;
+      recordingFormat = null;
+      recordingDownloadPending = false;
+      updateSceneRecordingControl();
+    }
+    return;
+  }
+  if (!simulationModel || recordingDownloadPending) return;
+  try {
+    sceneRecorder ||= new SceneRecorder({
+      canvas,
+      frameRate: 30,
+      onStateChange: () => updateSceneRecordingControl(),
+    });
+    const start = sceneRecorder.start();
+    recordingStartedAt = performance.now();
+    recordingFormat = start.format;
+    sceneRecordingState.textContent = `Recording the 3D viewer · ${start.format.label}.`;
+    sceneRecordingState.classList.remove("error");
+    updateSceneRecordingControl();
+  } catch (error) {
+    sceneRecordingState.textContent = error.message || "Could not start scene recording.";
+    sceneRecordingState.classList.add("error");
+    updateSceneRecordingControl();
+  }
 }
 
 function updateDisplayControls() {
@@ -2195,7 +2295,7 @@ async function selectEdition(editionId, continueCollisionEditing = false, option
     const loaded = await loadMujocoModel(activeRobot, token, controller, options);
     if (!loaded || !isCurrentLoad(token, controller) || !simulationModel) return;
     restoreInitialVisualTransforms();
-    setMjcfStatus(`Selected ${edition.role === "authorized" ? "authorized MJCF" : edition.label}.`);
+    setMjcfStatus(`Selected ${editionDisplayName(edition)}.`);
     if (reopenEditor) {
       updateCollisionEditorDock(true);
       await enterCollisionMode();
@@ -2275,6 +2375,25 @@ async function reloadCurrentDescription() {
   }
 }
 
+async function restartWorkbench() {
+  if (workbenchRestarting) return;
+  const warning = "Restart the Workbench server? Unsaved collision edits and the current browser state will be discarded.";
+  if (!window.confirm(warning)) return;
+
+  workbenchRestarting = true;
+  restartWorkbenchButton.disabled = true;
+  restartWorkbenchButton.textContent = "Restarting workbench…";
+  try {
+    await apiRequest("/api/restart", "POST", {});
+    window.setTimeout(() => window.location.reload(), 700);
+  } catch (error) {
+    workbenchRestarting = false;
+    restartWorkbenchButton.disabled = false;
+    restartWorkbenchButton.textContent = "Restart workbench";
+    setEngineState(`Could not restart Workbench: ${error.message}`, "error");
+  }
+}
+
 function selectElement(name, kind) {
   if (!activeRobot || !name) return;
   let resolvedName = name;
@@ -2339,6 +2458,7 @@ function animate() {
   }
   controls.update();
   renderer.render(scene, camera);
+  updateSceneRecordingTimer();
   requestAnimationFrame(animate);
 }
 
@@ -2437,12 +2557,14 @@ window.addEventListener("keydown", event => {
 });
 
 document.querySelector("#reset-camera").addEventListener("click", frameRobot);
+restartWorkbenchButton.addEventListener("click", restartWorkbench);
 reloadDescriptionButton.addEventListener("click", reloadCurrentDescription);
 openNativeViewerButton.addEventListener("click", openNativeViewer);
 physicsToggle.addEventListener("click", togglePhysics);
 physicsReset.addEventListener("click", resetSimulation);
 followToggle.addEventListener("click", toggleFollow);
 randomPoseButton.addEventListener("click", driveRandomPose);
+sceneRecordingToggle.addEventListener("click", toggleSceneRecording);
 visualMeshToggle.addEventListener("click", toggleVisualMeshes);
 collisionShapeToggle.addEventListener("click", toggleCollisionShapes);
 contactToggle.addEventListener("click", toggleContacts);
@@ -2462,6 +2584,7 @@ editionDeleteButton.addEventListener("click", () => mutateEdition("delete"));
 collisionLink.addEventListener("change", () => { renderCollisionPanel(); refreshCollisionObjectStyles(); });
 for (const button of document.querySelectorAll("[data-collision-add]")) button.addEventListener("click", () => addPrimitiveCollision(button.dataset.collisionAdd));
 window.addEventListener("pagehide", () => {
+  sceneRecorder?.cleanup();
   if (!activeRobot || !collisionDraftId) return;
   const path = collisionDraftPath();
   if (path) fetch(path, { method: "DELETE", keepalive: true });

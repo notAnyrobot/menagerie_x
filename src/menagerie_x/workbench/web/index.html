@@ -34,6 +34,7 @@
           <button id="follow-toggle" class="state-toggle" role="switch" aria-checked="false" aria-label="Toggle camera follow"><span class="switch-knob" aria-hidden="true"></span></button>
         </div>
         <button id="random-pose" class="random-pose" type="button" disabled>Random pose</button>
+        <button id="reset-camera" class="reset-view" type="button">Reset view</button>
         <p id="simulation-state" class="simulation-state">Model ready for interactive inspection.</p>
       </section>
       <section class="display-panel" aria-label="Display controls">
@@ -110,9 +111,13 @@
           <div><span class="eyebrow">MuJoCo WASM workbench</span><h2 id="selected-title">Select a robot variant</h2></div>
         </div>
         <div class="toolbar-actions">
+          <button id="restart-workbench" class="restart-workbench" type="button" title="Restart the local Workbench server and reload this page">Restart workbench</button>
           <button id="reload-description" disabled title="Reload the selected MJCF edition from disk">Reload menagerie</button>
           <button id="open-native-viewer" disabled title="Open the selected saved MJCF edition in native MuJoCo">Open in MuJoCo</button>
-          <button id="reset-camera">Reset view</button>
+          <div class="scene-recording-control">
+            <button id="scene-recording-toggle" class="scene-recording-toggle" type="button" disabled aria-describedby="scene-recording-state">Record scene</button>
+            <span id="scene-recording-state" class="scene-recording-state" aria-live="polite">Ready to record the 3D viewer.</span>
+          </div>
         </div>
       </header>
 
