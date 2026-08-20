@@ -18,6 +18,7 @@ import {
 import { createVisualDiagnostics } from "/diagnostics.js";
 import { createContactVisualizer } from "/contact-visualizer.js";
 import { recordingFilename, SceneRecorder } from "/scene-recording.js";
+import { downloadUrdf, requestUrdfExport } from "/urdf-export.js";
 
 const canvas = document.querySelector("#robot-canvas");
 const viewerEmpty = document.querySelector("#viewer-empty");
@@ -65,6 +66,8 @@ const reloadDescriptionButton = document.querySelector("#reload-description");
 const openNativeViewerButton = document.querySelector("#open-native-viewer");
 const addRobotVariantButton = document.querySelector("#add-robot-variant");
 const importMjcfEditionButton = document.querySelector("#import-mjcf-edition");
+const exportUrdfButton = document.querySelector("#export-urdf");
+const urdfExportStatus = document.querySelector("#urdf-export-status");
 const editionSetDefaultButton = document.querySelector("#edition-set-default");
 const editionDuplicateButton = document.querySelector("#edition-duplicate");
 const editionRenameButton = document.querySelector("#edition-rename");
@@ -112,6 +115,7 @@ const mjcfRenderer = createMjcfRenderer(robotGroup);
 let catalog = [];
 let activeRobot = null;
 let activeEdition = null;
+let urdfExportBusy = false;
 let activeCandidateId = null;
 let mjcfCandidates = [];
 let mjcfEditions = [];
@@ -215,6 +219,43 @@ function updateReloadDescriptionControl() {
   editionDuplicateButton.disabled = !activeEdition;
   editionRenameButton.disabled = !activeEdition;
   editionDeleteButton.disabled = !activeEdition || activeEdition.default;
+  updateUrdfExportControl();
+}
+
+function updateUrdfExportControl() {
+  const available = Boolean(activeRobot && activeEdition && activeRobot.formats?.urdf);
+  exportUrdfButton.disabled = urdfExportBusy || !available;
+  exportUrdfButton.title = !activeRobot
+    ? "Select a robot variant"
+    : !activeEdition
+      ? "Select a saved MJCF edition"
+      : !activeRobot.formats?.urdf
+        ? "This variant has no canonical URDF"
+        : "Download a URDF using collisions from the selected saved MJCF edition";
+}
+
+function setUrdfExportStatus(message, error = false) {
+  urdfExportStatus.textContent = message;
+  urdfExportStatus.classList.toggle("error", error);
+}
+
+async function exportSelectedUrdf() {
+  if (!activeRobot || !activeEdition || !activeRobot.formats?.urdf || urdfExportBusy) return;
+  if (collisionDraftHasChanges() && !window.confirm("Export URDF uses the selected saved MJCF edition. Unsaved temporary collision edits will not be included. Download from the saved edition?")) return;
+  urdfExportBusy = true;
+  updateUrdfExportControl();
+  setUrdfExportStatus("Exporting collisions from the selected saved edition…");
+  try {
+    const result = await requestUrdfExport(fetch, `${editionBase()}/export-urdf`);
+    downloadUrdf(document, URL, result);
+    setUrdfExportStatus(`Downloaded ${result.filename}: ${result.sourceCollisionCount} MJCF geoms → ${result.outputCollisionCount} URDF collisions.`);
+  } catch (error) {
+    const details = error.report?.issues?.map(issue => issue.message).filter(Boolean) || [];
+    setUrdfExportStatus([`Could not export URDF: ${error.message}`, ...details].join(" "), true);
+  } finally {
+    urdfExportBusy = false;
+    updateUrdfExportControl();
+  }
 }
 
 function updateNativeViewerControl() {
@@ -2560,6 +2601,7 @@ document.querySelector("#reset-camera").addEventListener("click", frameRobot);
 restartWorkbenchButton.addEventListener("click", restartWorkbench);
 reloadDescriptionButton.addEventListener("click", reloadCurrentDescription);
 openNativeViewerButton.addEventListener("click", openNativeViewer);
+exportUrdfButton.addEventListener("click", exportSelectedUrdf);
 physicsToggle.addEventListener("click", togglePhysics);
 physicsReset.addEventListener("click", resetSimulation);
 followToggle.addEventListener("click", toggleFollow);

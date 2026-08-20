@@ -213,10 +213,19 @@ from .editions import (
     validate_mjcf_edition,
 )
 from .scenes import ResolvedScene, SceneDescription, TerrainDescription, load_scene, load_terrain, resolve_scene
+from .urdf_collision_export import (
+    CollisionExportIssue,
+    CollisionExportReport,
+    UrdfCollisionExport,
+    UrdfCollisionExportError,
+    export_urdf_with_mjcf_collisions,
+)
 
 __all__ = [
     "AssetError",
     "AssetPaths",
+    "CollisionExportIssue",
+    "CollisionExportReport",
     "MjcfEditionError",
     "RobotDescription",
     "RobotInspection",
@@ -225,6 +234,8 @@ __all__ = [
     "TerrainDescription",
     "ValidationIssue",
     "Variant",
+    "UrdfCollisionExport",
+    "UrdfCollisionExportError",
     "default_robot_root",
     "get_asset_paths",
     "get_variant",
@@ -232,6 +243,7 @@ __all__ = [
     "duplicate_mjcf_edition",
     "edition_directory",
     "edition_path",
+    "export_urdf_with_mjcf_collisions",
     "import_mjcf_edition",
     "import_mjcf_variant",
     "import_urdf_variant",

@@ -27,6 +27,7 @@ from menagerie_x.assets import (
     delete_mjcf_edition,
     duplicate_mjcf_edition,
     edition_path,
+    export_urdf_with_mjcf_collisions,
     get_asset_paths,
     import_mjcf_edition,
     import_mjcf_variant,
@@ -37,6 +38,7 @@ from menagerie_x.assets import (
     rename_mjcf_edition,
     resolve_scene,
     set_default_mjcf_edition,
+    UrdfCollisionExportError,
     variants,
 )
 from menagerie_x.commands.mjcf import (
@@ -278,12 +280,20 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
         status = self.native_viewer.status()
         return {"ok": True, "available": _loopback_host(str(self.server.server_address[0])), **status}
 
-    def _send(self, status: HTTPStatus, content: bytes, content_type: str) -> None:
+    def _send(
+        self,
+        status: HTTPStatus,
+        content: bytes,
+        content_type: str,
+        headers: dict[str, str] | None = None,
+    ) -> None:
         try:
             self.send_response(status.value)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(content)))
             self.send_header("Cache-Control", "no-store")
+            for name, value in (headers or {}).items():
+                self.send_header(name, value)
             self.end_headers()
             self.wfile.write(content)
         except (BrokenPipeError, ConnectionResetError):
@@ -469,7 +479,7 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
             if parsed.path == "/":
                 self._serve_web_file("index.html")
                 return
-            if parsed.path in {"/app.js", "/collision-editor.js", "/contact-visualizer.js", "/diagnostics.js", "/mjcf-renderer.js", "/mujoco-visualization.js", "/scene-recording.js", "/styles.css"}:
+            if parsed.path in {"/app.js", "/collision-editor.js", "/contact-visualizer.js", "/diagnostics.js", "/mjcf-renderer.js", "/mujoco-visualization.js", "/scene-recording.js", "/urdf-export.js", "/styles.css"}:
                 self._serve_web_file(parsed.path.lstrip("/"))
                 return
             if parsed.path.startswith("/vendor/"):
@@ -506,6 +516,26 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
                 if len(path_parts) == 6 and path_parts[3] == "editions" and path_parts[5] == "source":
                     _, source = self._edition(variant, urllib.parse.unquote(path_parts[4]))
                     self._send(HTTPStatus.OK, source.read_bytes(), "application/xml; charset=utf-8")
+                    return
+                if len(path_parts) == 6 and path_parts[3] == "editions" and path_parts[5] == "export-urdf":
+                    edition_id = urllib.parse.unquote(path_parts[4])
+                    _, source = self._edition(variant, edition_id)
+                    result = export_urdf_with_mjcf_collisions(
+                        variant,
+                        source,
+                        edition_id=edition_id,
+                        asset_root=self.asset_root,
+                    )
+                    self._send(
+                        HTTPStatus.OK,
+                        result.content,
+                        "application/xml; charset=utf-8",
+                        {
+                            "Content-Disposition": f'attachment; filename="{result.filename}"',
+                            "X-Menagerie-MJCF-Collision-Count": str(result.report.source_collision_count),
+                            "X-Menagerie-URDF-Collision-Count": str(result.report.output_collision_count),
+                        },
+                    )
                     return
                 if len(path_parts) == 7 and path_parts[3] == "editions" and path_parts[5] == "files":
                     requested = urllib.parse.unquote(path_parts[6])
@@ -564,6 +594,8 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
                     self._send(HTTPStatus.OK, candidate.read_bytes(), mimetypes.guess_type(candidate.name)[0] or "application/octet-stream")
                     return
             raise WorkbenchError("not found")
+        except UrdfCollisionExportError as exc:
+            self._json(HTTPStatus.UNPROCESSABLE_ENTITY, {"ok": False, "error": str(exc), "report": exc.report.as_dict()})
         except (WorkbenchError, AssetError, MjcfCandidateError) as exc:
             self._json(HTTPStatus.NOT_FOUND, {"ok": False, "error": str(exc)})
         except Exception as exc:

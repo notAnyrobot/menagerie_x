@@ -1,4 +1,5 @@
 import json
+import hashlib
 import pathlib
 import subprocess
 import sys
@@ -9,6 +10,7 @@ import unittest
 import urllib.error
 import urllib.request
 from unittest import mock
+import xml.etree.ElementTree as ET
 
 from menagerie_x.assets import variants
 from menagerie_x import cli as menagerie_cli
@@ -302,6 +304,14 @@ class WorkbenchTests(unittest.TestCase):
         with urllib.request.urlopen(f"{self.base_url}{path}") as response:
             return json.loads(response.read())
 
+    def _get_raw(self, path: str) -> tuple[int, dict[str, str], bytes]:
+        request = urllib.request.Request(f"{self.base_url}{path}")
+        try:
+            with urllib.request.urlopen(request) as response:
+                return response.status, {name.lower(): value for name, value in response.headers.items()}, response.read()
+        except urllib.error.HTTPError as error:
+            return error.code, {name.lower(): value for name, value in error.headers.items()}, error.read()
+
     def _post_json(self, path: str, payload: dict) -> tuple[int, dict]:
         return self._json_request(path, payload, "POST")
 
@@ -362,6 +372,39 @@ class WorkbenchTests(unittest.TestCase):
         self.assertEqual(default["kind"], "official")
         self.assertLess(default["modified_at"], 10**13)
         self.assertEqual(self._get_json("/api/robots/unitree_g1/mjcf-candidates")["candidates"], [])
+    def test_urdf_export_endpoint_downloads_astro_and_reports_blockers(self):
+        variant = variants(ROOT)["astro_v2"]
+        source_hashes = (hashlib.sha256(variant.urdf.read_bytes()).hexdigest(), hashlib.sha256(variant.mjcf.read_bytes()).hexdigest())
+        status, headers, body = self._get_raw("/api/robots/astro_v2/editions/astro_v2_primitive_collision/export-urdf")
+
+        self.assertEqual(status, 200)
+        self.assertEqual(headers["content-type"], "application/xml; charset=utf-8")
+        self.assertIn('filename="astro_v2-astro_v2_primitive_collision-collisions.urdf"', headers["content-disposition"])
+        self.assertEqual(headers["x-menagerie-mjcf-collision-count"], "47")
+        self.assertEqual(headers["x-menagerie-urdf-collision-count"], "125")
+        self.assertEqual(len(ET.fromstring(body).findall(".//collision")), 125)
+        self.assertEqual(source_hashes, (hashlib.sha256(variant.urdf.read_bytes()).hexdigest(), hashlib.sha256(variant.mjcf.read_bytes()).hexdigest()))
+
+        status, _headers, body = self._get_raw("/api/robots/soma23/editions/soma23_humanoid/export-urdf")
+        self.assertEqual(status, 422)
+        self.assertIn("urdf-unavailable", {issue["code"] for issue in json.loads(body)["report"]["issues"]})
+        status, _headers, body = self._get_raw("/api/robots/unitree_g1/editions/g1_29dof_with_hand_rev_1_0/export-urdf")
+        self.assertEqual(status, 422)
+        self.assertIn("unsupported-geom", {issue["code"] for issue in json.loads(body)["report"]["issues"]})
+        self.assertEqual(self._get_raw("/api/robots/astro_v2/editions/..%2Foutside/export-urdf")[0], 404)
+
+    def test_urdf_export_action_uses_saved_editions_without_touching_drafts(self):
+        page = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+        app = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+
+        self.assertIn('id="export-urdf"', page)
+        self.assertIn('id="urdf-export-status"', page)
+        self.assertIn('aria-live="polite"', page)
+        self.assertIn('from "/urdf-export.js"', app)
+        self.assertIn("async function exportSelectedUrdf()", app)
+        self.assertIn('`${editionBase()}/export-urdf`', app)
+        self.assertIn("Export URDF uses the selected saved MJCF edition", app)
+
 
     def test_flat_floor_scene_endpoint_and_workbench_adapter(self):
         scene = self._get_json("/api/scenes/flat_floor")["scene"]

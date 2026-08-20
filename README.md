@@ -32,6 +32,8 @@ uv run menagerie_x workbench
 
 The Workbench listens on localhost by default. Select a variant to inspect it, run validation, and work with collision geometry where the selected source format and edition support it.
 
+**Export URDF** transfers standard primitive collisions from the selected saved MJCF edition into a downloaded copy of the variant's canonical URDF. It never overwrites catalog files, excludes unsaved collision-draft edits, and blocks the download when a collision cannot be represented safely. Version one requires an existing canonical URDF and does not convert MJCF-only robots or mesh collisions.
+
 ## Asset formats
 
 The catalog supports both URDF and MJCF descriptions, depending on the robot version. Astro V2 is maintained from URDF; legacy Astro assets retain MJCF and Isaac material. MJCF-backed variants can also be checked or opened in native MuJoCo:
