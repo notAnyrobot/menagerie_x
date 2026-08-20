@@ -9,8 +9,8 @@ import time
 import unittest
 import urllib.error
 import urllib.request
-from unittest import mock
 import xml.etree.ElementTree as ET
+from unittest import mock
 
 from menagerie_x.assets import variants
 from menagerie_x import cli as menagerie_cli
@@ -364,14 +364,6 @@ class WorkbenchTests(unittest.TestCase):
         self.assertTrue(robots["soma23"]["workbench_loadable"])
         self.assertEqual(robots["soma23"]["source_provenance"]["repository"], "https://github.com/NVlabs/ProtoMotions")
 
-    def test_unitree_g1_editions_report_official_metadata_and_exclude_retargeting_reference_from_candidates(self):
-        editions = self._get_json("/api/robots/unitree_g1/editions")["editions"]
-        default = next(edition for edition in editions if edition["default"])
-
-        self.assertEqual(default["id"], "g1_29dof_with_hand_rev_1_0")
-        self.assertEqual(default["kind"], "official")
-        self.assertLess(default["modified_at"], 10**13)
-        self.assertEqual(self._get_json("/api/robots/unitree_g1/mjcf-candidates")["candidates"], [])
     def test_urdf_export_endpoint_downloads_astro_and_reports_blockers(self):
         variant = variants(ROOT)["astro_v2"]
         source_hashes = (hashlib.sha256(variant.urdf.read_bytes()).hexdigest(), hashlib.sha256(variant.mjcf.read_bytes()).hexdigest())
@@ -405,6 +397,14 @@ class WorkbenchTests(unittest.TestCase):
         self.assertIn('`${editionBase()}/export-urdf`', app)
         self.assertIn("Export URDF uses the selected saved MJCF edition", app)
 
+    def test_unitree_g1_editions_report_official_metadata_and_exclude_retargeting_reference_from_candidates(self):
+        editions = self._get_json("/api/robots/unitree_g1/editions")["editions"]
+        default = next(edition for edition in editions if edition["default"])
+
+        self.assertEqual(default["id"], "g1_29dof_with_hand_rev_1_0")
+        self.assertEqual(default["kind"], "official")
+        self.assertLess(default["modified_at"], 10**13)
+        self.assertEqual(self._get_json("/api/robots/unitree_g1/mjcf-candidates")["candidates"], [])
 
     def test_flat_floor_scene_endpoint_and_workbench_adapter(self):
         scene = self._get_json("/api/scenes/flat_floor")["scene"]
@@ -496,7 +496,7 @@ class WorkbenchTests(unittest.TestCase):
         self.assertIn("Unsaved collision edits and the current browser state will be discarded.", app)
         self.assertIn('apiRequest("/api/restart", "POST", {})', app)
         self.assertIn("window.location.reload()", app)
-        self.assertIn(".restart-workbench", styles)
+        self.assertIn(".restart-workbench { color: #1a0c0a; border-color: var(--sonic-danger); background: var(--sonic-danger);", styles)
 
     def test_scene_recordings_save_to_the_workbench_renderings_directory(self):
         status, response = self._post_rendering("astro-scene.mp4", b"fake-mp4")
@@ -522,7 +522,8 @@ class WorkbenchTests(unittest.TestCase):
         self.assertLess(reset_view_position, simulation_end)
         self.assertLess(toolbar_start, recording_position)
         self.assertLess(recording_position, toolbar_end)
-        self.assertIn('aria-describedby="scene-recording-state"', page)
+        self.assertIn('id="scene-recording-state" class="visually-hidden"', page)
+        self.assertNotIn(".scene-recording-toggle { color: var(--sonic-danger)", (WEB_ROOT / "styles.css").read_text(encoding="utf-8"))
         self.assertIn('aria-live="polite"', page)
 
     def test_workbench_starts_without_loading_a_default_edition(self):
@@ -852,12 +853,24 @@ class WorkbenchTests(unittest.TestCase):
         self.assertNotIn("new THREE.LineSegments(", app)
         self.assertIn("contact ? createCollisionMaterial(THREE) :", renderer)
 
-    def test_edition_list_cannot_widen_or_horizontally_scroll_the_menagerie(self):
+    def test_robot_and_edition_selection_use_constant_height_two_level_controls(self):
+        page = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+        app = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
         styles = (WEB_ROOT / "styles.css").read_text(encoding="utf-8")
 
-        self.assertIn(".menagerie { min-width: 0; overflow-x: hidden; }", styles)
-        self.assertIn(".robot-list, .element-list, .joint-list, .robot-entry, .edition-list { min-width: 0; }", styles)
-        self.assertIn(".robot-name > span:first-child, .robot-meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }", styles)
+        self.assertIn('id="robot-variant-select"', page)
+        self.assertIn('id="robot-edition-select" disabled', page)
+        self.assertIn('id="robot-selection-meta"', page)
+        self.assertIn('robotVariantSelect.addEventListener("change"', app)
+        self.assertIn('robotEditionSelect.addEventListener("change"', app)
+        self.assertNotIn('class="robot-row', page)
+        self.assertIn(".robot-selector { display: grid;", styles)
+
+    def test_viewer_legend_is_centered_and_transparent(self):
+        styles = (WEB_ROOT / "styles.css").read_text(encoding="utf-8")
+
+        self.assertIn(".viewer-overlay.legend { left: 50%;", styles)
+        self.assertIn("background: transparent; border-color: transparent;", styles)
 
 
 if __name__ == "__main__":

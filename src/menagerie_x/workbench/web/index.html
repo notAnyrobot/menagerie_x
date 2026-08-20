@@ -23,7 +23,17 @@
         <button id="export-urdf" type="button" disabled>Export URDF</button>
       </div>
       <p id="urdf-export-status" class="urdf-export-status" aria-live="polite"></p>
-      <div id="robot-list" class="robot-list" aria-live="polite"></div>
+      <div id="robot-list" class="robot-selector">
+        <label for="robot-variant-select">Robot variant</label>
+        <select id="robot-variant-select">
+          <option value="">Select a robot variant</option>
+        </select>
+        <label for="robot-edition-select">MJCF edition</label>
+        <select id="robot-edition-select" disabled>
+          <option value="">Select a robot variant first</option>
+        </select>
+        <p id="robot-selection-meta" class="robot-selection-meta" aria-live="polite">No robot selected.</p>
+      </div>
       <section class="simulation-panel" aria-label="Simulation controls">
         <span class="eyebrow">Simulation</span>
         <div class="simulation-row">
@@ -116,10 +126,8 @@
           <button id="restart-workbench" class="restart-workbench" type="button" title="Restart the local Workbench server and reload this page">Restart workbench</button>
           <button id="reload-description" disabled title="Reload the selected MJCF edition from disk">Reload menagerie</button>
           <button id="open-native-viewer" disabled title="Open the selected saved MJCF edition in native MuJoCo">Open in MuJoCo</button>
-          <div class="scene-recording-control">
-            <button id="scene-recording-toggle" class="scene-recording-toggle" type="button" disabled aria-describedby="scene-recording-state">Record scene</button>
-            <span id="scene-recording-state" class="scene-recording-state" aria-live="polite">Ready to record the 3D viewer.</span>
-          </div>
+          <button id="scene-recording-toggle" class="scene-recording-toggle" type="button" disabled>Record scene</button>
+          <span id="scene-recording-state" class="visually-hidden" aria-live="polite">Ready to record the 3D viewer.</span>
         </div>
       </header>
 

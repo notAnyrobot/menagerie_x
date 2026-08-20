@@ -27,7 +27,9 @@ const selectedElement = document.querySelector("#selected-element");
 const selectedSource = document.querySelector("#selected-source");
 const engineState = document.querySelector("#engine-state");
 const robotStatus = document.querySelector("#robot-status");
-const robotList = document.querySelector("#robot-list");
+const robotVariantSelect = document.querySelector("#robot-variant-select");
+const robotEditionSelect = document.querySelector("#robot-edition-select");
+const robotSelectionMeta = document.querySelector("#robot-selection-meta");
 const jointCount = document.querySelector("#joint-count");
 const jointList = document.querySelector("#joint-list");
 const elementList = document.querySelector("#element-list");
@@ -985,53 +987,53 @@ function editionDisplayName(edition) {
 }
 
 function renderRobotList() {
-  robotList.replaceChildren();
+  robotVariantSelect.replaceChildren(new Option("Select a robot variant", ""));
   for (const robot of catalog) {
-    const entry = document.createElement("div");
-    entry.className = "robot-entry";
-    const button = document.createElement("button");
-    button.className = `robot-row ${robot.id === activeRobot?.id ? "active" : ""}`;
-    button.innerHTML = `<span class="robot-name"><span></span><span class="badge"></span></span><span class="robot-meta"></span>`;
-    button.querySelector(".robot-name span").textContent = robot.name;
-    button.querySelector(".badge").textContent = robot.status;
     const errors = robot.summary.errors;
     const warnings = robot.summary.warnings;
-    const meta = errors ? `${errors} error${errors === 1 ? "" : "s"}` : warnings ? `${warnings} warning${warnings === 1 ? "" : "s"}` : "validated";
-    button.querySelector(".robot-meta").textContent = `${robot.dof} DOF · ${meta}`;
-    if (errors) button.querySelector(".badge").classList.add("error");
-    if (!errors && warnings) button.querySelector(".badge").classList.add("warning");
-    if (!robot.workbench_loadable) {
-      button.classList.add("requires-mjcf");
-      button.title = "No MJCF editions yet — import an edition or create one from the URDF.";
-      button.querySelector(".robot-meta").textContent = `${robot.dof} DOF · no MJCF editions`;
-    }
-    button.addEventListener("click", () => {
-      if (robot.id !== activeRobot?.id) selectRobot(robot.id);
-    });
-    entry.append(button);
-    if (robot.id === activeRobot?.id) {
-      const editions = document.createElement("div");
-      editions.className = "edition-list";
-      if (!mjcfEditions.length) {
-        const empty = document.createElement("span");
-        empty.className = "edition-empty";
-        empty.textContent = "No MJCF editions. Import one to visualize or edit this variant.";
-        editions.append(empty);
-      }
-      for (const edition of mjcfEditions) {
-        const option = document.createElement("button");
-        option.className = `edition-row ${edition.id === activeEdition?.id ? "active" : ""}`;
-        const stamp = edition.modified_at || edition.created_at;
-        option.innerHTML = `<span class="edition-row-name"></span><span class="edition-row-meta"></span>`;
-        option.querySelector(".edition-row-name").textContent = editionDisplayName(edition);
-        option.querySelector(".edition-row-meta").textContent = `${edition.kind}${stamp ? ` · ${new Date(stamp).toLocaleString()}` : ""}`;
-        option.addEventListener("click", () => selectEdition(edition.id));
-        editions.append(option);
-      }
-      entry.append(editions);
-    }
-    robotList.append(entry);
+    const validation = errors
+      ? `${errors} error${errors === 1 ? "" : "s"}`
+      : warnings
+        ? `${warnings} warning${warnings === 1 ? "" : "s"}`
+        : "validated";
+    const availability = robot.workbench_loadable ? validation : "no MJCF editions";
+    robotVariantSelect.append(new Option(`${robot.name} · ${robot.dof} DOF · ${availability}`, robot.id));
   }
+
+  robotVariantSelect.value = activeRobot?.id || "";
+  robotEditionSelect.replaceChildren();
+  if (!activeRobot) {
+    robotEditionSelect.append(new Option("Select a robot variant first", ""));
+    robotEditionSelect.disabled = true;
+    robotSelectionMeta.textContent = "No robot selected.";
+    return;
+  }
+
+  const errors = activeRobot.summary.errors;
+  const warnings = activeRobot.summary.warnings;
+  const validation = errors
+    ? `${errors} error${errors === 1 ? "" : "s"}`
+    : warnings
+      ? `${warnings} warning${warnings === 1 ? "" : "s"}`
+      : "validated";
+  if (!mjcfEditions.length) {
+    robotEditionSelect.append(new Option("No MJCF editions available", ""));
+    robotEditionSelect.disabled = true;
+    robotSelectionMeta.textContent = `${activeRobot.status} · ${activeRobot.dof} DOF · no MJCF editions`;
+    return;
+  }
+
+  robotEditionSelect.append(new Option("Select an MJCF edition", ""));
+  for (const edition of mjcfEditions) {
+    robotEditionSelect.append(new Option(editionDisplayName(edition), edition.id));
+  }
+  robotEditionSelect.disabled = false;
+  robotEditionSelect.value = activeEdition?.id || "";
+  const stamp = activeEdition?.modified_at || activeEdition?.created_at;
+  const editionMeta = activeEdition
+    ? `${activeEdition.kind}${stamp ? ` · ${new Date(stamp).toLocaleString()}` : ""}`
+    : "choose an MJCF edition";
+  robotSelectionMeta.textContent = `${activeRobot.status} · ${activeRobot.dof} DOF · ${validation} · ${editionMeta}`;
 }
 
 function jointUnit(joint) {
@@ -2256,6 +2258,7 @@ async function selectRobot(id) {
     assertCurrentLoad(token, controller);
     activeRobot = data.robot;
     activeEdition = null;
+    mjcfEditions = [];
     activeCandidateId = null;
     delete mjcfCandidateId.dataset.robotId;
     mjcfCandidateId.value = "";
@@ -2602,6 +2605,16 @@ restartWorkbenchButton.addEventListener("click", restartWorkbench);
 reloadDescriptionButton.addEventListener("click", reloadCurrentDescription);
 openNativeViewerButton.addEventListener("click", openNativeViewer);
 exportUrdfButton.addEventListener("click", exportSelectedUrdf);
+robotVariantSelect.addEventListener("change", () => {
+  const id = robotVariantSelect.value;
+  if (!id) return renderRobotList();
+  void selectRobot(id).finally(renderRobotList);
+});
+robotEditionSelect.addEventListener("change", () => {
+  const id = robotEditionSelect.value;
+  if (!id) return renderRobotList();
+  void selectEdition(id).finally(renderRobotList);
+});
 physicsToggle.addEventListener("click", togglePhysics);
 physicsReset.addEventListener("click", resetSimulation);
 followToggle.addEventListener("click", toggleFollow);
