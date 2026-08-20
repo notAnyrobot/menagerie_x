@@ -27,6 +27,7 @@ class Edition:
     urdf: Path | None
     mjcf: Path | None
     label: str
+    base_mode: str
     default: bool = False
     kind: str | None = None
     notes: str = ""
@@ -40,7 +41,12 @@ class Edition:
 
     @property
     def workbench_loadable(self) -> bool:
+        """Compatibility flag for legacy callers that require an MJCF model."""
         return self.formats["mjcf"]
+
+    @property
+    def viewable(self) -> bool:
+        return any(self.formats.values())
 
 
 @dataclasses.dataclass(frozen=True)
@@ -66,7 +72,7 @@ class Variant:
 
     @property
     def workbench_loadable(self) -> bool:
-        """Only an explicitly authorized, present MJCF may enter Workbench."""
+        """Compatibility flag for variants with a default MJCF model."""
         return self.mjcf is not None and self.mjcf.is_file()
 
     @property
@@ -179,6 +185,9 @@ def variants(root: Path | None = None) -> dict[str, Variant]:
             urdf_value = edition_raw.get("urdf")
             mjcf_value = edition_raw.get("mjcf")
             revisions = edition_raw.get("mjcf_revisions", [])
+            base_mode = edition_raw.get("base_mode")
+            if base_mode not in {"free", "fixed"}:
+                raise AssetError(f"variant {name!r} edition {edition_id!r} base_mode must be 'free' or 'fixed'")
             if not isinstance(revisions, list) or not all(isinstance(item, dict) for item in revisions):
                 raise AssetError(f"variant {name!r} edition {edition_id!r} mjcf_revisions must be a list of objects")
             parsed_editions.append(
@@ -189,6 +198,7 @@ def variants(root: Path | None = None) -> dict[str, Variant]:
                     urdf=robot_root / urdf_value if isinstance(urdf_value, str) and urdf_value else None,
                     mjcf=robot_root / mjcf_value if isinstance(mjcf_value, str) and mjcf_value else None,
                     label=str(edition_raw.get("label", edition_id)),
+                    base_mode=base_mode,
                     default=edition_id == default_edition,
                     kind=str(edition_raw["kind"]) if isinstance(edition_raw.get("kind"), str) else None,
                     notes=str(edition_raw.get("notes", "")),

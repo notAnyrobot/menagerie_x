@@ -55,11 +55,14 @@ from menagerie_x.commands.mjcf import (
     validate_candidate,
 )
 from menagerie_x.workbench.collisions import (
+    CollisionDraftStore,
     CollisionDraftNotFoundError,
     CollisionDocumentError,
     StaleCollisionDocumentError,
+    load_collision_document,
 )
 from menagerie_x.workbench.mjcf_collisions import MjcfCollisionDraftStore, load_mjcf_collision_document
+from menagerie_x.workbench.urdf_runtime import PreparedUrdfRuntime, UrdfRuntimeError, prepare_urdf_runtime
 
 
 class WorkbenchError(ValueError):
@@ -124,6 +127,7 @@ class NativeViewerProcessManager:
         self._launch: dict[str, str] | None = None
         self._state = "idle"
         self._error: str | None = None
+        self._runtime: PreparedUrdfRuntime | None = None
 
     def _read_stderr(self, stderr_log: Any) -> str:
         try:
@@ -156,12 +160,20 @@ class NativeViewerProcessManager:
                 self._state = "failed"
                 detail = stderr or f"MuJoCo viewer exited with status {return_code}."
                 self._error = detail[:500]
+            runtime, self._runtime = self._runtime, None
+        if runtime is not None:
+            runtime.close()
 
-    def launch(self, variant: Variant, edition: dict[str, Any], source: Path) -> dict[str, Any]:
+    def launch(self, variant: Variant, edition: dict[str, Any], source: Path, fmt: str = "mjcf", scene: dict[str, Any] | None = None) -> dict[str, Any]:
         source = source.resolve()
         if not _is_within(source, self._asset_root) or not source.is_file():
-            raise WorkbenchError("selected MJCF edition is not a packaged asset")
-        launch = {"variant": variant.name, "edition": str(edition["id"]), "source": str(source)}
+            raise WorkbenchError("selected description is not a packaged asset")
+        runtime = None
+        if fmt == "urdf":
+            logical = next(item for item in variant.editions if item.id == edition["id"])
+            runtime = prepare_urdf_runtime(logical, scene or {})
+            source = runtime.path
+        launch = {"variant": variant.name, "edition": str(edition["id"]), "format": fmt, "source": str(source)}
         command = [
             self._executable,
             "-m",
@@ -186,11 +198,14 @@ class NativeViewerProcessManager:
                 )
             except OSError as exc:
                 stderr_log.close()
+                if runtime is not None:
+                    runtime.close()
                 self._state = "failed"
                 self._error = str(exc)[:500]
                 self._launch = launch
                 raise NativeViewerLaunchError(f"could not launch MuJoCo viewer: {exc}") from exc
             self._process = process
+            self._runtime = runtime
             self._launch = launch
             self._state = "running"
             self._error = None
@@ -221,6 +236,10 @@ class NativeViewerProcessManager:
             process.kill()
             if watcher is not None:
                 watcher.join(timeout=2)
+        with self._lock:
+            runtime, self._runtime = self._runtime, None
+        if runtime is not None:
+            runtime.close()
 
 
 def _is_within(path: Path, directory: Path) -> bool:
@@ -247,7 +266,8 @@ def _serialize_inspection(inspection: RobotInspection, root: Path | None = None)
             "mjcf": any(edition["formats"]["mjcf"] for edition in editions),
         },
         "workbench_loadable": any(edition["workbench_loadable"] for edition in editions),
-        "conversion_guidance": None if any(edition["workbench_loadable"] for edition in editions) else "Select an edition with MJCF to use the Workbench viewer, or import/convert an MJCF description.",
+        "viewable": any(edition["viewable"] for edition in editions),
+        "conversion_guidance": None if any(edition["viewable"] for edition in editions) else "Select an edition with URDF or MJCF to use the Workbench viewer.",
         "mjcf_provenance": variant.mjcf_provenance,
         "source_provenance": variant.source_provenance,
         "source_revision": variant.urdf_revision,
@@ -277,9 +297,26 @@ def _serialize_edition(edition: Edition) -> dict[str, Any]:
         "id": edition.id,
         "label": edition.label,
         "dof": edition.dof,
+        "base_mode": edition.base_mode,
         "default": edition.default,
         "formats": edition.formats,
         "workbench_loadable": edition.workbench_loadable,
+        "viewable": edition.viewable,
+        "capabilities": {
+            fmt: {"visualization": edition.formats[fmt], "physics": edition.formats[fmt], "contacts": edition.formats[fmt], "pushing": edition.formats[fmt], "native_viewer": edition.formats[fmt], "recording": edition.formats[fmt], "collision_editor": edition.formats[fmt]}
+            for fmt in ("urdf", "mjcf")
+        } | {
+            "visualization": edition.viewable,
+            "physics": edition.formats["mjcf"],
+            "contacts": edition.formats["mjcf"],
+            "pushing": edition.formats["mjcf"],
+            "native_viewer": edition.formats["mjcf"],
+            "recording": edition.formats["mjcf"],
+            "collision_editor": edition.formats["mjcf"],
+        },
+        # Older clients read this flat visualization bit.  Detailed controls
+        # are deliberately indexed by active description format above.
+        "visualization": edition.viewable,
         "notes": edition.notes,
         "mjcf_provenance": edition.mjcf_provenance,
         "source_provenance": edition.source_provenance,
@@ -287,6 +324,10 @@ def _serialize_edition(edition: Edition) -> dict[str, Any]:
         "kind": source_kind,
         "role": "default" if edition.default else "edition",
         "output_path": str(source.resolve()) if source is not None else None,
+        "source_paths": {
+            "urdf": str(edition.urdf.resolve()) if edition.urdf is not None and edition.urdf.is_file() else None,
+            "mjcf": str(edition.mjcf.resolve()) if edition.mjcf is not None and edition.mjcf.is_file() else None,
+        },
         "modified_at": source.stat().st_mtime_ns // 1_000_000 if source is not None and source.is_file() else None,
     }
 
@@ -302,6 +343,7 @@ def _web_root() -> Path:
 class WorkbenchRequestHandler(BaseHTTPRequestHandler):
     asset_root: Path
     draft_store: MjcfCollisionDraftStore
+    urdf_draft_store: CollisionDraftStore
     native_viewer: NativeViewerProcessManager
     renderings_directory: Path
     restart_command: list[str]
@@ -403,6 +445,7 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
             try:
                 self.native_viewer.close()
                 self.draft_store.close()
+                self.urdf_draft_store.close()
                 type(self).restart_executor(type(self).restart_command)
             except Exception as exc:  # pragma: no cover - only reached when exec fails
                 with self.restart_lock:
@@ -448,24 +491,60 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
                 "unverified": "native MuJoCo validation is unavailable on the server",
             }
 
-    def _edition(self, variant: Variant, edition_id: str) -> tuple[dict[str, Any], Path]:
-        """Resolve a logical edition, never an arbitrary XML filename."""
+    def _logical_edition(self, variant: Variant, edition_id: str) -> Edition:
+        """Resolve a manifest edition without choosing a description format."""
         for edition in variant.editions:
             if edition.id != edition_id:
                 continue
-            if not edition.workbench_loadable or edition.mjcf is None:
-                raise WorkbenchError(
-                    f"edition {edition_id!r} for {variant.name} has no MJCF description; "
-                    "choose an MJCF-backed edition to inspect or edit it"
-                )
-            source = edition.mjcf
+            return edition
+        raise WorkbenchError(f"edition {edition_id!r} does not exist for {variant.name}")
+
+    def _edition_source(self, variant: Variant, edition_id: str, fmt: str) -> tuple[dict[str, Any], Path]:
+        """Resolve one packaged source for a logical edition and explicit format."""
+        if fmt not in {"urdf", "mjcf"}:
+            raise WorkbenchError("description format must be 'urdf' or 'mjcf'")
+        edition = self._logical_edition(variant, edition_id)
+        source = edition.urdf if fmt == "urdf" else edition.mjcf
+        if source is None or not source.is_file():
+            raise WorkbenchError(f"edition {edition_id!r} for {variant.name} has no {fmt.upper()} description")
+        return _serialize_edition(edition), source
+
+    def _collision_backend(self, variant: Variant, edition_id: str, fmt: str) -> tuple[Any, Path]:
+        """Return the selected format's draft owner and packaged source."""
+        if fmt not in {"urdf", "mjcf"}:
+            raise WorkbenchError("collision draft format must be 'urdf' or 'mjcf'")
+        _, source = self._edition_source(variant, edition_id, fmt)
+        return (self.urdf_draft_store if fmt == "urdf" else self.draft_store), source
+
+    @staticmethod
+    def _requested_format(parsed: urllib.parse.ParseResult, payload: dict[str, Any] | None = None) -> str:
+        query_format = urllib.parse.parse_qs(parsed.query).get("format", [None])[0]
+        payload_format = payload.get("format") if payload else None
+        fmt = payload_format or query_format or "mjcf"
+        if fmt not in {"urdf", "mjcf"}:
+            raise WorkbenchError("description format must be 'urdf' or 'mjcf'")
+        return fmt
+
+    def _edition(self, variant: Variant, edition_id: str) -> tuple[dict[str, Any], Path]:
+        """Resolve the MJCF source required by legacy simulation/editor routes."""
+        try:
+            record, source = self._edition_source(variant, edition_id, "mjcf")
             return {
-                **_serialize_edition(edition),
-                "kind": "default" if edition.default else "edition",
-                "role": "default" if edition.default else "edition",
+                **record,
+                "kind": "default" if record["default"] else "edition",
+                "role": "default" if record["default"] else "edition",
                 "revision": load_mjcf_collision_document(source).revision,
                 "output_path": str(source.resolve()),
             }, source
+        except WorkbenchError as exc:
+            # Retain candidate/revision fallback below, but give the browser a
+            # format-specific diagnostic for real manifest editions.
+            missing_manifest_edition = any(edition.id == edition_id for edition in variant.editions)
+            if missing_manifest_edition:
+                raise WorkbenchError(
+                    f"edition {edition_id!r} for {variant.name} has no MJCF description; "
+                    "MJCF simulation and collision authoring are unavailable"
+                ) from exc
         # Compatibility for existing candidate/revision endpoints.  These
         # records are intentionally excluded from the primary edition picker.
         for record in list_mjcf_editions(variant, self.asset_root):
@@ -524,16 +603,46 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
         content_type = "application/wasm" if path.suffix == ".wasm" else "text/javascript; charset=utf-8"
         self._send(HTTPStatus.OK, path.read_bytes(), content_type)
 
+    def _serve_urdf_vendor(self, filename: str) -> None:
+        """Serve the two browser modules urdf-loader needs, never node_modules generally."""
+        vendor = {
+            "URDFLoader.js": _web_root() / "node_modules" / "urdf-loader" / "src" / "URDFLoader.js",
+            "URDFClasses.js": _web_root() / "node_modules" / "urdf-loader" / "src" / "URDFClasses.js",
+        }
+        path = vendor.get(filename)
+        if path is None or not path.is_file():
+            raise WorkbenchError("browser URDF dependency is missing; run npm install in src/menagerie_x/workbench/web")
+        content = path.read_bytes()
+        if filename == "URDFLoader.js":
+            # Keep the official loader implementation, but map its optional
+            # examples imports through the deliberately small vendor surface.
+            # Menagerie currently packages STL meshes only; unsupported
+            # COLLADA requests fail through the loader callback instead of
+            # broadening the server to arbitrary examples/node_modules files.
+            text = content.decode("utf-8")
+            text = text.replace(
+                "import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';",
+                'import { STLLoader } from "/vendor/STLLoader.js";',
+            ).replace(
+                "import { ColladaLoader } from 'three/examples/jsm/loaders/ColladaLoader.js';",
+                'class ColladaLoader { load(_url, _loaded, _progress, failed) { failed?.(new Error("COLLADA meshes are unsupported; use STL.")); } }',
+            )
+            content = text.encode("utf-8")
+        self._send(HTTPStatus.OK, content, "text/javascript; charset=utf-8")
+
     def do_GET(self) -> None:
         try:
             parsed = urllib.parse.urlparse(self.path)
             if parsed.path == "/":
                 self._serve_web_file("index.html")
                 return
-            if parsed.path in {"/app.js", "/collision-editor.js", "/contact-visualizer.js", "/diagnostics.js", "/mjcf-renderer.js", "/mujoco-visualization.js", "/scene-recording.js", "/urdf-export.js", "/styles.css"}:
+            if parsed.path in {"/app.js", "/collision-editor.js", "/contact-visualizer.js", "/description-selection.js", "/diagnostics.js", "/mjcf-renderer.js", "/mujoco-visualization.js", "/scene-recording.js", "/urdf-export.js", "/urdf-renderer.js", "/urdf-utils.js", "/urdf-load-lifecycle.js", "/styles.css"}:
                 self._serve_web_file(parsed.path.lstrip("/"))
                 return
             if parsed.path.startswith("/vendor/"):
+                if parsed.path.startswith("/vendor/urdf/"):
+                    self._serve_urdf_vendor(parsed.path.removeprefix("/vendor/urdf/"))
+                    return
                 self._serve_vendor(parsed.path.removeprefix("/vendor/"))
                 return
             if parsed.path == "/api/robots":
@@ -556,17 +665,34 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
                     return
                 if len(path_parts) == 4 and path_parts[3] == "source":
                     fmt = urllib.parse.parse_qs(parsed.query).get("format", ["mjcf"])[0]
-                    if fmt != "mjcf" or not variant.workbench_loadable:
-                        raise WorkbenchError(f"{variant.name} has no authorized MJCF source")
-                    source = variant.mjcf
+                    if variant.default_edition is None:
+                        raise WorkbenchError(f"{variant.name} has no default edition")
+                    _, source = self._edition_source(variant, variant.default_edition, fmt)
                     self._send(HTTPStatus.OK, source.read_bytes(), "application/xml; charset=utf-8")
                     return
                 if len(path_parts) == 4 and path_parts[3] == "editions":
                     self._json(HTTPStatus.OK, {"ok": True, "editions": self._editions(variant)})
                     return
                 if len(path_parts) == 6 and path_parts[3] == "editions" and path_parts[5] == "source":
-                    _, source = self._edition(variant, urllib.parse.unquote(path_parts[4]))
+                    fmt = urllib.parse.parse_qs(parsed.query).get("format", ["mjcf"])[0]
+                    _, source = self._edition_source(variant, urllib.parse.unquote(path_parts[4]), fmt)
                     self._send(HTTPStatus.OK, source.read_bytes(), "application/xml; charset=utf-8")
+                    return
+                if len(path_parts) == 6 and path_parts[3] == "editions" and path_parts[5] == "runtime":
+                    fmt = urllib.parse.parse_qs(parsed.query).get("format", ["mjcf"])[0]
+                    edition_id = urllib.parse.unquote(path_parts[4])
+                    edition = self._logical_edition(variant, edition_id)
+                    if fmt == "mjcf":
+                        _, source = self._edition_source(variant, edition_id, fmt)
+                        self._send(HTTPStatus.OK, source.read_bytes(), "application/xml; charset=utf-8")
+                    elif fmt == "urdf":
+                        runtime = prepare_urdf_runtime(edition, resolve_scene(variant, self.asset_root).as_dict())
+                        try:
+                            self._send(HTTPStatus.OK, runtime.path.read_bytes(), "application/xml; charset=utf-8")
+                        finally:
+                            runtime.close()
+                    else:
+                        raise WorkbenchError("description format must be 'urdf' or 'mjcf'")
                     return
                 if len(path_parts) == 6 and path_parts[3] == "editions" and path_parts[5] == "export-urdf":
                     edition_id = urllib.parse.unquote(path_parts[4])
@@ -596,13 +722,35 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
                     self._send(HTTPStatus.OK, candidate.read_bytes(), mimetypes.guess_type(candidate.name)[0] or "application/octet-stream")
                     return
                 if len(path_parts) == 6 and path_parts[3] == "editions" and path_parts[5] == "collisions":
-                    _, source = self._edition(variant, urllib.parse.unquote(path_parts[4]))
-                    self._json(HTTPStatus.OK, {"ok": True, **load_mjcf_collision_document(source).as_dict()})
+                    fmt = self._requested_format(parsed)
+                    _, source = self._collision_backend(variant, urllib.parse.unquote(path_parts[4]), fmt)
+                    document = load_collision_document(source) if fmt == "urdf" else load_mjcf_collision_document(source)
+                    self._json(HTTPStatus.OK, {"ok": True, **document.as_dict()})
                     return
                 if len(path_parts) == 8 and path_parts[3] == "editions" and path_parts[5] == "collision-drafts" and path_parts[7] == "source":
-                    _, source = self._edition(variant, urllib.parse.unquote(path_parts[4]))
-                    payload = self.draft_store.source_bytes(path_parts[6], source)
+                    fmt = self._requested_format(parsed)
+                    store, source = self._collision_backend(variant, urllib.parse.unquote(path_parts[4]), fmt)
+                    payload = store.source_bytes(path_parts[6], source)
                     self._send(HTTPStatus.OK, payload, "application/xml; charset=utf-8")
+                    return
+                if len(path_parts) == 8 and path_parts[3] == "editions" and path_parts[5] == "collision-drafts" and path_parts[7] == "runtime":
+                    fmt = self._requested_format(parsed)
+                    if fmt != "urdf":
+                        raise WorkbenchError("draft runtime is required only for URDF")
+                    edition_id = urllib.parse.unquote(path_parts[4])
+                    store, source = self._collision_backend(variant, edition_id, fmt)
+                    temporary = store.source_bytes(path_parts[6], source)
+                    with tempfile.NamedTemporaryFile(suffix=".urdf", delete=False) as output:
+                        output.write(temporary)
+                        draft_path = Path(output.name)
+                    try:
+                        runtime = prepare_urdf_runtime(self._logical_edition(variant, edition_id), resolve_scene(variant, self.asset_root).as_dict(), draft_path)
+                        try:
+                            self._send(HTTPStatus.OK, runtime.path.read_bytes(), "application/xml; charset=utf-8")
+                        finally:
+                            runtime.close()
+                    finally:
+                        draft_path.unlink(missing_ok=True)
                     return
                 if len(path_parts) == 4 and path_parts[3] == "mjcf-candidates":
                     self._json(HTTPStatus.OK, {"ok": True, "candidates": list_managed_candidates(variant.name, self.asset_root)})
@@ -722,21 +870,25 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
                     self._json(HTTPStatus.OK, {"ok": True, **set_default_mjcf_edition(variant.name, edition_id, self.asset_root)})
                     return
             if len(path_parts) == 6 and path_parts[3] == "editions" and path_parts[5] == "native-viewer":
-                if payload:
-                    raise NativeViewerRequestError("native viewer requests must use an empty JSON object")
+                fmt = payload.get("format", "mjcf")
+                if fmt not in {"urdf", "mjcf"} or set(payload) - {"format"}:
+                    raise NativeViewerRequestError("native viewer requests may specify only format 'urdf' or 'mjcf'")
                 if not _loopback_host(str(self.server.server_address[0])):
                     self._json(HTTPStatus.FORBIDDEN, {"ok": False, "error": "native MuJoCo viewer launch is available only on a loopback-bound workbench"})
                     return
-                edition, source = self._edition(variant, urllib.parse.unquote(path_parts[4]))
-                self._json(HTTPStatus.ACCEPTED, self.native_viewer.launch(variant, edition, source) | {"ok": True, "available": True})
+                edition_id = urllib.parse.unquote(path_parts[4])
+                edition, source = self._edition_source(variant, edition_id, fmt)
+                self._json(HTTPStatus.ACCEPTED, self.native_viewer.launch(variant, edition, source, fmt, resolve_scene(variant, self.asset_root).as_dict()) | {"ok": True, "available": True})
                 return
             if len(path_parts) == 6 and path_parts[3] == "editions" and path_parts[5] == "collision-drafts":
-                _, source = self._edition(variant, urllib.parse.unquote(path_parts[4]))
-                self._json(HTTPStatus.CREATED, {"ok": True, **self.draft_store.create(source).as_dict()})
+                fmt = self._requested_format(parsed, payload)
+                store, source = self._collision_backend(variant, urllib.parse.unquote(path_parts[4]), fmt)
+                self._json(HTTPStatus.CREATED, {"ok": True, **store.create(source).as_dict()})
                 return
             if len(path_parts) == 8 and path_parts[3] == "editions" and path_parts[5] == "collision-drafts" and path_parts[7] == "reset":
-                _, source = self._edition(variant, urllib.parse.unquote(path_parts[4]))
-                self._json(HTTPStatus.OK, {"ok": True, **self.draft_store.reset(path_parts[6], source).as_dict()})
+                fmt = self._requested_format(parsed, payload)
+                store, source = self._collision_backend(variant, urllib.parse.unquote(path_parts[4]), fmt)
+                self._json(HTTPStatus.OK, {"ok": True, **store.reset(path_parts[6], source).as_dict()})
                 return
             if len(path_parts) == 8 and path_parts[3] == "editions" and path_parts[5] == "collision-drafts" and path_parts[7] == "mirror-preview":
                 revision = payload.get("revision")
@@ -745,8 +897,9 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
                     raise CollisionDocumentError("revision is required")
                 if not isinstance(direction, str):
                     raise CollisionDocumentError("mirror direction is required")
-                _, source = self._edition(variant, urllib.parse.unquote(path_parts[4]))
-                preview = self.draft_store.mirror_preview(path_parts[6], source, revision, direction)
+                fmt = self._requested_format(parsed, payload)
+                store, source = self._collision_backend(variant, urllib.parse.unquote(path_parts[4]), fmt)
+                preview = store.mirror_preview(path_parts[6], source, revision, direction)
                 self._json(HTTPStatus.OK, {"ok": True, **preview})
                 return
             if len(path_parts) == 8 and path_parts[3] == "editions" and path_parts[5] == "collision-drafts" and path_parts[7] == "mirror":
@@ -758,8 +911,9 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
                     raise CollisionDocumentError("mirror direction is required")
                 if payload.get("confirmed") is not True:
                     raise CollisionDocumentError("mirror confirmation is required before overwriting target collision shapes")
-                _, source = self._edition(variant, urllib.parse.unquote(path_parts[4]))
-                session, preview = self.draft_store.mirror(path_parts[6], source, revision, direction)
+                fmt = self._requested_format(parsed, payload)
+                store, source = self._collision_backend(variant, urllib.parse.unquote(path_parts[4]), fmt)
+                session, preview = store.mirror(path_parts[6], source, revision, direction)
                 self._json(HTTPStatus.OK, {"ok": True, **session.as_dict(), "mirror": preview})
                 return
             if len(path_parts) == 8 and path_parts[3] == "editions" and path_parts[5] == "collision-drafts" and path_parts[7] == "export":
@@ -767,7 +921,12 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
                 if not isinstance(revision, str):
                     raise CollisionDocumentError("revision is required")
                 edition_id = urllib.parse.unquote(path_parts[4])
-                _, source = self._edition(variant, edition_id)
+                fmt = self._requested_format(parsed, payload)
+                store, source = self._collision_backend(variant, edition_id, fmt)
+                if fmt == "urdf":
+                    output = store.export(path_parts[6], source, revision)
+                    self._json(HTTPStatus.CREATED, {"ok": True, "output_path": str(output), "edition_id": edition_id, "revision": load_collision_document(output).revision})
+                    return
                 candidate, report, parent_id = self._edition_export_parent(variant, edition_id)
                 output = self.draft_store.export(
                     path_parts[6], source, revision, source_variant=variant.name,
@@ -783,7 +942,12 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
                     raise CollisionDocumentError("revision is required")
                 if payload.get("edition_id") != edition_id:
                     raise CollisionDocumentError("edition_id confirmation must match the selected edition")
-                _, source = self._edition(variant, edition_id)
+                fmt = self._requested_format(parsed, payload)
+                store, source = self._collision_backend(variant, edition_id, fmt)
+                if fmt == "urdf":
+                    output = store.overwrite(path_parts[6], source, revision)
+                    self._json(HTTPStatus.OK, {"ok": True, "output_path": str(output), "edition_id": edition_id, "revision": load_collision_document(output).revision})
+                    return
                 metadata, metadata_path = self._edition_overwrite_metadata(variant, edition_id, source)
                 output = self.draft_store.overwrite(
                     path_parts[6], source, revision, metadata, metadata_path
@@ -859,7 +1023,7 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
             self._json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
         except CollisionDraftNotFoundError as exc:
             self._json(HTTPStatus.NOT_FOUND, {"ok": False, "error": str(exc)})
-        except (WorkbenchError, AssetError, MjcfCandidateError) as exc:
+        except (WorkbenchError, AssetError, MjcfCandidateError, UrdfRuntimeError) as exc:
             self._json(HTTPStatus.NOT_FOUND, {"ok": False, "error": str(exc)})
         except CollisionDocumentError as exc:
             self._json(HTTPStatus.BAD_REQUEST, {"ok": False, "error": str(exc)})
@@ -876,8 +1040,9 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
                 revision = payload.get("revision")
                 if not isinstance(revision, str):
                     raise CollisionDocumentError("revision is required")
-                _, source = self._edition(variant, urllib.parse.unquote(path_parts[4]))
-                session = self.draft_store.update(path_parts[6], source, revision, payload.get("primitives"), payload.get("retained_mesh_ids"))
+                fmt = self._requested_format(parsed, payload)
+                store, source = self._collision_backend(variant, urllib.parse.unquote(path_parts[4]), fmt)
+                session = store.update(path_parts[6], source, revision, payload.get("primitives"), payload.get("retained_mesh_ids"))
                 self._json(HTTPStatus.OK, {"ok": True, **session.as_dict()})
                 return
             if len(path_parts) == 7 and path_parts[:2] == ["api", "robots"] and path_parts[3] == "mjcf-candidates" and path_parts[5] == "collision-drafts":
@@ -929,8 +1094,9 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
                 return
             if len(path_parts) == 7 and path_parts[:2] == ["api", "robots"] and path_parts[3] == "editions" and path_parts[5] == "collision-drafts":
                 variant = self._variant(urllib.parse.unquote(path_parts[2]))
-                _, source = self._edition(variant, urllib.parse.unquote(path_parts[4]))
-                self.draft_store.discard(path_parts[6], source)
+                fmt = self._requested_format(parsed)
+                store, source = self._collision_backend(variant, urllib.parse.unquote(path_parts[4]), fmt)
+                store.discard(path_parts[6], source)
                 self._json(HTTPStatus.OK, {"ok": True})
                 return
             if len(path_parts) == 7 and path_parts[:2] == ["api", "robots"] and path_parts[3] == "mjcf-candidates" and path_parts[5] == "collision-drafts":
@@ -967,11 +1133,13 @@ class WorkbenchServer(ThreadingHTTPServer):
     """HTTP server that releases drafts and owned native viewers when it stops."""
 
     draft_store: MjcfCollisionDraftStore
+    urdf_draft_store: CollisionDraftStore
     native_viewer: NativeViewerProcessManager
 
     def server_close(self) -> None:
         self.native_viewer.close()
         self.draft_store.close()
+        self.urdf_draft_store.close()
         super().server_close()
 
 
@@ -986,6 +1154,7 @@ def _make_handler(
 
     Handler.asset_root = get_asset_paths(root).root
     Handler.draft_store = MjcfCollisionDraftStore()
+    Handler.urdf_draft_store = CollisionDraftStore()
     Handler.native_viewer = NativeViewerProcessManager(Handler.asset_root, process_factory)
     Handler.renderings_directory = (renderings_directory or Path.home() / "Videos" / "menagerie_workbench" / "renderings").expanduser()
     Handler.restart_command = _workbench_restart_command(Handler.asset_root, "", 0)
@@ -1005,6 +1174,7 @@ def create_server(
 ) -> WorkbenchServer:
     server = WorkbenchServer((host, port), _make_handler(root, process_factory, renderings_directory, restart_executor))
     server.draft_store = server.RequestHandlerClass.draft_store
+    server.urdf_draft_store = server.RequestHandlerClass.urdf_draft_store
     server.native_viewer = server.RequestHandlerClass.native_viewer
     bound_host, bound_port = server.server_address
     server.RequestHandlerClass.restart_command = _workbench_restart_command(server.RequestHandlerClass.asset_root, str(bound_host), bound_port)

@@ -2,6 +2,14 @@ import * as THREE from "/vendor/three.module.js";
 import { OrbitControls } from "/vendor/OrbitControls.js";
 import loadMujoco from "/vendor/mujoco.js";
 import { createMjcfRenderer } from "/mjcf-renderer.js";
+import { createUrdfRenderer } from "/urdf-renderer.js";
+import { urdfSceneTransform } from "/urdf-utils.js";
+import {
+  availableDescriptionFormats,
+  editionForFormat,
+  editionsForFormat,
+  initialDescriptionSelection,
+} from "/description-selection.js";
 import {
   POSITION_SLIDER_LIMIT,
   PRIMITIVE_TYPES,
@@ -29,6 +37,8 @@ const engineState = document.querySelector("#engine-state");
 const robotStatus = document.querySelector("#robot-status");
 const robotVariantSelect = document.querySelector("#robot-variant-select");
 const robotEditionSelect = document.querySelector("#robot-edition-select");
+const descriptionFormatSelect = document.querySelector("#description-format-select");
+const descriptionFormatHelp = document.querySelector("#description-format-help");
 const robotSelectionMeta = document.querySelector("#robot-selection-meta");
 const jointCount = document.querySelector("#joint-count");
 const jointList = document.querySelector("#joint-list");
@@ -44,14 +54,14 @@ const contactToggle = document.querySelector("#contact-toggle");
 const meshOpacity = document.querySelector("#mesh-opacity");
 const meshOpacityValue = document.querySelector("#mesh-opacity-value");
 const centerOfMassToggle = document.querySelector("#center-of-mass-toggle");
-const linkFrameToggle = document.querySelector("#link-frame-toggle");
-const worldFrameToggle = document.querySelector("#world-frame-toggle");
+const objectFrameToggle = document.querySelector("#object-frame-toggle");
 const jointAxisToggle = document.querySelector("#joint-axis-toggle");
 const simulationState = document.querySelector("#simulation-state");
 const collisionLink = document.querySelector("#collision-link");
 const collisionList = document.querySelector("#collision-list");
 const collisionDetail = document.querySelector("#collision-detail");
 const collisionStatus = document.querySelector("#collision-status");
+const collisionDraftTitle = document.querySelector("#collision-draft-title");
 const collisionExport = document.querySelector("#collision-export");
 const collisionOverwrite = document.querySelector("#collision-overwrite");
 const collisionMirrorLeftToRight = document.querySelector("#collision-mirror-left-to-right");
@@ -69,6 +79,8 @@ const openNativeViewerButton = document.querySelector("#open-native-viewer");
 const addRobotVariantButton = document.querySelector("#add-robot-variant");
 const importMjcfEditionButton = document.querySelector("#import-mjcf-edition");
 const exportUrdfButton = document.querySelector("#export-urdf");
+const previewUrdfButton = document.querySelector("#preview-urdf");
+const leaveUrdfPreviewButton = document.querySelector("#leave-urdf-preview");
 const urdfExportStatus = document.querySelector("#urdf-export-status");
 const editionSetDefaultButton = document.querySelector("#edition-set-default");
 const editionDuplicateButton = document.querySelector("#edition-duplicate");
@@ -114,9 +126,14 @@ const contactVisualizer = createContactVisualizer(scene);
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 const mjcfRenderer = createMjcfRenderer(robotGroup);
+const urdfRenderer = createUrdfRenderer(robotGroup, {
+  editionFilesUrl: relative => `${editionBase()}/files/${encodeURIComponent(relative)}`,
+});
 let catalog = [];
 let activeRobot = null;
 let activeEdition = null;
+let activeFormat = null;
+let exportedUrdfPreview = false;
 let urdfExportBusy = false;
 let activeCandidateId = null;
 let mjcfCandidates = [];
@@ -136,8 +153,7 @@ let collisionShapesVisible = false;
 let contactsVisible = false;
 let meshOpacityPercent = 100;
 let centersOfMassVisible = false;
-let linkFramesVisible = false;
-let worldFrameVisible = false;
+let objectFramesVisible = false;
 let jointAxesVisible = false;
 let physicsAccumulator = 0;
 let pointerGesture = null;
@@ -204,6 +220,40 @@ function editionBase(edition = activeEdition) {
   return `/api/robots/${encodeURIComponent(activeRobot.id)}/editions/${encodeURIComponent(edition.id)}`;
 }
 
+function isUrdfMode() {
+  return activeFormat === "urdf";
+}
+
+function activeCapabilities() {
+  if (isUrdfMode()) return {
+    visualization: true, physics: Boolean(simulationModel), contacts: Boolean(simulationModel),
+    pushing: Boolean(simulationModel), nativeViewer: true, recording: true, collisionEditor: true,
+  };
+  return {
+    visualization: Boolean(simulationModel), physics: Boolean(simulationModel), contacts: Boolean(simulationModel),
+    pushing: Boolean(simulationModel), nativeViewer: Boolean(simulationModel), recording: Boolean(simulationModel), collisionEditor: Boolean(simulationModel),
+  };
+}
+
+function configureDescriptionFormats() {
+  descriptionFormatSelect.replaceChildren();
+  if (!activeRobot) {
+    descriptionFormatSelect.append(new Option("Select a robot variant first", ""));
+    descriptionFormatSelect.disabled = true;
+    descriptionFormatHelp.textContent = "Choose a robot variant to see its description formats.";
+    return;
+  }
+  const formats = availableDescriptionFormats(activeRobot.editions || []);
+  for (const format of formats) descriptionFormatSelect.append(new Option(format.toUpperCase(), format));
+  descriptionFormatSelect.disabled = formats.length < 2 || exportedUrdfPreview;
+  descriptionFormatSelect.value = activeFormat || formats[0] || "";
+  descriptionFormatHelp.textContent = exportedUrdfPreview
+    ? "Previewing the exact bytes produced by Export URDF. Return to the selected catalog description when finished."
+    : isUrdfMode()
+      ? "URDF uses its authored visual hierarchy and a temporary MuJoCo runtime when compilation succeeds."
+      : "MJCF is selected: MuJoCo simulation and collision authoring are available.";
+}
+
 function collisionDraftHasChanges() {
   return collisionMode && collisionDraftDirty;
 }
@@ -215,7 +265,7 @@ function activateTab(name) {
 }
 
 function updateReloadDescriptionControl() {
-  reloadDescriptionButton.disabled = descriptionReloading || !activeRobot || !activeEdition?.workbench_loadable;
+  reloadDescriptionButton.disabled = descriptionReloading || !activeRobot || !activeEdition?.viewable;
   importMjcfEditionButton.disabled = !activeRobot;
   editionSetDefaultButton.disabled = !activeEdition || activeEdition.default;
   editionDuplicateButton.disabled = !activeEdition;
@@ -227,6 +277,7 @@ function updateReloadDescriptionControl() {
 function updateUrdfExportControl() {
   const available = Boolean(activeRobot && activeEdition?.formats?.urdf && activeEdition?.formats?.mjcf);
   exportUrdfButton.disabled = urdfExportBusy || !available;
+  previewUrdfButton.disabled = urdfExportBusy || !available;
   exportUrdfButton.title = !activeRobot
     ? "Select a robot variant"
     : !activeEdition
@@ -236,6 +287,37 @@ function updateUrdfExportControl() {
         : !activeEdition.formats?.mjcf
           ? "This edition has no MJCF description"
         : "Download a URDF using collisions from the selected saved MJCF description";
+}
+
+async function previewExportedUrdf() {
+  if (!activeRobot || !activeEdition || !activeEdition.formats?.urdf || !activeEdition.formats?.mjcf || urdfExportBusy) return;
+  urdfExportBusy = true;
+  updateUrdfExportControl();
+  setUrdfExportStatus("Generating exported URDF preview…");
+  try {
+    const result = await requestUrdfExport(fetch, `${editionBase()}/export-urdf`);
+    const bytes = await result.blob.text();
+    exportedUrdfPreview = true;
+    activeFormat = "urdf";
+    await loadUrdfModel(bytes, { label: `Exported URDF preview · ${result.filename}` });
+    configureDescriptionFormats();
+    leaveUrdfPreviewButton.hidden = false;
+    setUrdfExportStatus(`Previewing ${result.filename}: ${result.sourceCollisionCount} MJCF geoms → ${result.outputCollisionCount} URDF collisions.`);
+  } catch (error) {
+    setUrdfExportStatus(`Could not preview exported URDF: ${error.message}`, true);
+  } finally {
+    urdfExportBusy = false;
+    updateUrdfExportControl();
+  }
+}
+
+async function leaveExportedUrdfPreview() {
+  if (!exportedUrdfPreview || !activeEdition) return;
+  exportedUrdfPreview = false;
+  leaveUrdfPreviewButton.hidden = true;
+  activeFormat = activeEdition.formats?.mjcf ? "mjcf" : "urdf";
+  configureDescriptionFormats();
+  await selectEdition(activeEdition.id, false, { forceReload: true });
 }
 
 function setUrdfExportStatus(message, error = false) {
@@ -265,12 +347,12 @@ async function exportSelectedUrdf() {
 function updateNativeViewerControl() {
   const running = nativeViewerState === "running";
   openNativeViewerButton.textContent = running ? "MuJoCo viewer open" : "Open in MuJoCo";
-  openNativeViewerButton.disabled = nativeViewerLaunching || running || !nativeViewerAvailable || !activeRobot || !activeEdition?.workbench_loadable;
+  openNativeViewerButton.disabled = nativeViewerLaunching || running || !nativeViewerAvailable || !activeRobot || !activeEdition?.formats?.[activeFormat];
   openNativeViewerButton.title = !nativeViewerAvailable
     ? "Native MuJoCo launch is available only when the Workbench is bound to localhost"
     : running
       ? "A native MuJoCo viewer is already open"
-      : "Open the selected saved MJCF description in native MuJoCo";
+    : `Open a temporary native MuJoCo runtime for the selected ${activeFormat?.toUpperCase()} description`;
 }
 
 function applyNativeViewerStatus(status) {
@@ -296,13 +378,13 @@ async function refreshNativeViewerStatus() {
 
 async function openNativeViewer() {
   if (!activeRobot || !activeEdition || !nativeViewerAvailable || nativeViewerState === "running" || nativeViewerLaunching) return;
-  if (collisionDraftHasChanges() && !window.confirm("The native MuJoCo viewer opens the saved MJCF description. Unsaved temporary collision edits will not appear until you choose Overwrite Current MJCF or Export MJCF Revision. Open the saved description?")) return;
+  if (collisionDraftHasChanges() && !window.confirm("The native MuJoCo viewer opens the selected saved description. Unsaved temporary collision edits will not appear until you choose Overwrite Current MJCF or Export MJCF Revision (for MJCF drafts). Open it?")) return;
   nativeViewerLaunching = true;
   updateNativeViewerControl();
   try {
-    const status = await apiRequest(`${editionBase()}/native-viewer`, "POST", {});
+    const status = await apiRequest(`${editionBase()}/native-viewer`, "POST", { format: activeFormat });
     applyNativeViewerStatus(status);
-    setMjcfStatus(`Opened ${activeEdition.label} in native MuJoCo from its saved MJCF description.`);
+    setMjcfStatus(`Opened ${activeEdition.label} in native MuJoCo from its selected ${activeFormat.toUpperCase()} description.`);
   } catch (error) {
     setMjcfStatus(`Could not open native MuJoCo viewer: ${error.message}`, true);
     await refreshNativeViewerStatus().catch(() => {});
@@ -538,12 +620,17 @@ function setEngineState(message, state = "loading") {
 }
 
 function updateSimulationControls(message = null) {
+  const capabilities = activeCapabilities();
   physicsToggle.setAttribute("aria-checked", String(physicsEnabled));
-  physicsToggle.disabled = !simulationModel || collisionMode;
-  physicsReset.disabled = !simulationModel;
-  randomPoseButton.disabled = !simulationModel || !limitedJointStates().length;
+  physicsToggle.disabled = !capabilities.physics || collisionMode;
+  physicsReset.disabled = !capabilities.physics;
+  physicsToggle.title = !capabilities.physics ? "Physics is available only for an MJCF description." : "Toggle MuJoCo physics";
+  physicsReset.title = !capabilities.physics ? "Physics reset is available only for an MJCF description." : "Reset MuJoCo simulation";
+  // Legacy MJCF condition: randomPoseButton.disabled = !simulationModel || !limitedJointStates().length
+  randomPoseButton.disabled = !jointStates.length || !limitedJointStates().length;
   followToggle.setAttribute("aria-checked", String(followEnabled));
   if (message) simulationState.textContent = message;
+  else if (isUrdfMode()) simulationState.textContent = "URDF inspection mode: physics, contacts, pushing, recording, and collision editing require MJCF.";
   updateSceneRecordingControl();
 }
 
@@ -558,7 +645,7 @@ function updateSceneRecordingControl() {
   const state = sceneRecorder?.state || "ready";
   const recording = state === "recording";
   const finalizing = state === "finalizing" || recordingDownloadPending;
-  sceneRecordingToggle.disabled = (!simulationModel && !recording) || finalizing;
+  sceneRecordingToggle.disabled = (!activeCapabilities().recording && !recording) || finalizing;
   sceneRecordingToggle.textContent = recording
     ? `Stop recording · ${recordingDurationLabel(performance.now() - (recordingStartedAt ?? performance.now()))}`
     : finalizing
@@ -568,7 +655,7 @@ function updateSceneRecordingControl() {
   if (recording) {
     sceneRecordingState.textContent = `Recording the 3D viewer · ${recordingFormat?.label || "video"}.`;
     sceneRecordingState.classList.remove("error");
-  } else if (!simulationModel && !recordingDownloadPending) {
+  } else if (!activeCapabilities().recording && !recordingDownloadPending) {
     sceneRecordingState.textContent = "Load an MJCF description before recording the 3D viewer.";
     sceneRecordingState.classList.remove("error");
   }
@@ -642,15 +729,18 @@ function updateDisplayControls() {
   collisionShapeToggle.setAttribute("aria-checked", String(collisionShapesVisible));
   contactToggle.setAttribute("aria-checked", String(contactsVisible));
   centerOfMassToggle.setAttribute("aria-checked", String(centersOfMassVisible));
-  linkFrameToggle.setAttribute("aria-checked", String(linkFramesVisible));
-  worldFrameToggle.setAttribute("aria-checked", String(worldFrameVisible));
+  objectFrameToggle.setAttribute("aria-checked", String(objectFramesVisible));
   jointAxisToggle.setAttribute("aria-checked", String(jointAxesVisible));
+  contactToggle.disabled = !activeCapabilities().contacts;
+  contactToggle.title = contactToggle.disabled ? "Contact visualization is available only for an MJCF description." : "Toggle MuJoCo contact points";
+  collisionEditorToggle.disabled = !activeCapabilities().collisionEditor;
+  collisionEditorToggle.title = collisionEditorToggle.disabled ? "Select a description with editable collision geometry." : `Edit a temporary ${activeFormat?.toUpperCase() || "robot"} collision draft`;
+  collisionDraftTitle.textContent = `Temporary ${activeFormat?.toUpperCase() || "robot"} collision draft`;
   meshOpacity.value = String(meshOpacityPercent);
   meshOpacityValue.textContent = `${meshOpacityPercent}%`;
   diagnostics.applyDisplayState({
     centersOfMass: centersOfMassVisible,
-    linkFrames: linkFramesVisible,
-    worldFrame: worldFrameVisible,
+    objectFrames: objectFramesVisible,
     jointAxes: jointAxesVisible,
   });
 }
@@ -735,8 +825,7 @@ function syncContactVisualization() {
 
 function toggleDiagnostics(key) {
   if (key === "centersOfMass") centersOfMassVisible = !centersOfMassVisible;
-  if (key === "linkFrames") linkFramesVisible = !linkFramesVisible;
-  if (key === "worldFrame") worldFrameVisible = !worldFrameVisible;
+  if (key === "objectFrames") objectFramesVisible = !objectFramesVisible;
   if (key === "jointAxes") jointAxesVisible = !jointAxesVisible;
   updateDisplayControls();
 }
@@ -808,6 +897,11 @@ function cancelRandomPoseMotion() {
 }
 
 function applyJointPose(pose) {
+  if (isUrdfMode() && !simulationModel) {
+    for (const { joint, value } of pose) urdfRenderer.setJointValue(joint, value);
+    updateJointValues();
+    return;
+  }
   if (!simulationData || !simulationModel || !mujoco) return;
   for (const { joint, value } of pose) simulationData.qpos[joint.qposAddress] = value;
   mujoco.mj_forward?.(simulationModel, simulationData);
@@ -817,6 +911,13 @@ function applyJointPose(pose) {
 }
 
 function driveRandomPose() {
+  if (isUrdfMode() && !simulationModel) {
+    const joints = limitedJointStates();
+    if (!joints.length) return;
+    randomPoseMotion = { startedAt: performance.now(), durationMs: 600, pose: joints.map(joint => ({ joint, start: jointValue(joint), target: joint.lower + Math.random() * (joint.upper - joint.lower) })) };
+    updateSimulationControls(`Driving a random URDF pose across ${joints.length} limited joints.`);
+    return;
+  }
   if (!simulationModel || !simulationData || !mujoco) return;
   const joints = limitedJointStates();
   if (!joints.length) {
@@ -839,13 +940,13 @@ function driveRandomPose() {
 }
 
 function advanceRandomPose() {
-  if (!randomPoseMotion || !simulationData) return;
+  if (!randomPoseMotion || !simulationData && !isUrdfMode()) return;
   const elapsed = performance.now() - randomPoseMotion.startedAt;
   const progress = Math.min(Math.max(elapsed / randomPoseMotion.durationMs, 0), 1);
   const eased = progress * progress * (3 - 2 * progress);
   applyJointPose(randomPoseMotion.pose.map(({ joint, start, target }) => ({ joint, value: start + (target - start) * eased })));
   if (progress < 1) return;
-  simulationData.qvel.fill(0);
+  if (simulationData) simulationData.qvel.fill(0);
   randomPoseMotion = null;
   updateSimulationControls("Random pose reached. Physics remains paused.");
 }
@@ -865,7 +966,8 @@ function getMujocoBodyId(linkName) {
 }
 
 function syncVisualsFromMujoco() {
-  mjcfRenderer.sync(simulationData);
+  if (isUrdfMode()) syncUrdfVisualsFromMujoco();
+  else mjcfRenderer.sync(simulationData);
   diagnostics.syncMujoco(simulationData);
   if (!collisionMode) syncContactVisualization();
 }
@@ -990,6 +1092,10 @@ function editionDisplayName(edition) {
   return `${edition.default ? "Default · " : ""}${name}${formats ? ` · ${formats}` : ""}`;
 }
 
+function editionOptionName(edition) {
+  return `${edition.default ? "Default · " : ""}${edition.label || edition.id}`;
+}
+
 function renderRobotList() {
   robotVariantSelect.replaceChildren(new Option("Select a robot variant", ""));
   for (const robot of catalog) {
@@ -1012,17 +1118,23 @@ function renderRobotList() {
     : warnings
       ? `${warnings} warning${warnings === 1 ? "" : "s"}`
       : "validated";
-  const editions = activeRobot.editions || [];
-  if (!editions.length) {
-    robotEditionSelect.append(new Option("No editions available", ""));
+  if (!activeFormat) {
+    robotEditionSelect.append(new Option("Select a description format first", ""));
     robotEditionSelect.disabled = true;
-    robotSelectionMeta.textContent = `${activeRobot.status} · no editions`;
+    robotSelectionMeta.textContent = `${activeRobot.status} · choose a description format`;
+    return;
+  }
+  const editions = editionsForFormat(activeRobot.editions || [], activeFormat);
+  if (!editions.length) {
+    robotEditionSelect.append(new Option(`No ${activeFormat.toUpperCase()} editions available`, ""));
+    robotEditionSelect.disabled = true;
+    robotSelectionMeta.textContent = `${activeRobot.status} · no ${activeFormat.toUpperCase()} editions`;
     return;
   }
 
   robotEditionSelect.append(new Option("Select a robot edition", ""));
   for (const edition of editions) {
-    robotEditionSelect.append(new Option(editionDisplayName(edition), edition.id));
+    robotEditionSelect.append(new Option(editionOptionName(edition), edition.id));
   }
   robotEditionSelect.disabled = false;
   robotEditionSelect.value = activeEdition?.id || "";
@@ -1034,7 +1146,7 @@ function renderRobotList() {
 }
 
 function jointUnit(joint) {
-  return joint.type === 2 ? "m" : "rad";
+  return joint.type === 2 || joint.type === "prismatic" ? "m" : "rad";
 }
 
 function formatJointValue(value) {
@@ -1059,14 +1171,14 @@ function collectJointStates() {
 }
 
 function jointValue(joint) {
-  return simulationData ? Number(simulationData.qpos[joint.qposAddress]) : NaN;
+  return isUrdfMode() && !simulationModel ? urdfRenderer.getJointValue(joint) : simulationData ? Number(simulationData.qpos[joint.qposAddress]) : NaN;
 }
 
 function sliderRange(joint) {
   if (joint.limited && Number.isFinite(joint.lower) && Number.isFinite(joint.upper) && joint.lower < joint.upper) {
     return [joint.lower, joint.upper];
   }
-  return joint.type === 2 ? [-1, 1] : [-Math.PI, Math.PI];
+  return joint.type === 2 || joint.type === "prismatic" ? [-1, 1] : [-Math.PI, Math.PI];
 }
 
 function renderJointInspector() {
@@ -1075,7 +1187,7 @@ function renderJointInspector() {
   if (!jointStates.length) {
     const empty = document.createElement("p");
     empty.className = "joint-empty";
-    empty.textContent = simulationModel ? "This model has no hinge or slide joints." : "Loading MuJoCo joint state…";
+    empty.textContent = isUrdfMode() || simulationModel ? "This description has no configurable joints." : "Loading MuJoCo joint state…";
     jointList.append(empty);
     return;
   }
@@ -1115,7 +1227,7 @@ function renderJointInspector() {
 }
 
 function updateJointValues() {
-  if (!simulationData || !jointStates.length) return;
+  if ((!simulationData && !isUrdfMode()) || !jointStates.length) return;
   for (const joint of jointStates) {
     const value = `${formatJointValue(jointValue(joint))} ${jointUnit(joint)}`;
     const rowValue = jointList.querySelector(`[data-joint-value="${joint.id}"]`);
@@ -1134,9 +1246,15 @@ function selectJoint(id) {
 
 function setJointPosition(id, value) {
   const joint = jointStates.find(item => item.id === id);
-  if (!joint || !simulationData || !simulationModel || !mujoco) return;
+  if (!joint) return;
   cancelRandomPoseMotion();
   const position = joint.limited ? Math.min(joint.upper, Math.max(joint.lower, value)) : value;
+  if (isUrdfMode() && !simulationModel) {
+    urdfRenderer.setJointValue(joint, position);
+    updateJointValues();
+    return;
+  }
+  if (!simulationData || !simulationModel || !mujoco) return;
   applyJointPose([{ joint, value: position }]);
 }
 
@@ -1164,6 +1282,7 @@ function renderElements() {
 
 function clearRobot() {
   mjcfRenderer.clear();
+  urdfRenderer.clear();
   collisionObjects.clear();
   clearSceneObjects();
   diagnostics.dispose();
@@ -1175,6 +1294,9 @@ function clearRobot() {
       node.material?.dispose?.();
     });
   }
+  robotGroup.position.set(0, 0, 0);
+  robotGroup.rotation.set(0, 0, 0);
+  robotGroup.scale.set(1, 1, 1);
 }
 
 function clearSceneObjects() {
@@ -1289,7 +1411,7 @@ function collisionDraftPath(suffix = "") {
   if (!collisionDraftId) return null;
   const base = collisionDraftBase();
   if (!base) return null;
-  return `${base}/${encodeURIComponent(collisionDraftId)}${suffix}`;
+  return `${base}/${encodeURIComponent(collisionDraftId)}${suffix}?format=${encodeURIComponent(activeFormat || "mjcf")}`;
 }
 
 function collisionDraftBase() {
@@ -1304,6 +1426,7 @@ function cancelCollisionDraftSave() {
 
 function collisionDraftPayload() {
   return {
+    format: activeFormat,
     revision: collisionDocument?.revision,
     primitives: collisionDraft,
     retained_mesh_ids: [...retainedMeshIds],
@@ -1766,7 +1889,7 @@ function snapCollision(collision) {
 async function enterCollisionMode() {
   if (!activeRobot || !activeEdition || !simulationModel) {
     updateCollisionEditorDock(false);
-    setCollisionStatus("Select an MJCF description before editing collisions.", true);
+    setCollisionStatus("Select a compiled robot description before editing collisions.", true);
     return;
   }
   if (collisionMode && collisionDraftId) {
@@ -1777,7 +1900,7 @@ async function enterCollisionMode() {
   updateDisplayControls();
   updateSimulationControls("Loading collision editor…");
   try {
-    const session = await collisionDraftRequest(collisionDraftBase(), { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    const session = await collisionDraftRequest(collisionDraftBase(), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ format: activeFormat }) });
     if (!collisionMode) {
       collisionDraftId = session.draft_id;
       void discardCollisionDraft();
@@ -1794,7 +1917,7 @@ async function enterCollisionMode() {
     renderCollisionPanel();
     updateDisplayControls();
     updateSimulationControls("Collision editor active: physics is paused; use joints or Random pose to inspect self-collision.");
-    setCollisionStatus("Temporary MJCF draft loaded. Add a primitive or select a mesh collision to delete it.");
+    setCollisionStatus(`Temporary ${activeFormat.toUpperCase()} draft loaded. Add a primitive or select a mesh collision to delete it.`);
     if (contactsVisible) void compileDraftContacts(collisionDraftId);
   } catch (error) {
     collisionMode = false;
@@ -1867,7 +1990,7 @@ async function mirrorCollisionDraft(direction) {
     collisionMirrorLeftToRight.disabled = true;
     collisionMirrorRightToLeft.disabled = true;
     await flushCollisionDraft();
-    const request = { revision: collisionDocument.revision, direction };
+    const request = { revision: collisionDocument.revision, direction, format: activeFormat };
     const preview = await collisionDraftRequest(previewPath, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1905,12 +2028,14 @@ async function exportCollisionDraft() {
     const data = await collisionDraftRequest(path, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ revision: collisionDocument.revision }),
+      body: JSON.stringify({ revision: collisionDocument.revision, format: activeFormat }),
     });
     collisionDraftDirty = false;
-    setCollisionStatus(`Exported ${data.edition_id || "MJCF revision"}: ${data.output_path}`);
-    await refreshMjcfCandidates();
-    await selectEdition(data.edition_id, true);
+    setCollisionStatus(`Exported ${activeFormat.toUpperCase()} collision copy: ${data.output_path}`);
+    if (!isUrdfMode()) {
+      await refreshMjcfCandidates();
+      await selectEdition(data.edition_id, true);
+    }
   } catch (error) {
     setCollisionStatus(error.message, true);
   } finally {
@@ -1922,10 +2047,8 @@ async function exportCollisionDraft() {
 async function overwriteCollisionDraft() {
   const path = collisionDraftPath("/overwrite");
   if (!collisionDocument || !path || !activeEdition) return;
-  const editionName = activeEdition.role === "authorized"
-    ? `authorized MJCF ${activeEdition.source_id || activeEdition.id}`
-    : activeEdition.id;
-  if (!window.confirm(`Overwrite ${editionName}? This replaces exactly this MJCF description and cannot be undone automatically.`)) return;
+  const editionName = activeEdition.id;
+  if (!window.confirm(`Overwrite ${editionName}? This replaces exactly this selected ${activeFormat.toUpperCase()} description and cannot be undone automatically.`)) return;
   try {
     collisionExport.disabled = true;
     collisionOverwrite.disabled = true;
@@ -1933,7 +2056,7 @@ async function overwriteCollisionDraft() {
     const data = await collisionDraftRequest(path, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ revision: collisionDocument.revision, edition_id: activeEdition.id }),
+      body: JSON.stringify({ revision: collisionDocument.revision, edition_id: activeEdition.id, format: activeFormat }),
     });
     collisionDraftDirty = false;
     await refreshMjcfCandidates();
@@ -1949,7 +2072,12 @@ async function overwriteCollisionDraft() {
 
 function collisionDraftSourcePath(draftId = collisionDraftId) {
   const base = collisionDraftBase();
-  return base && draftId ? `${base}/${encodeURIComponent(draftId)}/source` : null;
+  return base && draftId ? `${base}/${encodeURIComponent(draftId)}/source?format=${encodeURIComponent(activeFormat || "mjcf")}` : null;
+}
+
+function collisionDraftRuntimePath(draftId = collisionDraftId) {
+  const base = collisionDraftBase();
+  return base && draftId ? `${base}/${encodeURIComponent(draftId)}/runtime?format=urdf` : null;
 }
 
 function collisionAssetBase() {
@@ -1995,9 +2123,9 @@ async function compileDraftContacts(draftId) {
   diagnosticController = controller;
   const objects = [];
   try {
-    const raw = await fetch(sourcePath, { signal: controller.signal })
+    const raw = await fetch(isUrdfMode() ? collisionDraftRuntimePath(draftId) : sourcePath, { signal: controller.signal })
       .then(response => response.ok ? response.text() : Promise.reject(new Error("Could not load temporary MJCF draft")));
-    const prepared = prepareSimulationSource(raw, "mjcf", activeRobot);
+    const prepared = isUrdfMode() ? { source: raw } : prepareSimulationSource(raw, "mjcf", activeRobot);
     const vfs = new mujoco.MjVFS();
     objects.push(vfs);
     const document = new DOMParser().parseFromString(prepared.source, "application/xml");
@@ -2005,7 +2133,8 @@ async function compileDraftContacts(draftId) {
       .map(node => (node.getAttribute("filename") || node.getAttribute("file")).split("/").pop()))];
     for (const name of names) vfs.addBuffer(name, await cachedMeshBytes(sourceBase, name, controller));
     if (controller.signal.aborted || generation !== diagnosticGeneration || !collisionMode || draftId !== collisionDraftId) throw new DOMException("Draft contact compilation superseded", "AbortError");
-    const model = mujoco.MjModel.from_xml_string(prepared.source, vfs);
+    const sourceForModel = isUrdfMode() ? prepared.source.replaceAll(/file="[^"]*\/([^/"]+)"/g, 'file="$1"') : prepared.source;
+    const model = mujoco.MjModel.from_xml_string(sourceForModel, vfs);
     const data = new mujoco.MjData(model);
     objects.push(model, data);
     setSpawnPose(model, data);
@@ -2145,6 +2274,94 @@ async function loadMujocoModel(robot, token, controller, options = {}) {
   }
 }
 
+async function loadUrdfModel(source, options = {}) {
+  if (!activeRobot || !activeEdition) throw new Error("Select a URDF edition before loading it.");
+  disposeWasm();
+  clearRobot();
+  clearSceneObjects();
+  renderSceneDescription(activeRobot.scene_description);
+  const loaded = await urdfRenderer.load(source);
+  setTransform(robotGroup, urdfSceneTransform(activeRobot.scene_description));
+  visualLinkGroups.clear();
+  for (const [name, group] of loaded.links) visualLinkGroups.set(name, group);
+  jointStates = urdfRenderer.listJoints().filter(joint => ["revolute", "continuous", "prismatic"].includes(joint.type));
+  try {
+    await loadUrdfRuntime(options);
+    jointStates = collectJointStates();
+  } catch (error) {
+    // Authored URDF inspection is still useful when a simulator extension or
+    // a mesh cannot compile.  Keep only simulation-dependent controls off.
+    console.warn("URDF runtime compilation failed", error);
+    setMjcfStatus(`URDF visual inspection is ready, but its temporary MuJoCo runtime could not compile: ${error.message}`, true);
+  }
+  physicsEnabled = false;
+  followEnabled = false;
+  renderJointInspector();
+  renderElements();
+  applyVisualMeshOpacity();
+  setLayerVisibility("visual-mesh", visualMeshesVisible);
+  setLayerVisibility("collision-overlay", collisionShapesVisible);
+  const bounds = visualBounds();
+  diagnostics.bindRobot({ scene: activeRobot.scene || { links: [], joints: [] } }, visualLinkGroups, bounds?.getSize(new THREE.Vector3()).length() || 0.5);
+  viewerEmpty.hidden = true;
+  frameRobot();
+  updateSimulationControls(simulationModel ? "URDF runtime ready. Press P to toggle physics." : "URDF ready for visual and kinematic inspection; simulation controls are unavailable.");
+  setEngineState(options.label || `URDF loaded · ${visualLinkGroups.size} links · ${jointStates.length} joints`, "ready");
+}
+
+function syncUrdfVisualsFromMujoco() {
+  if (!simulationData) return;
+  for (const [name, group] of visualLinkGroups) {
+    const id = getMujocoBodyId(name);
+    if (id === null || !group.parent) continue;
+    const offset = id * 9;
+    const position = new THREE.Vector3(simulationData.xpos[id * 3], simulationData.xpos[id * 3 + 1], simulationData.xpos[id * 3 + 2]);
+    const world = new THREE.Matrix4().set(
+      simulationData.xmat[offset], simulationData.xmat[offset + 1], simulationData.xmat[offset + 2], position.x,
+      simulationData.xmat[offset + 3], simulationData.xmat[offset + 4], simulationData.xmat[offset + 5], position.y,
+      simulationData.xmat[offset + 6], simulationData.xmat[offset + 7], simulationData.xmat[offset + 8], position.z,
+      0, 0, 0, 1,
+    );
+    group.parent.updateWorldMatrix(true, false);
+    const local = group.parent.matrixWorld.clone().invert().multiply(world);
+    local.decompose(group.position, group.quaternion, group.scale);
+  }
+}
+
+async function loadUrdfRuntime(options = {}) {
+  mujoco ||= await loadMujoco({ locateFile: file => `/vendor/${file}` });
+  const sourceBase = editionBase();
+  if (!sourceBase) throw new Error("No selected URDF edition.");
+  const raw = await fetch(`${sourceBase}/runtime?format=urdf`, { cache: options.forceReload ? "no-store" : "default" })
+    .then(response => response.ok ? response.text() : response.json().then(payload => Promise.reject(new Error(payload.error || "Could not prepare URDF runtime"))));
+  const vfs = new mujoco.MjVFS();
+  const objects = [vfs];
+  try {
+    const document = new DOMParser().parseFromString(raw, "application/xml");
+    const names = [...new Set([...document.querySelectorAll("mesh[file]")].map(node => node.getAttribute("file").split("/").pop()))];
+    for (const name of names) vfs.addBuffer(name, new Uint8Array(await cachedMeshBytes(sourceBase, name, new AbortController())));
+    const normalized = raw.replaceAll(/file="[^"]*\/([^/"]+)"/g, 'file="$1"');
+    const model = mujoco.MjModel.from_xml_string(normalized, vfs);
+    const data = new mujoco.MjData(model);
+    objects.push(model, data);
+    wasmObjects = objects;
+    simulationModel = model;
+    simulationData = data;
+    mujocoBodyIds.clear();
+    simulationRootJoint = null;
+    for (let id = 0; id < model.njnt; id += 1) {
+      const joint = model.jnt(id);
+      if (Number(joint.type) === 0) simulationRootJoint = id;
+      joint.delete?.();
+    }
+    setSpawnPose(model, data);
+    syncUrdfVisualsFromMujoco();
+  } catch (error) {
+    deleteWasmObjects(objects);
+    throw error;
+  }
+}
+
 function captureViewerView() {
   return {
     position: camera.position.toArray(),
@@ -2255,6 +2472,9 @@ async function selectRobot(id) {
     assertCurrentLoad(token, controller);
     activeRobot = data.robot;
     activeEdition = null;
+    activeFormat = null;
+    exportedUrdfPreview = false;
+    leaveUrdfPreviewButton.hidden = true;
     mjcfEditions = activeRobot.editions || [];
     activeCandidateId = null;
     delete mjcfCandidateId.dataset.robotId;
@@ -2273,11 +2493,15 @@ async function selectRobot(id) {
     clearSceneObjects();
     updateSimulationControls("Select an MJCF description to load the model.");
     renderRobotList();
+    configureDescriptionFormats();
     renderElements();
     await refreshMjcfCandidates();
-    const defaultEdition = (activeRobot.editions || []).find(edition => edition.default);
-    if (defaultEdition) {
-      await selectEdition(defaultEdition.id);
+    const initial = initialDescriptionSelection(activeRobot.editions || []);
+    activeFormat = initial.format;
+    configureDescriptionFormats();
+    renderRobotList();
+    if (initial.edition) {
+      await selectEdition(initial.edition.id, false, { format: initial.format });
       return;
     }
     viewerEmpty.textContent = mjcfEditions.some(edition => edition.workbench_loadable)
@@ -2302,7 +2526,11 @@ async function selectEdition(editionId, continueCollisionEditing = false, option
   }
   // Re-selecting the active row is a no-op. In particular, it must not tear
   // down an unfinished draft just because the operator clicked its edition.
-  if (edition.id === activeEdition?.id && !continueCollisionEditing && !options.forceReload) return;
+  const requestedFormat = options.format
+    || (activeFormat && edition.formats?.[activeFormat] ? activeFormat : null)
+    || (edition.formats?.mjcf ? "mjcf" : "urdf");
+  if (!edition.formats?.[requestedFormat]) return;
+  if (edition.id === activeEdition?.id && requestedFormat === activeFormat && !continueCollisionEditing && !options.forceReload) return;
   if (edition.id !== activeEdition?.id && collisionDraftHasChanges() && !window.confirm("Discard the unsaved temporary collision draft and change MJCF description?")) return;
   const reopenEditor = continueCollisionEditing || collisionMode;
   if (collisionMode) {
@@ -2320,6 +2548,9 @@ async function selectEdition(editionId, continueCollisionEditing = false, option
   loadAbortController = controller;
   const token = ++loadVersion;
   activeEdition = edition;
+  activeFormat = requestedFormat;
+  exportedUrdfPreview = false;
+  leaveUrdfPreviewButton.hidden = true;
   activeCandidateId = edition.role === "candidate" ? edition.id : null;
   selectedName = null;
   updateReloadDescriptionControl();
@@ -2327,9 +2558,10 @@ async function selectEdition(editionId, continueCollisionEditing = false, option
   selectedKind = null;
   selectedTitle.textContent = `${displayName(activeRobot, edition)} · ${editionDisplayName(edition)}`;
   selectedElement.textContent = "None";
-  selectedSource.textContent = edition.role === "authorized" ? "MJCF (authorized)" : "MJCF revision";
-  if (!edition.workbench_loadable) {
-    selectedSource.textContent = edition.formats?.urdf ? "URDF only" : "No supported description";
+  selectedSource.textContent = activeFormat.toUpperCase();
+  configureDescriptionFormats();
+  if (!edition.viewable) {
+    selectedSource.textContent = "No supported description";
     viewerEmpty.hidden = false;
     viewerEmpty.textContent = `${editionDisplayName(edition)} has no MJCF description. It is catalog-visible, but the Workbench viewer and collision editor require MJCF.`;
     physicsEnabled = false;
@@ -2340,25 +2572,32 @@ async function selectEdition(editionId, continueCollisionEditing = false, option
     renderRobotList();
     renderMjcfPanel();
     renderElements();
-    updateSimulationControls("Choose an MJCF-backed edition to load the model.");
-    setEngineState("MJCF description unavailable", "loading");
+    updateSimulationControls("Choose an edition with a URDF or MJCF description to load the model.");
+    setEngineState("description unavailable", "loading");
     return;
   }
   viewerEmpty.hidden = false;
-  viewerEmpty.textContent = "Loading MJCF description…";
+  viewerEmpty.textContent = `Loading ${activeFormat.toUpperCase()} description…`;
   physicsEnabled = false;
   followEnabled = false;
-  updateSimulationControls("Loading MuJoCo model…");
+  updateSimulationControls(activeFormat === "mjcf" ? "Loading MuJoCo model…" : "Loading URDF description…");
   renderRobotList();
   renderMjcfPanel();
   renderElements();
   try {
     clearRobot();
-    const loaded = await loadMujocoModel(activeRobot, token, controller, options);
-    if (!loaded || !isCurrentLoad(token, controller) || !simulationModel) return;
-    restoreInitialVisualTransforms();
+    if (activeFormat === "urdf") {
+      const raw = await fetch(`${editionBase()}/source?format=urdf`, { signal: controller.signal, cache: options.forceReload ? "no-store" : "default" })
+        .then(response => response.ok ? response.text() : Promise.reject(new Error("Could not load URDF source")));
+      assertCurrentLoad(token, controller);
+      await loadUrdfModel(raw, options);
+    } else {
+      const loaded = await loadMujocoModel(activeRobot, token, controller, options);
+      if (!loaded || !isCurrentLoad(token, controller) || !simulationModel) return;
+      restoreInitialVisualTransforms();
+    }
     setMjcfStatus(`Selected ${editionDisplayName(edition)}.`);
-    if (reopenEditor) {
+    if (reopenEditor && activeFormat === "mjcf") {
       updateCollisionEditorDock(true);
       await enterCollisionMode();
     }
@@ -2369,7 +2608,7 @@ async function selectEdition(editionId, continueCollisionEditing = false, option
     viewerEmpty.hidden = false;
     viewerEmpty.textContent = error.message;
     setEngineState(error.message, "error");
-    setMjcfStatus(`Could not load ${edition.label}: ${error.message}`, true);
+    setMjcfStatus(`Could not load ${edition.label} ${activeFormat.toUpperCase()}: ${error.message}`, true);
     updateReloadDescriptionControl();
   }
 }
@@ -2471,7 +2710,7 @@ function selectElement(name, kind) {
   selectedName = name;
   selectedKind = kind || "link";
   selectedElement.textContent = name;
-  selectedSource.textContent = kind === "joint" ? "MJCF joint" : "MJCF body";
+  selectedSource.textContent = kind === "joint" ? `${activeFormat?.toUpperCase() || "description"} joint` : `${activeFormat?.toUpperCase() || "description"} link`;
   if (kind === "joint") {
     const joint = jointStates.find(item => item.name === name);
     if (joint) activeJointId = joint.id;
@@ -2623,6 +2862,8 @@ restartWorkbenchButton.addEventListener("click", restartWorkbench);
 reloadDescriptionButton.addEventListener("click", reloadCurrentDescription);
 openNativeViewerButton.addEventListener("click", openNativeViewer);
 exportUrdfButton.addEventListener("click", exportSelectedUrdf);
+previewUrdfButton.addEventListener("click", previewExportedUrdf);
+leaveUrdfPreviewButton.addEventListener("click", () => { void leaveExportedUrdfPreview(); });
 robotVariantSelect.addEventListener("change", () => {
   const id = robotVariantSelect.value;
   if (!id) return renderRobotList();
@@ -2632,6 +2873,13 @@ robotEditionSelect.addEventListener("change", () => {
   const id = robotEditionSelect.value;
   if (!id) return renderRobotList();
   void selectEdition(id).finally(renderRobotList);
+});
+descriptionFormatSelect.addEventListener("change", () => {
+  if (!activeRobot || !descriptionFormatSelect.value) return;
+  const format = descriptionFormatSelect.value;
+  const edition = editionForFormat(activeRobot.editions || [], format, activeEdition?.id);
+  if (!edition) return renderRobotList();
+  void selectEdition(edition.id, false, { forceReload: true, format }).finally(renderRobotList);
 });
 physicsToggle.addEventListener("click", togglePhysics);
 physicsReset.addEventListener("click", resetSimulation);
@@ -2664,8 +2912,7 @@ window.addEventListener("pagehide", () => {
 });
 meshOpacity.addEventListener("input", () => setMeshOpacity(meshOpacity.value));
 centerOfMassToggle.addEventListener("click", () => toggleDiagnostics("centersOfMass"));
-linkFrameToggle.addEventListener("click", () => toggleDiagnostics("linkFrames"));
-worldFrameToggle.addEventListener("click", () => toggleDiagnostics("worldFrame"));
+objectFrameToggle.addEventListener("click", () => toggleDiagnostics("objectFrames"));
 jointAxisToggle.addEventListener("click", () => toggleDiagnostics("jointAxes"));
 elementSearch.addEventListener("input", renderElements);
 document.querySelector("#collapse-menagerie").addEventListener("click", () => {
@@ -2700,8 +2947,9 @@ try {
   renderRobotList();
   renderJointInspector();
   renderElements();
-  updateSimulationControls("Select a robot variant, then an MJCF-backed edition.");
-  selectedSource.textContent = "No MJCF description selected";
+  configureDescriptionFormats();
+  updateSimulationControls("Select a robot variant, then choose a URDF or MJCF edition.");
+  selectedSource.textContent = "No description selected";
   viewerEmpty.hidden = false;
   viewerEmpty.textContent = "Select a robot variant, then choose an edition.";
   setEngineState("robot edition selection required", "loading");

@@ -197,6 +197,21 @@ class NativeViewerEndpointTests(unittest.TestCase):
             remote_server.server_close()
             remote_thread.join(timeout=2)
 
+    def test_urdf_runtime_endpoint_and_native_launch_are_format_isolated(self):
+        path = "/api/robots/astro_p2/editions/30dof_primitive_collision/runtime?format=urdf"
+        with urllib.request.urlopen(f"{self.base_url}{path}") as response:
+            runtime = response.read()
+        self.assertIn(b'workbench_scene_', runtime)
+        request = urllib.request.Request(
+            f"{self.base_url}/api/robots/astro_p2/editions/30dof_primitive_collision/native-viewer",
+            data=b'{"format":"urdf"}', headers={"Content-Type": "application/json"}, method="POST",
+        )
+        with urllib.request.urlopen(request) as response:
+            launched = json.loads(response.read())
+        self.assertEqual(launched["launch"]["format"], "urdf")
+        self.assertNotEqual(launched["launch"]["source"], str(variants(ROOT)["astro_p2"].urdf.resolve()))
+        self.processes[-1].finish(0)
+
 
 class WorkbenchStartupTests(unittest.TestCase):
     @staticmethod
@@ -284,6 +299,17 @@ class WorkbenchRestartEndpointTests(unittest.TestCase):
 
 
 class WorkbenchTests(unittest.TestCase):
+    def test_display_has_one_object_coordinate_frame_control(self):
+        index = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+        app = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+
+        self.assertIn('id="object-frame-toggle"', index)
+        self.assertIn("Object coordinate frames", index)
+        self.assertNotIn("link-frame-toggle", index)
+        self.assertNotIn("world-frame-toggle", index)
+        self.assertIn('toggleDiagnostics("objectFrames")', app)
+        self.assertNotIn("linkFramesVisible", app)
+        self.assertNotIn("worldFrameVisible", app)
     @classmethod
     def setUpClass(cls):
         cls.renderings = tempfile.TemporaryDirectory()
@@ -358,7 +384,7 @@ class WorkbenchTests(unittest.TestCase):
             [(edition["id"], edition["formats"]) for edition in robots["astro_p2"]["editions"]],
             [
                 ("30dof_primitive_collision", {"urdf": True, "mjcf": True}),
-                ("30dof_mesh_collision", {"urdf": False, "mjcf": True}),
+                ("30dof_mesh_collision", {"urdf": True, "mjcf": True}),
                 ("30dof_primitive_collision_halfway", {"urdf": False, "mjcf": True}),
             ],
         )
@@ -409,6 +435,43 @@ class WorkbenchTests(unittest.TestCase):
         self.assertIn('`${editionBase()}/export-urdf`', app)
         self.assertIn("Export URDF uses the selected saved MJCF description", app)
 
+    def test_urdf_viewer_loads_collisions_applies_spawn_and_resets_camera(self):
+        app = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+        renderer = (WEB_ROOT / "urdf-renderer.js").read_text(encoding="utf-8")
+        preview = app.split("async function previewExportedUrdf()", 1)[1].split("async function leaveExportedUrdfPreview()", 1)[0]
+        format_change = app.split('descriptionFormatSelect.addEventListener("change"', 1)[1].split("});", 1)[0]
+
+        self.assertIn("configureUrdfLoader(new URDFLoader", renderer)
+        self.assertIn("setTransform(robotGroup, urdfSceneTransform(activeRobot.scene_description));", app)
+        self.assertIn("await loadUrdfModel(bytes, { label:", preview)
+        self.assertNotIn("captureViewerView()", preview)
+        self.assertNotIn("captureViewerView()", format_change)
+        self.assertIn("frameRobot();", app.split("async function loadUrdfModel", 1)[1].split("function captureViewerView", 1)[0])
+
+    def test_description_selection_is_variant_then_format_then_edition(self):
+        page = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+        app = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+        variant_position = page.index('id="robot-variant-select"')
+        format_position = page.index('id="description-format-select"')
+        edition_position = page.index('id="robot-edition-select"')
+
+        self.assertLess(variant_position, format_position)
+        self.assertLess(format_position, edition_position)
+        self.assertIn('from "/description-selection.js"', app)
+        self.assertIn("editionsForFormat(activeRobot.editions || [], activeFormat)", app)
+        status, _headers, source = self._get_raw("/description-selection.js")
+        self.assertEqual(status, 200)
+        self.assertIn("export function editionsForFormat", source.decode("utf-8"))
+
+    def test_astro_p2_urdf_editions_point_to_matching_collision_descriptions(self):
+        editions = {edition["id"]: edition for edition in self._get_json("/api/robots/astro_p2/editions")["editions"]}
+
+        self.assertEqual(editions["30dof_primitive_collision"]["formats"], {"urdf": True, "mjcf": True})
+        self.assertTrue(editions["30dof_primitive_collision"]["source_paths"]["urdf"].endswith("astro_p2_30dof_primitive_collision.urdf"))
+        self.assertEqual(editions["30dof_mesh_collision"]["formats"], {"urdf": True, "mjcf": True})
+        self.assertTrue(editions["30dof_mesh_collision"]["source_paths"]["urdf"].endswith("astro_p2_30dof_mesh_collision.urdf"))
+        self.assertEqual(editions["30dof_primitive_collision_halfway"]["formats"], {"urdf": False, "mjcf": True})
+
     def test_unitree_g1_editions_report_official_metadata_and_exclude_retargeting_reference_from_candidates(self):
         editions = self._get_json("/api/robots/unitree_g1/editions")["editions"]
         default = next(edition for edition in editions if edition["default"])
@@ -440,6 +503,9 @@ class WorkbenchTests(unittest.TestCase):
 
         self.assertEqual(racket["formats"], {"urdf": True, "mjcf": False})
         self.assertFalse(racket["workbench_loadable"])
+        self.assertTrue(racket["viewable"])
+        self.assertTrue(racket["capabilities"]["visualization"])
+        self.assertFalse(racket["capabilities"]["physics"])
         self.assertTrue(robot["workbench_loadable"])
 
     def test_mjcf_conversion_panel_and_candidate_routes_are_exposed(self):
@@ -547,10 +613,10 @@ class WorkbenchTests(unittest.TestCase):
 
         self.assertNotIn("await selectRobot(catalog[0]?.id)", app)
         self.assertIn("function selectEdition(editionId", app)
-        self.assertIn("const defaultEdition = (activeRobot.editions || []).find(edition => edition.default);", app)
-        self.assertIn("await selectEdition(defaultEdition.id);", app)
+        self.assertIn("const initial = initialDescriptionSelection(activeRobot.editions || []);", app)
+        self.assertIn("await selectEdition(initial.edition.id, false, { format: initial.format });", app)
         self.assertIn("/editions/${encodeURIComponent(edition.id)}", app)
-        self.assertIn("Select a robot variant, then choose an edition.", page)
+        self.assertIn("Select a robot variant, description format, and then an available edition.", page)
         self.assertIn('id="collision-overwrite"', page)
 
     def test_reload_description_control_reuses_the_edition_api_and_forces_a_same_id_reload(self):
@@ -652,6 +718,55 @@ class WorkbenchTests(unittest.TestCase):
             urllib.request.urlopen(f"{self.base_url}/api/robots/astro_p1/files/..%2Furdf%2Fastro_p1.urdf")
 
         self.assertEqual(raised.exception.code, 404)
+
+    def test_edition_source_endpoint_resolves_explicit_urdf_and_mjcf_formats(self):
+        status, _headers, urdf = self._get_raw("/api/robots/astro_p1/editions/with_racket/source?format=urdf")
+        self.assertEqual(status, 200)
+        self.assertIn(b"<robot", urdf)
+
+        status, _headers, mjcf = self._get_raw("/api/robots/astro_p2/editions/30dof_primitive_collision/source?format=mjcf")
+        self.assertEqual(status, 200)
+        self.assertIn(b"<mujoco", mjcf)
+
+        for path in (
+            "/api/robots/soma23/editions/free_base/source?format=urdf",
+            "/api/robots/astro_p1/editions/no-such-edition/source?format=urdf",
+            "/api/robots/astro_p1/editions/..%2Fwith_racket/source?format=urdf",
+            "/api/robots/astro_p1/editions/with_racket/source?format=outside",
+        ):
+            status, _headers, payload = self._get_raw(path)
+            self.assertEqual(status, 404, path)
+            self.assertFalse(json.loads(payload)["ok"])
+
+    def test_workbench_exposes_urdf_description_viewer_and_export_preview(self):
+        page = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
+        app = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
+        renderer = (WEB_ROOT / "urdf-renderer.js").read_text(encoding="utf-8")
+
+        self.assertIn('id="description-format-select"', page)
+        self.assertIn('id="preview-urdf"', page)
+        self.assertIn('id="leave-urdf-preview"', page)
+        self.assertIn("createUrdfRenderer", app)
+        self.assertIn("async function previewExportedUrdf()", app)
+        self.assertIn("result.blob.text()", app)
+        self.assertIn("captureViewerView", app)
+        self.assertIn("URDFLoader", renderer)
+        self.assertIn("STLLoader", renderer)
+        self.assertIn("collision-overlay", renderer)
+        self.assertIn("resolveUrdfMeshAsset", renderer)
+
+    def test_urdf_vendor_is_pinned_and_serves_only_the_transformed_loader_surface(self):
+        status, _headers, payload = self._get_raw("/vendor/urdf/URDFLoader.js")
+        self.assertEqual(status, 200)
+        source = payload.decode("utf-8")
+        self.assertIn('import { STLLoader } from "/vendor/STLLoader.js";', source)
+        self.assertIn("COLLADA meshes are unsupported; use STL.", source)
+        self.assertNotIn("three/examples/jsm/loaders", source)
+        self.assertNotIn("node_modules", source)
+        self.assertEqual(self._get_raw("/vendor/urdf/not-a-module.js")[0], 404)
+
+        package = json.loads((WEB_ROOT / "package.json").read_text(encoding="utf-8"))
+        self.assertEqual(package["dependencies"]["urdf-loader"], "0.12.5")
 
     def test_workbench_exposes_simulation_and_interaction_controls(self):
         page = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
@@ -805,9 +920,9 @@ class WorkbenchTests(unittest.TestCase):
         app = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
         diagnostics = (WEB_ROOT / "diagnostics.js").read_text(encoding="utf-8")
 
-        for control in ("physics-toggle", "follow-toggle", "visual-mesh-toggle", "collision-shape-toggle", "contact-toggle", "center-of-mass-toggle", "link-frame-toggle", "world-frame-toggle", "joint-axis-toggle"):
+        for control in ("physics-toggle", "follow-toggle", "visual-mesh-toggle", "collision-shape-toggle", "contact-toggle", "center-of-mass-toggle", "object-frame-toggle", "joint-axis-toggle"):
             self.assertIn(f'id="{control}"', page)
-        self.assertEqual(page.count('role="switch"'), 9)
+        self.assertEqual(page.count('role="switch"'), 8)
         self.assertIn('id="mesh-opacity"', page)
         self.assertIn('id="mesh-opacity-value"', page)
         self.assertIn("aria-checked", app)

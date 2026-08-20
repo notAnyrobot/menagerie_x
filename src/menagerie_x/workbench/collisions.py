@@ -29,7 +29,7 @@ class CollisionDraftNotFoundError(CollisionDocumentError):
     """Raised when a temporary collision draft is unavailable."""
 
 
-PRIMITIVE_TYPES = frozenset({"box", "sphere", "cylinder"})
+PRIMITIVE_TYPES = frozenset({"box", "sphere", "cylinder", "capsule"})
 
 
 def _parser() -> ET.XMLParser:
@@ -146,12 +146,34 @@ def load_collision_document(source: Path) -> CollisionDocument:
                     "editable": shape_type in PRIMITIVE_TYPES,
                 }
             )
+    # Rehydrate only the exact deterministic composite emitted below.  Other
+    # adjacent cylinders/spheres remain independent standard URDF collisions.
+    by_link_name = {(item["link"], item["name"]): item for item in collisions if item["name"]}
+    consumed: set[str] = set()
+    hydrated: list[dict[str, Any]] = []
+    for item in collisions:
+        name = item["name"]
+        if item["id"] in consumed:
+            continue
+        if name.endswith("__cylinder") and item["geometry"]["type"] == "cylinder":
+            base = name.removesuffix("__cylinder")
+            start = by_link_name.get((item["link"], f"{base}__start"))
+            end = by_link_name.get((item["link"], f"{base}__end"))
+            radius = item["geometry"]["radius"]
+            length = item["geometry"]["length"]
+            if start and end and start["geometry"] == {"type": "sphere", "radius": radius} and end["geometry"] == {"type": "sphere", "radius": radius} and start["origin"]["rpy"] == item["origin"]["rpy"] == end["origin"]["rpy"]:
+                xyz = item["origin"]["xyz"]
+                if start["origin"]["xyz"] == [xyz[0], xyz[1], xyz[2] - length / 2] and end["origin"]["xyz"] == [xyz[0], xyz[1], xyz[2] + length / 2]:
+                    hydrated.append({**item, "name": base, "geometry": {"type": "capsule", "radius": radius, "length": length}})
+                    consumed.update({start["id"], end["id"]})
+                    continue
+        hydrated.append(item)
     return CollisionDocument(
         source=source,
         revision=revision,
         new_id_prefix=f"new-{revision[:16]}-",
         links=tuple(links),
-        collisions=tuple(collisions),
+        collisions=tuple(hydrated),
     )
 
 
@@ -252,18 +274,37 @@ def _validated_draft(
     return parsed, retained_meshes
 
 
-def _primitive_collision(item: dict[str, Any]) -> ET.Element:
+def _primitive_collision(item: dict[str, Any]) -> list[ET.Element]:
     collision = ET.Element("collision", {"name": item["name"]})
     ET.SubElement(collision, "origin", {"xyz": _format(item["origin"]["xyz"]), "rpy": _format(item["origin"]["rpy"])})
     geometry = ET.SubElement(collision, "geometry")
     shape = item["geometry"]
     if shape["type"] == "box":
         ET.SubElement(geometry, "box", {"size": _format(shape["size"])})
+        return [collision]
     elif shape["type"] == "sphere":
         ET.SubElement(geometry, "sphere", {"radius": format(shape["radius"], ".12g")})
-    else:
+        return [collision]
+    elif shape["type"] == "cylinder":
         ET.SubElement(geometry, "cylinder", {"radius": format(shape["radius"], ".12g"), "length": format(shape["length"], ".12g")})
-    return collision
+        return [collision]
+    else:
+        # URDF has no standard capsule element.  Persist the editor's one
+        # logical capsule as its canonical cylinder and two endpoint spheres.
+        # Names are intentionally stable so later loads and external tools can
+        # recognize this standard-only composite without an extension tag.
+        collision.set("name", f"{item['name']}__cylinder")
+        ET.SubElement(geometry, "cylinder", {"radius": format(shape["radius"], ".12g"), "length": format(shape["length"], ".12g")})
+        half = shape["length"] / 2
+        result = [collision]
+        for suffix, offset in (("start", -half), ("end", half)):
+            endpoint = ET.Element("collision", {"name": f"{item['name']}__{suffix}"})
+            origin = item["origin"]
+            ET.SubElement(endpoint, "origin", {"xyz": _format([origin["xyz"][0], origin["xyz"][1], origin["xyz"][2] + offset]), "rpy": _format(origin["rpy"])})
+            endpoint_geometry = ET.SubElement(endpoint, "geometry")
+            ET.SubElement(endpoint_geometry, "sphere", {"radius": format(shape["radius"], ".12g")})
+            result.append(endpoint)
+        return result
 
 
 def _timestamped_target(source: Path, now: dt.datetime | None = None) -> Path:
@@ -289,7 +330,8 @@ def _materialize_draft(source: Path, document: CollisionDocument, primitives: li
             elif geometry and geometry["type"] == "mesh" and collision_id not in retained_mesh_ids:
                 link.remove(collision)
     for item in primitives:
-        links[item["link"]].append(_primitive_collision(item))
+        for collision in _primitive_collision(item):
+            links[item["link"]].append(collision)
     ET.indent(root, space="  ")
     return ET.tostring(root, encoding="utf-8", xml_declaration=True) + b"\n"
 
@@ -454,11 +496,54 @@ class CollisionDraftStore:
             session.updated_at = time.monotonic()
             return target
 
+    def overwrite(self, identifier: str, source: Path, expected_revision: str) -> Path:
+        """Replace the selected URDF only after the route has confirmed it."""
+        with self._lock:
+            session = self._session(identifier, source)
+            current = load_collision_document(source)
+            if expected_revision != session.document.revision or current.revision != session.document.revision:
+                raise StaleCollisionDocumentError("URDF changed; reset the collision draft before overwriting")
+            _atomic_write(source, session.temporary.read_bytes())
+            session.updated_at = time.monotonic()
+            return source
+
+    def mirror_preview(self, identifier: str, source: Path, expected_revision: str, direction: str) -> dict[str, Any]:
+        with self._lock:
+            session = self._session(identifier, source)
+            if expected_revision != session.document.revision:
+                raise StaleCollisionDocumentError("URDF changed; reset the collision draft before mirroring")
+            if direction not in {"left-to-right", "right-to-left"}:
+                raise CollisionDocumentError("mirror direction must be left-to-right or right-to-left")
+            source_side, target_side = direction.split("-to-")
+            affected = [item for item in session.primitives if item["link"].startswith(f"{source_side}_")]
+            if not affected:
+                raise CollisionDocumentError(f"no {source_side}-side primitive collisions are available to mirror")
+            return {"source_side": source_side, "target_side": target_side, "sagittal_plane": "zero-pose link frames", "affected": affected, "replaced_target_meshes": 0}
+
+    def mirror(self, identifier: str, source: Path, expected_revision: str, direction: str) -> tuple[CollisionDraftSession, dict[str, Any]]:
+        with self._lock:
+            preview = self.mirror_preview(identifier, source, expected_revision, direction)
+            session = self._session(identifier, source)
+            source_side, target_side = preview["source_side"], preview["target_side"]
+            retained = [item for item in session.primitives if not item["link"].startswith(f"{target_side}_")]
+            mirrored = []
+            for item in session.primitives:
+                if not item["link"].startswith(f"{source_side}_"):
+                    continue
+                clone = {**item, "id": f"{session.document.new_id_prefix}mirror-{uuid.uuid4().hex}", "link": item["link"].replace(f"{source_side}_", f"{target_side}_", 1), "name": item["name"].replace(f"{source_side}_", f"{target_side}_", 1), "origin": {"xyz": [item["origin"]["xyz"][0], -item["origin"]["xyz"][1], item["origin"]["xyz"][2]], "rpy": [item["origin"]["rpy"][0], -item["origin"]["rpy"][1], -item["origin"]["rpy"][2]]}, "geometry": dict(item["geometry"])}
+                if clone["link"] in session.document.links:
+                    mirrored.append(clone)
+            return self.update(identifier, source, expected_revision, retained + mirrored, sorted(session.retained_mesh_ids)), preview
+
     def discard(self, identifier: str, source: Path) -> None:
         with self._lock:
             session = self._session(identifier, source)
             self._sessions.pop(identifier, None)
             session.temporary.unlink(missing_ok=True)
+
+    def source_bytes(self, identifier: str, source: Path) -> bytes:
+        with self._lock:
+            return self._session(identifier, source).temporary.read_bytes()
 
     def close(self) -> None:
         with self._lock:

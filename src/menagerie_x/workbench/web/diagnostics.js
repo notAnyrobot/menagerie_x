@@ -140,9 +140,9 @@ export function createVisualDiagnostics(scene) {
   function applyDisplayState(nextState) {
     displayState = { ...displayState, ...nextState };
     for (const marker of linkCentersOfMass) marker.visible = Boolean(displayState.centersOfMass);
-    for (const frame of linkFrames) frame.visible = Boolean(displayState.linkFrames);
+    for (const frame of linkFrames) frame.visible = Boolean(displayState.objectFrames);
     for (const axis of jointAxes) axis.visible = Boolean(displayState.jointAxes);
-    if (worldFrame) worldFrame.visible = Boolean(displayState.worldFrame);
+    if (worldFrame) worldFrame.visible = Boolean(displayState.objectFrames);
   }
 
   function bindRobot(robot, links, visualBoundsDiagonal) {

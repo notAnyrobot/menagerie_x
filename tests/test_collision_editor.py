@@ -103,6 +103,19 @@ class CollisionDocumentTests(unittest.TestCase):
         self.assertEqual(first.name, "robot_collision_edited_20260813T010203Z.urdf")
         self.assertEqual(second.name, "robot_collision_edited_20260813T010203Z_2.urdf")
 
+    def test_standard_capsule_exports_as_deterministically_named_composite(self):
+        document = load_collision_document(self.source)
+        draft = [{
+            "id": f"{document.new_id_prefix}capsule", "link": "arm", "name": "arm_capsule",
+            "origin": {"xyz": [0, 0, 0], "rpy": [0, 0, 0]},
+            "geometry": {"type": "capsule", "radius": .1, "length": .4},
+        }]
+
+        output = export_collision_copy(self.source, document.revision, draft)
+        names = [item.get("name") for item in ET.parse(output).findall("./link[@name='arm']/collision")]
+
+        self.assertEqual(names, ["arm_capsule__cylinder", "arm_capsule__start", "arm_capsule__end"])
+
     def test_export_can_delete_mesh_collisions_without_mutating_source(self):
         document = load_collision_document(self.source)
 

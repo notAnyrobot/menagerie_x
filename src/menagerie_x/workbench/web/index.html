@@ -16,11 +16,12 @@
         </div>
         <button id="collapse-menagerie" class="icon-button" aria-label="Collapse menagerie workbench" title="Collapse menagerie workbench">‹</button>
       </div>
-      <p class="sidebar-copy">Select a robot variant, then choose an edition. An edition may provide URDF, MJCF, or both.</p>
+      <p class="sidebar-copy">Select a robot variant, description format, and then an available edition.</p>
       <div class="menagerie-actions" aria-label="Robot workspace actions">
         <button id="add-robot-variant" type="button">Add robot variant</button>
         <button id="import-mjcf-edition" type="button" disabled>Import MJCF revision</button>
         <button id="export-urdf" type="button" disabled>Export URDF</button>
+        <button id="preview-urdf" type="button" disabled>Preview exported URDF</button>
       </div>
       <p id="urdf-export-status" class="urdf-export-status" aria-live="polite"></p>
       <div id="robot-list" class="robot-selector">
@@ -28,10 +29,16 @@
         <select id="robot-variant-select">
           <option value="">Select a robot variant</option>
         </select>
-        <label for="robot-edition-select">Robot edition</label>
-        <select id="robot-edition-select" disabled>
+        <label for="description-format-select">Description format</label>
+        <select id="description-format-select" disabled>
           <option value="">Select a robot variant first</option>
         </select>
+        <label for="robot-edition-select">Robot edition</label>
+        <select id="robot-edition-select" disabled>
+          <option value="">Select a description format first</option>
+        </select>
+        <p id="description-format-help" class="robot-selection-meta" aria-live="polite">Choose a robot variant to see its description formats.</p>
+        <button id="leave-urdf-preview" type="button" hidden>Return to catalog description</button>
         <button id="reload-description" type="button" disabled title="Refresh the robot catalog and reload the selected MJCF description from disk">Reload robots</button>
         <p id="robot-selection-meta" class="robot-selection-meta" aria-live="polite">No robot selected.</p>
       </div>
@@ -71,12 +78,8 @@
           <button id="center-of-mass-toggle" class="state-toggle" role="switch" aria-checked="false" aria-label="Toggle link centers of mass"><span class="switch-knob" aria-hidden="true"></span></button>
         </div>
         <div class="simulation-row">
-          <span>Link coordinate frames</span>
-          <button id="link-frame-toggle" class="state-toggle" role="switch" aria-checked="false" aria-label="Toggle link coordinate frames"><span class="switch-knob" aria-hidden="true"></span></button>
-        </div>
-        <div class="simulation-row">
-          <span>World coordinate frame</span>
-          <button id="world-frame-toggle" class="state-toggle" role="switch" aria-checked="false" aria-label="Toggle world coordinate frame"><span class="switch-knob" aria-hidden="true"></span></button>
+          <span>Object coordinate frames</span>
+          <button id="object-frame-toggle" class="state-toggle" role="switch" aria-checked="false" aria-label="Toggle object coordinate frames" title="Show link-attached and world coordinate frames"><span class="switch-knob" aria-hidden="true"></span></button>
         </div>
         <div class="simulation-row">
           <span>Joint rotation axes</span>
@@ -88,7 +91,7 @@
 
     <aside id="collision-editor-dock" class="collision-editor-dock" aria-label="Collision editor" hidden>
       <header class="collision-editor-dock-heading">
-        <span><span class="eyebrow">Collision editor</span><strong>Temporary MJCF draft</strong></span>
+        <span><span class="eyebrow">Collision editor</span><strong id="collision-draft-title">Temporary collision draft</strong></span>
       </header>
       <div class="collision-dock-content">
         <div class="collision-dock-column collision-browser">
@@ -106,11 +109,11 @@
           <div id="collision-detail" class="collision-detail"></div>
         </div>
         <div class="collision-dock-column collision-draft-actions">
-          <button id="collision-reset" title="Restore the temporary draft from the MJCF source">Reset draft</button>
+          <button id="collision-reset" title="Restore the temporary draft from the selected description">Reset draft</button>
           <button id="collision-mirror-left-to-right" title="Replace right-side collision shapes with reflected left-side shapes">Mirror left → right</button>
           <button id="collision-mirror-right-to-left" title="Replace left-side collision shapes with reflected right-side shapes">Mirror right → left</button>
-          <button id="collision-overwrite" class="collision-export">Overwrite Current MJCF</button>
-          <button id="collision-export" class="primary collision-export">Export MJCF Revision</button>
+          <button id="collision-overwrite" class="collision-export">Overwrite selected description</button>
+          <button id="collision-export" class="primary collision-export">Export collision copy</button>
           <p id="collision-status" class="collision-status">Open the editor to create a temporary collision draft.</p>
         </div>
       </div>
@@ -121,7 +124,7 @@
         <button id="expand-menagerie" class="icon-button hidden" aria-label="Expand menagerie workbench" title="Expand menagerie workbench">›</button>
         <div class="robot-title">
           <span id="robot-status" class="status-dot" aria-hidden="true"></span>
-          <div><span class="eyebrow">MuJoCo WASM workbench</span><h2 id="selected-title">Select a robot variant</h2></div>
+          <div><span class="eyebrow">Robot description workbench</span><h2 id="selected-title">Select a robot variant</h2></div>
         </div>
         <div class="toolbar-actions">
           <button id="restart-workbench" class="restart-workbench" type="button" title="Restart the local Workbench server and reload this page">Restart workbench</button>
@@ -135,7 +138,7 @@
         <canvas id="robot-canvas" tabindex="0" aria-label="Interactive robot viewer"></canvas>
         <div class="viewer-overlay top"><span id="engine-state">Preparing MuJoCo WASM…</span></div>
         <div class="viewer-overlay bottom legend" aria-label="Keyboard and mouse controls">
-          <span><kbd>P</kbd> Physics</span><span><kbd>R</kbd> Reset</span><span><kbd>F</kbd> Follow</span><span><kbd>C</kbd> Contacts</span><span>◉ Drag to orbit</span><span>✥ Drag robot to push</span>
+          <span><kbd>P</kbd> Physics (MJCF)</span><span><kbd>R</kbd> Reset (MJCF)</span><span><kbd>F</kbd> Follow</span><span><kbd>C</kbd> Contacts (MJCF)</span><span>◉ Drag to orbit</span><span>✥ Drag robot to push (MJCF)</span>
         </div>
         <div id="viewer-empty" class="viewer-empty">Select a robot variant, then choose an edition.</div>
       </section>
@@ -143,7 +146,7 @@
       <section class="details-bar">
         <div><span class="eyebrow">Selected element</span><strong id="selected-element">None</strong></div>
         <div><span class="eyebrow">Source</span><span id="selected-source">—</span></div>
-        <div><span class="eyebrow">Backend</span><span>MuJoCo WASM + Three.js</span></div>
+        <div><span class="eyebrow">Backend</span><span>URDF or MuJoCo + Three.js</span></div>
       </section>
     </main>
 

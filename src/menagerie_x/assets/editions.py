@@ -308,7 +308,7 @@ def import_mjcf_variant(variant_id: str, source: Path, root: Path | None = None)
             "default_scene": "flat_floor",
             "spawn": {"scene_frame": "robot_spawn", "xyz": [0.0, 0.0, 0.75], "rpy": [0.0, 0.0, 0.0]},
             "default_edition": edition_id,
-            "editions": {edition_id: {"dof": 0, "label": "Default", "urdf": None, "mjcf": f"mjcf/{destination.name}"}},
+            "editions": {edition_id: {"base_mode": "free", "dof": 0, "label": "Default", "urdf": None, "mjcf": f"mjcf/{destination.name}"}},
         }
         _write_manifest(paths.manifest_path, manifest)
         return {"variant": variant_id, "edition_id": edition_id, "output_path": str(destination.resolve()), **checked}
@@ -369,7 +369,7 @@ def import_urdf_variant(variant_id: str, source: Path, root: Path | None = None)
             "default_scene": "flat_floor",
             "spawn": {"scene_frame": "robot_spawn", "xyz": [0.0, 0.0, 0.75], "rpy": [0.0, 0.0, 0.0]},
             "default_edition": edition_id,
-            "editions": {edition_id: {"dof": dof, "label": "Default", "urdf": f"urdf/{target_urdf.name}", "mjcf": None}},
+            "editions": {edition_id: {"base_mode": "free", "dof": dof, "label": "Default", "urdf": f"urdf/{target_urdf.name}", "mjcf": None}},
         }
         _write_manifest(paths.manifest_path, manifest)
         from menagerie_x.commands.mjcf import convert_variant_to_candidate

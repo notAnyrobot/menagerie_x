@@ -37,7 +37,10 @@ class AssetManifestTests(unittest.TestCase):
         self.assertTrue(parsed["astro_p2"].mjcf.exists())
         self.assertEqual(parsed["astro_p2"].default_edition, "30dof_primitive_collision")
         self.assertEqual(parsed["astro_p2"].mjcf, ASSET_ROOT / "astro_p2" / "mjcf" / "astro_p2_30dof_primitive_collision.xml")
-        self.assertEqual(parsed["astro_p2"].urdf, ASSET_ROOT / "astro_p2" / "urdf" / "astro_p2_30dof_mesh_collision.urdf")
+        self.assertEqual(
+            parsed["astro_p2"].urdf,
+            ASSET_ROOT / "astro_p2" / "urdf" / "astro_p2_30dof_primitive_collision.urdf",
+        )
         self.assertEqual(
             [edition.id for edition in parsed["astro_p2"].editions],
             ["30dof_primitive_collision", "30dof_mesh_collision", "30dof_primitive_collision_halfway"],
