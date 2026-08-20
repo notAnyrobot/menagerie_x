@@ -4,14 +4,14 @@ import pathlib
 import tempfile
 import unittest
 
-from menagerie_x.assets import AssetError, get_variant, load_manifest, load_scene, resolve_scene, validate_assets, variants
+from menagerie_x.assets import AssetError, get_edition, get_variant, load_manifest, load_scene, resolve_scene, validate_assets, variants
 from menagerie_x.commands.mujoco import check_mujoco
 from menagerie_x.cli import main as cli_main
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 ASSET_ROOT = ROOT / "src" / "menagerie_x" / "assets"
-ROBOT_ROOT = ASSET_ROOT / "astro_v1"
+ROBOT_ROOT = ASSET_ROOT / "astro_p1"
 
 
 class AssetManifestTests(unittest.TestCase):
@@ -19,24 +19,40 @@ class AssetManifestTests(unittest.TestCase):
         self.assertEqual(load_manifest(ROOT)["name"], "Menagerie X")
 
     def test_manifest_lists_expected_variants(self):
+        manifest = load_manifest(ROOT)
         parsed = variants(ROOT)
 
-        self.assertEqual(sorted(parsed), ["astro_v1", "astro_v1_27dof", "astro_v2", "astro_with_racket", "atom_p3", "soma23", "unitree_g1"])
-        self.assertEqual(get_variant(root=ROOT).name, "astro_v2")
-        self.assertEqual(parsed["astro_v1"].dof, 30)
-        self.assertTrue(parsed["astro_v1"].urdf.exists())
-        self.assertTrue(parsed["astro_v1"].mjcf.exists())
-        self.assertEqual(parsed["astro_v1"].robot_version, "astro_v1")
-        self.assertEqual(parsed["astro_v2"].robot_version, "astro_v2")
-        self.assertEqual(parsed["astro_v2"].dof, 30)
-        self.assertTrue(parsed["astro_v2"].urdf.exists())
-        self.assertTrue(parsed["astro_v2"].mjcf.exists())
-        self.assertEqual(parsed["astro_v2"].mjcf, ASSET_ROOT / "astro_v2" / "mjcf" / "astro_v2_primitive_collision.xml")
-        self.assertTrue((ASSET_ROOT / "astro_v2" / "urdf").is_dir())
-        self.assertTrue((ASSET_ROOT / "astro_v2" / "meshes").is_dir())
+        self.assertNotIn("default_version", manifest)
+        self.assertNotIn("robot_versions", manifest)
+        self.assertTrue(all("robot_version" not in entry for entry in manifest["variants"].values()))
+        self.assertEqual(sorted(parsed), ["astro_p1", "astro_p2", "atom_p3", "soma23", "unitree_g1"])
+        self.assertEqual(get_variant(root=ROOT).name, "astro_p2")
+        self.assertEqual(parsed["astro_p1"].dof, 30)
+        self.assertTrue(parsed["astro_p1"].urdf.exists())
+        self.assertTrue(parsed["astro_p1"].mjcf.exists())
+        self.assertEqual(parsed["astro_p1"].robot_version, "astro_p1")
+        self.assertEqual(parsed["astro_p2"].robot_version, "astro_p2")
+        self.assertEqual(parsed["astro_p2"].dof, 30)
+        self.assertTrue(parsed["astro_p2"].urdf.exists())
+        self.assertTrue(parsed["astro_p2"].mjcf.exists())
+        self.assertEqual(parsed["astro_p2"].default_edition, "30dof_primitive_collision")
+        self.assertEqual(parsed["astro_p2"].mjcf, ASSET_ROOT / "astro_p2" / "mjcf" / "astro_p2_30dof_primitive_collision.xml")
+        self.assertEqual(parsed["astro_p2"].urdf, ASSET_ROOT / "astro_p2" / "urdf" / "astro_p2_30dof_mesh_collision.urdf")
+        self.assertEqual(
+            [edition.id for edition in parsed["astro_p2"].editions],
+            ["30dof_primitive_collision", "30dof_mesh_collision", "30dof_primitive_collision_halfway"],
+        )
+        self.assertTrue((ASSET_ROOT / "astro_p2" / "urdf").is_dir())
+        self.assertTrue((ASSET_ROOT / "astro_p2" / "meshes").is_dir())
         self.assertEqual(parsed["soma23"].dof, 66)
         self.assertIsNone(parsed["soma23"].urdf)
-        self.assertEqual(parsed["soma23"].mjcf, ASSET_ROOT / "soma23" / "mjcf" / "soma23_humanoid.xml")
+        self.assertEqual(parsed["soma23"].mjcf, ASSET_ROOT / "soma23" / "mjcf" / "soma23_free_base.xml")
+        astro_editions = {edition.id: edition for edition in parsed["astro_p1"].editions}
+        self.assertEqual(set(astro_editions), {"30dof", "27dof", "with_racket"})
+        self.assertTrue(astro_editions["27dof"].formats["urdf"])
+        self.assertTrue(astro_editions["27dof"].formats["mjcf"])
+        self.assertFalse(astro_editions["with_racket"].formats["mjcf"])
+        self.assertEqual(get_edition("astro_p1", "with_racket", ROOT).urdf, ASSET_ROOT / "astro_p1" / "urdf" / "astro_p1_with_racket.urdf")
 
     def test_validate_assets_accepts_current_checkout(self):
         self.assertEqual(validate_assets(ROOT), [])
@@ -45,7 +61,7 @@ class AssetManifestTests(unittest.TestCase):
         scene = load_scene("flat_floor", ROOT)
         self.assertEqual(scene.gravity, [0.0, 0.0, -9.81])
         self.assertEqual(scene.terrain_instances[0]["terrain"], "flat_floor")
-        for variant_name in ("astro_v1", "astro_v2"):
+        for variant_name in ("astro_p1", "astro_p2"):
             resolved = resolve_scene(variants(ROOT)[variant_name], ROOT)
             self.assertEqual(resolved.identifier, "flat_floor")
             self.assertEqual(resolved.robot_spawn, {"xyz": [0.0, 0.0, 0.75], "rpy": [0.0, 0.0, 0.0]})
@@ -54,7 +70,7 @@ class AssetManifestTests(unittest.TestCase):
             self.assertEqual(floor["pose"]["xyz"], [0.0, 0.0, 0.0])
 
     def test_authored_urdfs_remain_robot_only(self):
-        for variant_name in ("astro_v1", "astro_v2"):
+        for variant_name in ("astro_p1", "astro_p2"):
             source = variants(ROOT)[variant_name].urdf.read_text(encoding="utf-8")
             self.assertNotIn("workbench_floor", source)
             self.assertNotIn("flat_floor", source)
@@ -64,18 +80,18 @@ class MujocoPackageTests(unittest.TestCase):
     def test_check_mujoco_loads_default_variant(self):
         result = check_mujoco(root=ROOT)
 
-        self.assertEqual(result["variant"], "astro_v2")
-        self.assertEqual(result["mjcf"], str(ASSET_ROOT / "astro_v2" / "mjcf" / "astro_v2_primitive_collision.xml"))
+        self.assertEqual(result["variant"], "astro_p2")
+        self.assertEqual(result["mjcf"], str(ASSET_ROOT / "astro_p2" / "mjcf" / "astro_p2_30dof_primitive_collision.xml"))
         self.assertGreater(result["nbody"], 1)
         self.assertGreater(result["ngeom"], 1)
 
     def test_packaged_assets_resolve_v1_variant_paths(self):
         parsed = variants()
 
-        self.assertEqual(parsed["astro_v1"].urdf, ROBOT_ROOT / "urdf" / "astro_v1.urdf")
+        self.assertEqual(parsed["astro_p1"].urdf, ROBOT_ROOT / "urdf" / "astro_p1_30dof.urdf")
 
     def test_check_mujoco_accepts_an_exact_manual_xml_path(self):
-        path = ASSET_ROOT / "astro_v2" / "mjcf" / "astro_v2_mesh_collision.xml"
+        path = ASSET_ROOT / "astro_p2" / "mjcf" / "astro_p2_30dof_mesh_collision.xml"
 
         result = check_mujoco(root=ROOT, mjcf_path=path)
 
@@ -98,7 +114,7 @@ class MujocoPackageTests(unittest.TestCase):
     def test_mujoco_cli_rejects_conflicting_selectors(self):
         errors = io.StringIO()
         with contextlib.redirect_stderr(errors), self.assertRaises(SystemExit) as raised:
-            cli_main(["mujoco", "--variant", "astro_v2", "--mjcf", "any.xml", "--check"])
+            cli_main(["mujoco", "--variant", "astro_p2", "--mjcf", "any.xml", "--check"])
 
         self.assertEqual(raised.exception.code, 2)
         self.assertIn("not allowed with argument", errors.getvalue())

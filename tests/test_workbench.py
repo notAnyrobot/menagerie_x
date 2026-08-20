@@ -80,7 +80,7 @@ class NativeViewerProcessManagerTests(unittest.TestCase):
             return process
 
         self.manager = NativeViewerProcessManager(ROOT / "src" / "menagerie_x" / "assets", factory)
-        self.variant = variants(ROOT)["astro_v2"]
+        self.variant = variants(ROOT)["astro_p2"]
         self.source = self.variant.mjcf
 
     def tearDown(self):
@@ -154,21 +154,21 @@ class NativeViewerEndpointTests(unittest.TestCase):
         self.assertEqual(status_code, 200)
         self.assertTrue(status["available"])
         self.assertEqual(status["state"], "idle")
-        _, editions = self._request("/api/robots/astro_v2/editions")
+        _, editions = self._request("/api/robots/astro_p2/editions")
         edition = editions["editions"][0]
         resolver = object.__new__(WorkbenchRequestHandler)
         resolver.asset_root = ROOT / "src" / "menagerie_x" / "assets"
-        variant = variants(ROOT)["astro_v2"]
+        variant = variants(ROOT)["astro_p2"]
         for record in editions["editions"]:
             _record, source = resolver._edition(variant, record["id"])
             self.assertEqual(str(source.resolve()), record["output_path"])
-        path = f"/api/robots/astro_v2/editions/{edition['id']}/native-viewer"
+        path = f"/api/robots/astro_p2/editions/{edition['id']}/native-viewer"
         status_code, launched = self._request(path, "POST", {})
         self.assertEqual(status_code, 202)
         self.assertEqual(launched["state"], "running")
         self.assertEqual(launched["launch"]["source"], edition["output_path"])
         self.assertEqual(self._request(path, "POST", {})[0], 409)
-        self.assertEqual(self._request("/api/robots/astro_v2/editions/no-such-edition/native-viewer", "POST", {})[0], 404)
+        self.assertEqual(self._request("/api/robots/astro_p2/editions/no-such-edition/native-viewer", "POST", {})[0], 404)
         self.assertEqual(self._request(path, "POST", {"mjcf": "/tmp/arbitrary.xml"})[0], 400)
 
         self.processes[-1].finish(0)
@@ -183,7 +183,7 @@ class NativeViewerEndpointTests(unittest.TestCase):
             _host, port = remote_server.server_address
             base_url = f"http://127.0.0.1:{port}"
             request = urllib.request.Request(
-                f"{base_url}/api/robots/astro_v2/editions/authorized/native-viewer",
+                f"{base_url}/api/robots/astro_p2/editions/authorized/native-viewer",
                 data=b"{}",
                 headers={"Content-Type": "application/json"},
                 method="POST",
@@ -346,16 +346,28 @@ class WorkbenchTests(unittest.TestCase):
 
         self.assertEqual(
             [robot["id"] for robot in catalog["robots"]],
-            ["atom_p3", "astro_v1", "astro_v1_27dof", "astro_v2", "astro_with_racket", "soma23", "unitree_g1"],
+            ["atom_p3", "astro_p1", "astro_p2", "soma23", "unitree_g1"],
         )
         robots = {robot["id"]: robot for robot in catalog["robots"]}
-        self.assertEqual(robots["astro_v1"]["formats"], {"urdf": True, "mjcf": True})
-        self.assertTrue(robots["astro_v2"]["scene"]["links"])
-        self.assertTrue(robots["astro_v1"]["scene"]["links"][0]["collisions"])
-        self.assertIn("inertial", robots["astro_v1"]["scene"]["links"][0])
-        self.assertEqual(robots["astro_v1"]["default_scene"], "flat_floor")
-        self.assertEqual(robots["astro_v2"]["scene_description"]["id"], "flat_floor")
-        self.assertEqual(robots["astro_v2"]["scene_description"]["robot_spawn"]["xyz"], [0.0, 0.0, 0.75])
+        self.assertEqual(robots["astro_p1"]["formats"], {"urdf": True, "mjcf": True})
+        self.assertEqual(
+            [(edition["id"], edition["formats"]) for edition in robots["astro_p1"]["editions"]],
+            [("30dof", {"urdf": True, "mjcf": True}), ("27dof", {"urdf": True, "mjcf": True}), ("with_racket", {"urdf": True, "mjcf": False})],
+        )
+        self.assertEqual(
+            [(edition["id"], edition["formats"]) for edition in robots["astro_p2"]["editions"]],
+            [
+                ("30dof_primitive_collision", {"urdf": True, "mjcf": True}),
+                ("30dof_mesh_collision", {"urdf": False, "mjcf": True}),
+                ("30dof_primitive_collision_halfway", {"urdf": False, "mjcf": True}),
+            ],
+        )
+        self.assertTrue(robots["astro_p2"]["scene"]["links"])
+        self.assertTrue(robots["astro_p1"]["scene"]["links"][0]["collisions"])
+        self.assertIn("inertial", robots["astro_p1"]["scene"]["links"][0])
+        self.assertEqual(robots["astro_p1"]["default_scene"], "flat_floor")
+        self.assertEqual(robots["astro_p2"]["scene_description"]["id"], "flat_floor")
+        self.assertEqual(robots["astro_p2"]["scene_description"]["robot_spawn"]["xyz"], [0.0, 0.0, 0.75])
         self.assertEqual(robots["unitree_g1"]["dof"], 43)
         self.assertEqual(robots["unitree_g1"]["formats"], {"urdf": True, "mjcf": True})
         self.assertEqual(robots["unitree_g1"]["source_provenance"]["repository"], "https://github.com/unitreerobotics/unitree_ros")
@@ -365,25 +377,25 @@ class WorkbenchTests(unittest.TestCase):
         self.assertEqual(robots["soma23"]["source_provenance"]["repository"], "https://github.com/NVlabs/ProtoMotions")
 
     def test_urdf_export_endpoint_downloads_astro_and_reports_blockers(self):
-        variant = variants(ROOT)["astro_v2"]
+        variant = variants(ROOT)["astro_p2"]
         source_hashes = (hashlib.sha256(variant.urdf.read_bytes()).hexdigest(), hashlib.sha256(variant.mjcf.read_bytes()).hexdigest())
-        status, headers, body = self._get_raw("/api/robots/astro_v2/editions/astro_v2_primitive_collision/export-urdf")
+        status, headers, body = self._get_raw("/api/robots/astro_p2/editions/30dof_primitive_collision/export-urdf")
 
         self.assertEqual(status, 200)
         self.assertEqual(headers["content-type"], "application/xml; charset=utf-8")
-        self.assertIn('filename="astro_v2-astro_v2_primitive_collision-collisions.urdf"', headers["content-disposition"])
+        self.assertIn('filename="astro_p2-30dof_primitive_collision-collisions.urdf"', headers["content-disposition"])
         self.assertEqual(headers["x-menagerie-mjcf-collision-count"], "47")
         self.assertEqual(headers["x-menagerie-urdf-collision-count"], "125")
         self.assertEqual(len(ET.fromstring(body).findall(".//collision")), 125)
         self.assertEqual(source_hashes, (hashlib.sha256(variant.urdf.read_bytes()).hexdigest(), hashlib.sha256(variant.mjcf.read_bytes()).hexdigest()))
 
-        status, _headers, body = self._get_raw("/api/robots/soma23/editions/soma23_humanoid/export-urdf")
+        status, _headers, body = self._get_raw("/api/robots/soma23/editions/free_base/export-urdf")
         self.assertEqual(status, 422)
         self.assertIn("urdf-unavailable", {issue["code"] for issue in json.loads(body)["report"]["issues"]})
-        status, _headers, body = self._get_raw("/api/robots/unitree_g1/editions/g1_29dof_with_hand_rev_1_0/export-urdf")
+        status, _headers, body = self._get_raw("/api/robots/unitree_g1/editions/29dof_with_hand_rev_1_0/export-urdf")
         self.assertEqual(status, 422)
         self.assertIn("unsupported-geom", {issue["code"] for issue in json.loads(body)["report"]["issues"]})
-        self.assertEqual(self._get_raw("/api/robots/astro_v2/editions/..%2Foutside/export-urdf")[0], 404)
+        self.assertEqual(self._get_raw("/api/robots/astro_p2/editions/..%2Foutside/export-urdf")[0], 404)
 
     def test_urdf_export_action_uses_saved_editions_without_touching_drafts(self):
         page = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
@@ -395,15 +407,20 @@ class WorkbenchTests(unittest.TestCase):
         self.assertIn('from "/urdf-export.js"', app)
         self.assertIn("async function exportSelectedUrdf()", app)
         self.assertIn('`${editionBase()}/export-urdf`', app)
-        self.assertIn("Export URDF uses the selected saved MJCF edition", app)
+        self.assertIn("Export URDF uses the selected saved MJCF description", app)
 
     def test_unitree_g1_editions_report_official_metadata_and_exclude_retargeting_reference_from_candidates(self):
         editions = self._get_json("/api/robots/unitree_g1/editions")["editions"]
         default = next(edition for edition in editions if edition["default"])
+        retargeting = next(edition for edition in editions if edition["id"] == "29dof_box_feet")
 
-        self.assertEqual(default["id"], "g1_29dof_with_hand_rev_1_0")
+        self.assertEqual(default["id"], "29dof_with_hand_rev_1_0")
         self.assertEqual(default["kind"], "official")
         self.assertLess(default["modified_at"], 10**13)
+        self.assertEqual(retargeting["kind"], "retargeting-reference")
+        self.assertEqual(retargeting["dof"], 29)
+        self.assertEqual(retargeting["formats"], {"urdf": False, "mjcf": True})
+        self.assertIn("displayName(activeRobot, edition)", (WEB_ROOT / "app.js").read_text(encoding="utf-8"))
         self.assertEqual(self._get_json("/api/robots/unitree_g1/mjcf-candidates")["candidates"], [])
 
     def test_flat_floor_scene_endpoint_and_workbench_adapter(self):
@@ -417,16 +434,16 @@ class WorkbenchTests(unittest.TestCase):
         self.assertIn("workbench_scene_", app)
         self.assertIn("scene_description?.robot_spawn", app)
 
-    def test_urdf_only_robot_reports_empty_mjcf_workspace(self):
-        robot = self._get_json("/api/robots/astro_with_racket")["robot"]
+    def test_urdf_only_edition_remains_visible_under_its_variant(self):
+        robot = self._get_json("/api/robots/astro_p1")["robot"]
+        racket = next(edition for edition in robot["editions"] if edition["id"] == "with_racket")
 
-        self.assertEqual(robot["formats"], {"urdf": True, "mjcf": False})
-        self.assertFalse(robot["workbench_loadable"])
-        self.assertIn("Import an MJCF edition", robot["conversion_guidance"])
-        self.assertTrue(any(issue["code"] == "mjcf-unavailable" for issue in robot["issues"]))
+        self.assertEqual(racket["formats"], {"urdf": True, "mjcf": False})
+        self.assertFalse(racket["workbench_loadable"])
+        self.assertTrue(robot["workbench_loadable"])
 
     def test_mjcf_conversion_panel_and_candidate_routes_are_exposed(self):
-        candidates = self._get_json("/api/robots/astro_with_racket/mjcf-candidates")
+        candidates = self._get_json("/api/robots/astro_p1/mjcf-candidates")
         page = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
         app = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
 
@@ -438,7 +455,7 @@ class WorkbenchTests(unittest.TestCase):
         self.assertIn("create_managed_candidate", (ROOT / "src" / "menagerie_x" / "workbench" / "server.py").read_text(encoding="utf-8"))
         self.assertIn("previewMjcfCandidate", app)
         self.assertIn("authorizeMjcfCandidate", app)
-        self.assertIn("no MJCF editions", app)
+        self.assertIn("no MJCF-backed edition", app)
         self.assertIn("nextMjcfCandidateId", app)
         self.assertIn("Generate another review candidate without replacing this MJCF", app)
         self.assertIn("Official packaged MJCF", app)
@@ -447,29 +464,27 @@ class WorkbenchTests(unittest.TestCase):
         self.assertIn("async function generateMjcfCandidate() {\n  if (!activeRobot) return;", app)
 
     def test_mjcf_editions_discover_actual_valid_files_without_candidate_assumptions(self):
-        editions = self._get_json("/api/robots/astro_v2/editions")["editions"]
+        editions = self._get_json("/api/robots/astro_p2/editions")["editions"]
 
-        self.assertEqual(editions[0]["id"], "astro_v2_primitive_collision")
+        self.assertEqual(
+            [edition["id"] for edition in editions],
+            ["30dof_primitive_collision", "30dof_mesh_collision", "30dof_primitive_collision_halfway"],
+        )
         self.assertTrue(editions[0]["default"])
         self.assertEqual(editions[0]["role"], "default")
-        self.assertTrue(editions[0]["source_id"])
         self.assertEqual(sum(record["default"] for record in editions), 1)
-        self.assertIn("astro_v2_primitive_collision_halfway", {record["id"] for record in editions})
-        self.assertNotIn("astro_v2-review_collision_edited_20260815T075510Z", {record["id"] for record in editions})
-        self.assertNotIn("astro_v2-review_collision_edited_20260815T082637Z", {record["id"] for record in editions})
-        self.assertTrue(all(len(record["revision"]) == 64 for record in editions))
-        self.assertTrue(all("source_drift_warning" in record for record in editions))
+        self.assertTrue(all(not edition["description_revisions"] for edition in editions))
+        self.assertNotIn("astro_p2-review_collision_edited_20260815T075510Z", {record["id"] for record in editions})
 
     def test_default_edition_label_uses_its_selected_filename_not_its_provenance_id(self):
         """A default can retain an older review ID without mislabeling its XML."""
-        editions = self._get_json("/api/robots/astro_v2/editions")["editions"]
+        editions = self._get_json("/api/robots/astro_p2/editions")["editions"]
         default = next(record for record in editions if record["default"])
         app = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
 
-        self.assertEqual(default["id"], "astro_v2_primitive_collision")
-        self.assertEqual(default["source_id"], "astro_v2-review")
+        self.assertEqual(default["id"], "30dof_primitive_collision")
         self.assertIn("function editionDisplayName(edition)", app)
-        self.assertIn("return edition.default ? `Default MJCF · ${name}` : name;", app)
+        self.assertIn('edition.formats?.urdf && "URDF"', app)
         self.assertIn("${editionDisplayName(edition)}", app)
         self.assertNotIn("? `Default MJCF · ${edition.source_id || edition.id}`", app)
 
@@ -526,14 +541,16 @@ class WorkbenchTests(unittest.TestCase):
         self.assertNotIn(".scene-recording-toggle { color: var(--sonic-danger)", (WEB_ROOT / "styles.css").read_text(encoding="utf-8"))
         self.assertIn('aria-live="polite"', page)
 
-    def test_workbench_starts_without_loading_a_default_edition(self):
+    def test_workbench_waits_for_a_variant_then_loads_its_default_edition(self):
         app = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
         page = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
 
         self.assertNotIn("await selectRobot(catalog[0]?.id)", app)
         self.assertIn("function selectEdition(editionId", app)
+        self.assertIn("const defaultEdition = (activeRobot.editions || []).find(edition => edition.default);", app)
+        self.assertIn("await selectEdition(defaultEdition.id);", app)
         self.assertIn("/editions/${encodeURIComponent(edition.id)}", app)
-        self.assertIn("Select a robot variant, then choose an MJCF edition.", page)
+        self.assertIn("Select a robot variant, then choose an edition.", page)
         self.assertIn('id="collision-overwrite"', page)
 
     def test_reload_description_control_reuses_the_edition_api_and_forces_a_same_id_reload(self):
@@ -541,7 +558,12 @@ class WorkbenchTests(unittest.TestCase):
         page = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
 
         self.assertIn('id="reload-description"', page)
-        self.assertIn("Reload menagerie", page)
+        self.assertIn("Reload robots", page)
+        selector_start = page.index('id="robot-list"')
+        selector_end = page.index("</div>", selector_start)
+        reload_position = page.index('id="reload-description"')
+        self.assertLess(selector_start, reload_position)
+        self.assertLess(reload_position, selector_end)
         self.assertNotIn("Reload description", page)
         self.assertIn("async function reloadCurrentDescription()", app)
         self.assertIn('api("/api/robots")', app)
@@ -549,7 +571,7 @@ class WorkbenchTests(unittest.TestCase):
         self.assertIn('cache: options.forceReload ? "no-store" : "default"', app)
         self.assertIn("captureViewerView", app)
         self.assertIn("restoreViewerView", app)
-        self.assertIn("previously selected MJCF edition is no longer available", app)
+        self.assertIn("previously selected robot edition is no longer available", app)
         self.assertIn("Discard the unsaved temporary collision draft and reload", app)
         self.assertIn("Never leave the prior", app)
         self.assertIn("disposeWasm();\n      clearRobot();\n      clearSceneObjects();", app)
@@ -577,7 +599,7 @@ class WorkbenchTests(unittest.TestCase):
         self.assertIn('"POST", {}', app)
         self.assertIn("MuJoCo viewer open", app)
         self.assertIn("Unsaved temporary collision edits will not appear", app)
-        self.assertIn("Overwrite Current Edition or Export New Edition", app)
+        self.assertIn("Overwrite Current MJCF or Export MJCF Revision", app)
         self.assertIn("nativeViewerState === \"running\"", app)
 
     def test_diagnostics_module_is_served(self):
@@ -627,7 +649,7 @@ class WorkbenchTests(unittest.TestCase):
 
     def test_asset_endpoint_rejects_path_traversal(self):
         with self.assertRaises(urllib.error.HTTPError) as raised:
-            urllib.request.urlopen(f"{self.base_url}/api/robots/astro_v1/files/..%2Furdf%2Fastro_v1.urdf")
+            urllib.request.urlopen(f"{self.base_url}/api/robots/astro_p1/files/..%2Furdf%2Fastro_p1.urdf")
 
         self.assertEqual(raised.exception.code, 404)
 
@@ -689,7 +711,7 @@ class WorkbenchTests(unittest.TestCase):
         self.assertIn("collision-overlay", app)
 
     def test_collision_editor_endpoints_and_controls_are_exposed(self):
-        document = self._get_json("/api/robots/astro_v1/collisions")
+        document = self._get_json("/api/robots/astro_p1/collisions")
         page = (WEB_ROOT / "index.html").read_text(encoding="utf-8")
         app = (WEB_ROOT / "app.js").read_text(encoding="utf-8")
 
@@ -722,13 +744,13 @@ class WorkbenchTests(unittest.TestCase):
         self.assertNotIn("collisionDrawer", app)
 
     def test_collision_draft_session_endpoints_create_save_reset_export_and_discard(self):
-        created_status, created = self._post_json("/api/robots/astro_v1/collision-drafts", {})
+        created_status, created = self._post_json("/api/robots/astro_p1/collision-drafts", {})
 
         self.assertEqual(created_status, 201)
         self.assertTrue(created["draft_id"])
         self.assertIsInstance(created["primitives"], list)
         self.assertIsInstance(created["retained_mesh_ids"], list)
-        draft_path = f"/api/robots/astro_v1/collision-drafts/{created['draft_id']}"
+        draft_path = f"/api/robots/astro_p1/collision-drafts/{created['draft_id']}"
 
         with urllib.request.urlopen(f"{self.base_url}{draft_path}/source") as response:
             self.assertIn("<mujoco", response.read().decode("utf-8"))
@@ -758,10 +780,10 @@ class WorkbenchTests(unittest.TestCase):
         self.assertEqual(discarded_status, 200)
         self.assertTrue(discarded["ok"])
 
-    def test_explicit_edition_draft_export_returns_a_selectable_edition(self):
-        editions = self._get_json("/api/robots/astro_v2/editions")["editions"]
-        edition = next(record for record in editions if not record["default"])
-        base = f"/api/robots/astro_v2/editions/{edition['id']}/collision-drafts"
+    def test_logical_edition_draft_export_does_not_create_a_second_robot_edition(self):
+        editions = self._get_json("/api/robots/astro_p2/editions")["editions"]
+        edition = next(record for record in editions if record["default"])
+        base = f"/api/robots/astro_p2/editions/{edition['id']}/collision-drafts"
         created_status, created = self._post_json(base, {})
         self.assertEqual(created_status, 201)
         try:
@@ -769,8 +791,11 @@ class WorkbenchTests(unittest.TestCase):
             self.assertEqual(status, 201)
             self.assertIn("edition_id", exported)
             self.assertTrue(pathlib.Path(exported["output_path"]).is_file())
-            listed = self._get_json("/api/robots/astro_v2/editions")["editions"]
-            self.assertIn(exported["edition_id"], {record["id"] for record in listed})
+            listed = self._get_json("/api/robots/astro_p2/editions")["editions"]
+            self.assertEqual(
+                [record["id"] for record in listed],
+                ["30dof_primitive_collision", "30dof_mesh_collision", "30dof_primitive_collision_halfway"],
+            )
             pathlib.Path(exported["output_path"]).unlink()
         finally:
             self._json_request(f"{base}/{created['draft_id']}", {}, "DELETE")
@@ -863,6 +888,7 @@ class WorkbenchTests(unittest.TestCase):
         self.assertIn('id="robot-selection-meta"', page)
         self.assertIn('robotVariantSelect.addEventListener("change"', app)
         self.assertIn('robotEditionSelect.addEventListener("change"', app)
+        self.assertIn("robotVariantSelect.append(new Option(robot.name, robot.id));", app)
         self.assertNotIn('class="robot-row', page)
         self.assertIn(".robot-selector { display: grid;", styles)
 

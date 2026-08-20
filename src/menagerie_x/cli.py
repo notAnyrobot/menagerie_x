@@ -116,8 +116,8 @@ def main(argv: list[str] | None = None) -> None:
             raise SystemExit(workbench_main(workbench_args))
         elif args.command == "urdf-capsules":
             paths = get_asset_paths(args.root)
-            urdf_path = args.urdf or paths.urdf_dir / "astro_v1.urdf"
-            mjcf_path = args.mjcf or paths.mjcf_dir / "astro_v1.xml"
+            urdf_path = args.urdf or paths.urdf_dir / "astro_p1_30dof.urdf"
+            mjcf_path = args.mjcf or paths.mjcf_dir / "astro_p1_30dof.xml"
             args.output.write_text(convert_mjcf_capsules_to_urdf(urdf_path, mjcf_path), encoding="utf-8")
             print(f"wrote {args.output}")
         elif args.command == "heights":

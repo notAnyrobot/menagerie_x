@@ -21,6 +21,7 @@ from typing import Any, Callable
 
 from menagerie_x.assets import (
     AssetError,
+    Edition,
     MjcfEditionError,
     RobotInspection,
     Variant,
@@ -233,17 +234,20 @@ def _is_within(path: Path, directory: Path) -> bool:
 def _serialize_inspection(inspection: RobotInspection, root: Path | None = None) -> dict[str, Any]:
     variant = inspection.variant
     counts = Counter(issue.severity for issue in inspection.issues)
-    editions = list_mjcf_editions(variant, root)
+    editions = [_serialize_edition(edition) for edition in variant.editions]
     return {
         "id": variant.name,
         "name": variant.name,
-        "robot_version": variant.robot_version,
         "dof": variant.dof,
         "status": variant.status,
         "notes": variant.notes,
-        "formats": {"urdf": variant.urdf is not None, "mjcf": bool(editions)},
-        "workbench_loadable": bool(editions),
-        "conversion_guidance": None if editions else "Import an MJCF edition or convert this variant's URDF into its first edition.",
+        "editions": editions,
+        "formats": {
+            "urdf": any(edition["formats"]["urdf"] for edition in editions),
+            "mjcf": any(edition["formats"]["mjcf"] for edition in editions),
+        },
+        "workbench_loadable": any(edition["workbench_loadable"] for edition in editions),
+        "conversion_guidance": None if any(edition["workbench_loadable"] for edition in editions) else "Select an edition with MJCF to use the Workbench viewer, or import/convert an MJCF description.",
         "mjcf_provenance": variant.mjcf_provenance,
         "source_provenance": variant.source_provenance,
         "source_revision": variant.urdf_revision,
@@ -255,6 +259,35 @@ def _serialize_inspection(inspection: RobotInspection, root: Path | None = None)
         "scene_description": resolve_scene(variant, root).as_dict(),
         "issues": [issue.as_dict() for issue in inspection.issues],
         "summary": {"errors": counts["error"], "warnings": counts["warning"], "info": counts["info"]},
+    }
+
+
+def _serialize_edition(edition: Edition) -> dict[str, Any]:
+    """Serialize a logical edition without promoting its MJCF revisions."""
+    revisions = []
+    for revision in edition.mjcf_revisions:
+        revisions.append({
+            "id": revision.get("id"),
+            "label": revision.get("label", revision.get("id")),
+            "kind": revision.get("kind", "revision"),
+        })
+    source = edition.mjcf
+    source_kind = edition.kind or ("official" if edition.source_provenance else "authorized" if edition.mjcf_provenance else "edition")
+    return {
+        "id": edition.id,
+        "label": edition.label,
+        "dof": edition.dof,
+        "default": edition.default,
+        "formats": edition.formats,
+        "workbench_loadable": edition.workbench_loadable,
+        "notes": edition.notes,
+        "mjcf_provenance": edition.mjcf_provenance,
+        "source_provenance": edition.source_provenance,
+        "description_revisions": revisions,
+        "kind": source_kind,
+        "role": "default" if edition.default else "edition",
+        "output_path": str(source.resolve()) if source is not None else None,
+        "modified_at": source.stat().st_mtime_ns // 1_000_000 if source is not None and source.is_file() else None,
     }
 
 
@@ -416,7 +449,25 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
             }
 
     def _edition(self, variant: Variant, edition_id: str) -> tuple[dict[str, Any], Path]:
-        """Resolve a discovered edition; default is a marker, never a gate."""
+        """Resolve a logical edition, never an arbitrary XML filename."""
+        for edition in variant.editions:
+            if edition.id != edition_id:
+                continue
+            if not edition.workbench_loadable or edition.mjcf is None:
+                raise WorkbenchError(
+                    f"edition {edition_id!r} for {variant.name} has no MJCF description; "
+                    "choose an MJCF-backed edition to inspect or edit it"
+                )
+            source = edition.mjcf
+            return {
+                **_serialize_edition(edition),
+                "kind": "default" if edition.default else "edition",
+                "role": "default" if edition.default else "edition",
+                "revision": load_mjcf_collision_document(source).revision,
+                "output_path": str(source.resolve()),
+            }, source
+        # Compatibility for existing candidate/revision endpoints.  These
+        # records are intentionally excluded from the primary edition picker.
         for record in list_mjcf_editions(variant, self.asset_root):
             if record["id"] == edition_id:
                 source = Path(str(record["output_path"]))
@@ -426,7 +477,7 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
         raise WorkbenchError(f"MJCF edition {edition_id!r} does not exist for {variant.name}")
 
     def _editions(self, variant: Variant) -> list[dict[str, Any]]:
-        return [self._edition(variant, str(record["id"]))[0] for record in list_mjcf_editions(variant, self.asset_root)]
+        return [_serialize_edition(edition) for edition in variant.editions]
 
     def _edition_export_parent(self, variant: Variant, edition_id: str) -> tuple[dict[str, Any], dict[str, Any], str]:
         edition, _ = self._edition(variant, edition_id)

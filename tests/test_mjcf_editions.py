@@ -31,36 +31,41 @@ class MjcfEditionWorkspaceTests(unittest.TestCase):
     def tearDown(self):
         self.directory.cleanup()
 
-    def test_discovery_keeps_halfway_fixture_and_empty_variants_are_safe(self):
-        editions = list_mjcf_editions(get_variant("astro_v2", self.assets), self.assets)
+    def test_primary_editions_are_distinct_from_legacy_mjcf_file_management(self):
+        variant = get_variant("astro_p2", self.assets)
+        editions = list_mjcf_editions(variant, self.assets)
 
-        self.assertEqual(editions[0]["id"], "astro_v2_primitive_collision")
+        self.assertEqual(
+            [edition.id for edition in variant.editions],
+            ["30dof_primitive_collision", "30dof_mesh_collision", "30dof_primitive_collision_halfway"],
+        )
+        self.assertEqual(editions[0]["id"], "astro_p2_30dof_primitive_collision")
         self.assertTrue(editions[0]["default"])
-        self.assertIn("astro_v2_primitive_collision_halfway", {edition["id"] for edition in editions})
+        self.assertEqual(len(editions), 1)
         self.assertEqual(list_mjcf_editions(get_variant("astro_with_racket", self.assets), self.assets), [])
 
     def test_import_duplicate_rename_default_and_delete_use_managed_paths(self):
-        source = ASSETS / "astro_v2" / "mjcf" / "astro_v2_primitive_collision.xml"
-        imported = import_mjcf_edition("astro_v2", source, "external-review", self.assets)
-        duplicate = duplicate_mjcf_edition("astro_v2", imported["edition_id"], "external-copy", self.assets)
-        renamed = rename_mjcf_edition("astro_v2", duplicate["edition_id"], "final-review", self.assets)
-        default = set_default_mjcf_edition("astro_v2", renamed["edition_id"], self.assets)
+        source = ASSETS / "astro_p2" / "mjcf" / "astro_p2_30dof_primitive_collision.xml"
+        imported = import_mjcf_edition("astro_p2", source, "external-review", self.assets)
+        duplicate = duplicate_mjcf_edition("astro_p2", imported["edition_id"], "external-copy", self.assets)
+        renamed = rename_mjcf_edition("astro_p2", duplicate["edition_id"], "final-review", self.assets)
+        default = set_default_mjcf_edition("astro_p2", renamed["edition_id"], self.assets)
 
         self.assertEqual(default["edition_id"], "final-review")
         self.assertTrue(pathlib.Path(default["output_path"]).is_file())
-        delete_mjcf_edition("astro_v2", "external-review", self.assets)
-        self.assertNotIn("external-review", {edition["id"] for edition in list_mjcf_editions(get_variant("astro_v2", self.assets), self.assets)})
+        delete_mjcf_edition("astro_p2", "external-review", self.assets)
+        self.assertNotIn("external-review", {edition["id"] for edition in list_mjcf_editions(get_variant("astro_p2", self.assets), self.assets)})
         with self.assertRaises(MjcfEditionError):
-            delete_mjcf_edition("astro_v2", "final-review", self.assets)
+            delete_mjcf_edition("astro_p2", "final-review", self.assets)
 
     def test_imported_mjcf_variant_is_self_contained_and_rejects_escaping_meshes(self):
-        source = ASSETS / "astro_v2" / "mjcf" / "astro_v2_primitive_collision.xml"
+        source = ASSETS / "astro_p2" / "mjcf" / "astro_p2_30dof_primitive_collision.xml"
         result = import_mjcf_variant("external_astro", source, self.assets)
 
         imported = get_variant("external_astro", self.assets)
         self.assertIsNone(imported.urdf)
-        self.assertEqual(result["edition_id"], "external_astro")
-        self.assertEqual([edition["id"] for edition in list_mjcf_editions(imported, self.assets)], ["external_astro"])
+        self.assertEqual(result["edition_id"], "default")
+        self.assertEqual([edition["id"] for edition in list_mjcf_editions(imported, self.assets)], ["external_astro_default"])
         self.assertEqual(validate_assets(self.assets), [])
 
         malicious = pathlib.Path(self.directory.name) / "bad.xml"
@@ -69,9 +74,9 @@ class MjcfEditionWorkspaceTests(unittest.TestCase):
             import_mjcf_variant("unsafe", malicious, self.assets)
 
     def test_imported_urdf_variant_converts_a_first_default_edition(self):
-        result = import_urdf_variant("imported_v1", ASSETS / "astro_v1" / "urdf" / "astro_v1.urdf", self.assets)
+        result = import_urdf_variant("imported_v1", ASSETS / "astro_p1" / "urdf" / "astro_p1_30dof.urdf", self.assets)
 
         variant = get_variant("imported_v1", self.assets)
-        self.assertEqual(result["edition_id"], "imported_v1")
+        self.assertEqual(result["edition_id"], "default")
         self.assertTrue(variant.mjcf and variant.mjcf.is_file())
-        self.assertEqual([edition["id"] for edition in list_mjcf_editions(variant, self.assets)], ["imported_v1"])
+        self.assertEqual([edition["id"] for edition in list_mjcf_editions(variant, self.assets)], ["imported_v1_default"])

@@ -12,9 +12,40 @@ class AssetError(ValueError):
 
 
 @dataclasses.dataclass(frozen=True)
+class Edition:
+    """One format-neutral configuration of a robot variant.
+
+    A robot variant is the physical asset workspace.  An edition is a logical
+    configuration within it (for example ``30dof`` or ``with_racket``), which
+    may have a URDF, MJCF, or both.  MJCF authoring revisions deliberately do
+    not create additional editions.
+    """
+
+    id: str
+    variant_name: str
+    dof: int
+    urdf: Path | None
+    mjcf: Path | None
+    label: str
+    default: bool = False
+    kind: str | None = None
+    notes: str = ""
+    mjcf_provenance: dict[str, Any] | None = None
+    source_provenance: dict[str, Any] | None = None
+    mjcf_revisions: tuple[dict[str, Any], ...] = ()
+
+    @property
+    def formats(self) -> dict[str, bool]:
+        return {"urdf": self.urdf is not None and self.urdf.is_file(), "mjcf": self.mjcf is not None and self.mjcf.is_file()}
+
+    @property
+    def workbench_loadable(self) -> bool:
+        return self.formats["mjcf"]
+
+
+@dataclasses.dataclass(frozen=True)
 class Variant:
     name: str
-    robot_version: str
     dof: int
     urdf: Path | None
     mjcf: Path | None
@@ -25,6 +56,13 @@ class Variant:
     spawn: dict[str, Any] = dataclasses.field(default_factory=lambda: {"scene_frame": "robot_spawn", "xyz": [0.0, 0.0, 0.75], "rpy": [0.0, 0.0, 0.0]})
     mjcf_provenance: dict[str, Any] | None = None
     source_provenance: dict[str, Any] | None = None
+    editions: tuple[Edition, ...] = ()
+    default_edition: str | None = None
+
+    @property
+    def robot_version(self) -> str:
+        """Compatibility alias for the variant's on-disk workspace name."""
+        return self.name
 
     @property
     def workbench_loadable(self) -> bool:
@@ -55,7 +93,7 @@ class AssetPaths:
 
     @property
     def default_robot_dir(self) -> Path:
-        return self.robot_dir("astro_v1")
+        return self.robot_dir("astro_p1")
 
     @property
     def meshes_dir(self) -> Path:
@@ -68,7 +106,7 @@ class AssetPaths:
 
     @property
     def mjcf_dir(self) -> Path:
-        return self.default_robot_dir / "legacy" / "mjcf"
+        return self.default_robot_dir / "mjcf"
 
 
 def package_root() -> Path:
@@ -76,7 +114,7 @@ def package_root() -> Path:
 
 
 def default_robot_root() -> Path:
-    return package_root() / "assets" / "astro_v1"
+    return package_root() / "assets" / "astro_p1"
 
 
 def _resolve_asset_root(root: Path | None = None) -> Path:
@@ -123,22 +161,57 @@ def variants(root: Path | None = None) -> dict[str, Variant]:
     for name, raw in raw_variants.items():
         if not isinstance(raw, dict):
             raise AssetError(f"variant {name!r} must be an object")
-        robot_version = str(raw.get("robot_version", "astro_v1"))
-        robot_root = paths.robot_dir(robot_version)
-        mjcf_value = raw.get("mjcf")
+        # Variant IDs are the on-disk workspace names.  Keep the
+        # ``robot_version`` attribute only as a compatibility alias for
+        # existing callers; never persist a second identity in the manifest.
+        robot_version = name
+        robot_root = paths.robot_dir(name)
+        raw_editions = raw.get("editions")
+        if not isinstance(raw_editions, dict) or not raw_editions:
+            raise AssetError(f"variant {name!r} must define a non-empty editions object")
+        default_edition = raw.get("default_edition")
+        if not isinstance(default_edition, str) or default_edition not in raw_editions:
+            raise AssetError(f"variant {name!r} default_edition must name a declared edition")
+        parsed_editions: list[Edition] = []
+        for edition_id, edition_raw in raw_editions.items():
+            if not isinstance(edition_id, str) or not isinstance(edition_raw, dict):
+                raise AssetError(f"variant {name!r} editions must map IDs to objects")
+            urdf_value = edition_raw.get("urdf")
+            mjcf_value = edition_raw.get("mjcf")
+            revisions = edition_raw.get("mjcf_revisions", [])
+            if not isinstance(revisions, list) or not all(isinstance(item, dict) for item in revisions):
+                raise AssetError(f"variant {name!r} edition {edition_id!r} mjcf_revisions must be a list of objects")
+            parsed_editions.append(
+                Edition(
+                    id=edition_id,
+                    variant_name=name,
+                    dof=int(edition_raw["dof"]),
+                    urdf=robot_root / urdf_value if isinstance(urdf_value, str) and urdf_value else None,
+                    mjcf=robot_root / mjcf_value if isinstance(mjcf_value, str) and mjcf_value else None,
+                    label=str(edition_raw.get("label", edition_id)),
+                    default=edition_id == default_edition,
+                    kind=str(edition_raw["kind"]) if isinstance(edition_raw.get("kind"), str) else None,
+                    notes=str(edition_raw.get("notes", "")),
+                    mjcf_provenance=dict(edition_raw["mjcf_provenance"]) if isinstance(edition_raw.get("mjcf_provenance"), dict) else None,
+                    source_provenance=dict(edition_raw["source_provenance"]) if isinstance(edition_raw.get("source_provenance"), dict) else None,
+                    mjcf_revisions=tuple(dict(item) for item in revisions),
+                )
+            )
+        default_description = next(edition for edition in parsed_editions if edition.default)
         parsed[name] = Variant(
             name=name,
-            robot_version=robot_version,
-            dof=int(raw["dof"]),
-            urdf=robot_root / raw["urdf"] if isinstance(raw.get("urdf"), str) and raw["urdf"] else None,
-            mjcf=robot_root / str(mjcf_value) if mjcf_value else None,
+            dof=default_description.dof,
+            urdf=default_description.urdf,
+            mjcf=default_description.mjcf,
             meshes_dir=robot_root / "meshes",
             status=str(raw.get("status", "unknown")),
             notes=str(raw.get("notes", "")),
             default_scene=str(raw["default_scene"]) if raw.get("default_scene") is not None else None,
             spawn=dict(raw.get("spawn", {"scene_frame": "robot_spawn", "xyz": [0.0, 0.0, 0.75], "rpy": [0.0, 0.0, 0.0]})),
-            mjcf_provenance=dict(raw["mjcf_provenance"]) if isinstance(raw.get("mjcf_provenance"), dict) else None,
-            source_provenance=dict(raw["source_provenance"]) if isinstance(raw.get("source_provenance"), dict) else None,
+            mjcf_provenance=default_description.mjcf_provenance,
+            source_provenance=default_description.source_provenance,
+            editions=tuple(parsed_editions),
+            default_edition=default_edition,
         )
     return parsed
 
@@ -147,49 +220,80 @@ def get_variant(name: str | None = None, root: Path | None = None) -> Variant:
     manifest = load_manifest(root)
     variant_name = name or str(manifest.get("default_variant", ""))
     all_variants = variants(root)
-    try:
+    if variant_name in all_variants:
         return all_variants[variant_name]
-    except KeyError as exc:
-        valid = ", ".join(sorted(all_variants))
-        raise AssetError(f"unknown variant {variant_name!r}; valid variants: {valid}") from exc
+    aliases = manifest.get("legacy_variant_aliases", {})
+    alias = aliases.get(variant_name) if isinstance(aliases, dict) else None
+    if isinstance(alias, dict) and isinstance(alias.get("variant"), str) and isinstance(alias.get("edition"), str):
+        edition = get_edition(alias["variant"], alias["edition"], root)
+        base = all_variants[alias["variant"]]
+        return dataclasses.replace(
+            base,
+            name=variant_name,
+            dof=edition.dof,
+            urdf=edition.urdf,
+            mjcf=edition.mjcf,
+            mjcf_provenance=edition.mjcf_provenance,
+            source_provenance=edition.source_provenance,
+            editions=(edition,),
+            default_edition=edition.id,
+        )
+    valid = ", ".join(sorted(all_variants))
+    raise AssetError(f"unknown variant {variant_name!r}; valid variants: {valid}")
+
+
+def get_edition(variant_name: str, edition_id: str | None = None, root: Path | None = None) -> Edition:
+    """Return a logical edition without inferring one from a source filename."""
+    variant = variants(root).get(variant_name)
+    if variant is None:
+        raise AssetError(f"unknown variant {variant_name!r}")
+    target = edition_id or variant.default_edition
+    for edition in variant.editions:
+        if edition.id == target:
+            return edition
+    valid = ", ".join(edition.id for edition in variant.editions)
+    raise AssetError(f"unknown edition {edition_id!r} for {variant_name!r}; valid editions: {valid}")
 
 
 def validate_assets(root: Path | None = None) -> list[str]:
     paths = get_asset_paths(root)
     errors: list[str] = []
     manifest = load_manifest(paths.root)
-    raw_versions = manifest.get("robot_versions")
-    if not isinstance(raw_versions, dict) or not raw_versions:
-        errors.append("manifest must define a non-empty robot_versions object")
+    raw_variants = manifest.get("variants")
+    if not isinstance(raw_variants, dict) or not raw_variants:
+        errors.append("manifest must define a non-empty variants object")
     else:
-        for robot_version, version in sorted(raw_versions.items()):
-            robot_root = paths.robot_dir(robot_version)
-            source_format = version.get("source_format") if isinstance(version, dict) else None
-            required_directories = {
-                "urdf": (robot_root / "urdf", robot_root / "meshes"),
-                "mjcf": (robot_root / "mjcf", robot_root / "meshes"),
-            }.get(source_format)
-            if required_directories is None:
-                errors.append(f"{robot_version}: unsupported or missing source_format: {source_format!r}")
-                continue
-            for directory in required_directories:
-                if not directory.is_dir():
-                    errors.append(f"{robot_version}: missing asset directory: {directory}")
+        excluded_directories = {"scenes", "terrains", "__pycache__"}
+        asset_directories = {
+            directory.name
+            for directory in paths.root.iterdir()
+            if directory.is_dir() and directory.name not in excluded_directories
+        }
+        declared_variants = set(raw_variants)
+        for missing in sorted(asset_directories - declared_variants):
+            errors.append(f"asset folder is not declared as a variant: {missing}")
+        for missing in sorted(declared_variants - asset_directories):
+            errors.append(f"variant has no asset folder: {missing}")
 
     for variant in variants(paths.root).values():
         if not variant.meshes_dir.is_dir():
             errors.append(f"{variant.name}: missing mesh directory: {variant.meshes_dir}")
-        if variant.urdf is not None and not variant.urdf.is_file():
-            errors.append(f"{variant.name}: missing URDF {variant.urdf}")
-        if variant.mjcf is not None and not variant.mjcf.is_file():
-            errors.append(f"{variant.name}: missing MJCF {variant.mjcf}")
+        for edition in variant.editions:
+            if edition.urdf is not None and not edition.urdf.is_file():
+                errors.append(f"{variant.name}/{edition.id}: missing URDF {edition.urdf}")
+            if edition.mjcf is not None and not edition.mjcf.is_file():
+                errors.append(f"{variant.name}/{edition.id}: missing MJCF {edition.mjcf}")
+            for revision in edition.mjcf_revisions:
+                path = revision.get("mjcf")
+                if not isinstance(path, str) or not (paths.robot_dir(variant.name) / path).is_file():
+                    errors.append(f"{variant.name}/{edition.id}: missing MJCF revision {path!r}")
         try:
             resolve_scene(variant, paths.root)
         except AssetError as exc:
             errors.append(f"{variant.name}: invalid default scene: {exc}")
-    for robot_version in sorted(raw_versions) if isinstance(raw_versions, dict) else ():
+    for variant_name in sorted(raw_variants) if isinstance(raw_variants, dict) else ():
         for mesh in sorted(
-            (path for path in paths.robot_dir(robot_version).joinpath("meshes").rglob("*") if path.is_file() and path.suffix.lower() == ".stl"),
+            (path for path in paths.robot_dir(variant_name).joinpath("meshes").rglob("*") if path.is_file() and path.suffix.lower() == ".stl"),
             key=lambda path: str(path).casefold(),
         ):
             if mesh.stat().st_size == 0:
@@ -226,6 +330,7 @@ __all__ = [
     "AssetPaths",
     "CollisionExportIssue",
     "CollisionExportReport",
+    "Edition",
     "MjcfEditionError",
     "RobotDescription",
     "RobotInspection",
@@ -238,6 +343,7 @@ __all__ = [
     "UrdfCollisionExportError",
     "default_robot_root",
     "get_asset_paths",
+    "get_edition",
     "get_variant",
     "delete_mjcf_edition",
     "duplicate_mjcf_edition",

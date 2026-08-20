@@ -134,7 +134,7 @@ def create_astro_embodiment_config(robot_root: Path | None = None) -> Embodiment
     constants_path = robot_root / "constants.py"
     return EmbodimentConfig(
         name="astro",
-        mjcf_path=robot_root / "mjcf" / "astro_v1.xml",
+        mjcf_path=robot_root / "mjcf" / "astro_p1_30dof.xml",
         constants_path=constants_path,
         floating_base_joint="floating_base_joint",
         foot_collision_geom_names=foot_geoms,

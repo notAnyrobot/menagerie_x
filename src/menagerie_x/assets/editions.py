@@ -81,8 +81,8 @@ def edition_directory(variant: Variant, root: Path | None = None) -> Path:
         # Legacy robot versions can host several manifest variants.  A variant
         # without a default gets its own workspace instead of inheriting a
         # sibling's editions merely because they share meshes.
-        return paths.robot_dir(variant.robot_version) / "mjcf" / variant.name
-    return paths.robot_dir(variant.robot_version) / "mjcf"
+        return paths.robot_dir(variant.name) / "mjcf" / variant.name
+    return paths.robot_dir(variant.name) / "mjcf"
 
 
 def _mesh_path(variant: Variant, filename: str) -> Path:
@@ -131,16 +131,18 @@ def list_mjcf_editions(variant: Variant, root: Path | None = None) -> list[dict[
     directory = edition_directory(variant, root)
     default = variant.mjcf.resolve() if variant.mjcf and variant.mjcf.is_file() else None
     manifest = load_manifest(get_asset_paths(root).root)
-    sibling_defaults = {
-        (get_asset_paths(root).robot_dir(variant.robot_version) / raw["mjcf"]).resolve()
-        for name, raw in manifest.get("variants", {}).items()
-        if name != variant.name and isinstance(raw, dict) and raw.get("robot_version") == variant.robot_version and isinstance(raw.get("mjcf"), str)
+    manifest_entry = manifest.get("variants", {}).get(variant.name, {})
+    raw_editions = manifest_entry.get("editions", {}) if isinstance(manifest_entry, dict) else {}
+    canonical_descriptions = {
+        (get_asset_paths(root).robot_dir(variant.name) / raw["mjcf"]).resolve()
+        for raw in raw_editions.values()
+        if isinstance(raw, dict) and isinstance(raw.get("mjcf"), str)
     }
     records: list[dict[str, Any]] = []
     if not directory.is_dir():
         return records
     for path in sorted(directory.glob("*.xml"), key=lambda item: item.name.casefold()):
-        if path.resolve() in sibling_defaults:
+        if path.resolve() in canonical_descriptions and path.resolve() != default:
             continue
         try:
             checked = validate_mjcf_edition(path, variant)
@@ -150,9 +152,8 @@ def list_mjcf_editions(variant: Variant, root: Path | None = None) -> list[dict[
             continue
         provenance = checked["provenance"] or {}
         is_default = default is not None and path.resolve() == default
-        manifest_entry = manifest.get("variants", {}).get(variant.name, {})
-        manifest_provenance = manifest_entry.get("mjcf_provenance", {}) if isinstance(manifest_entry, dict) else {}
-        source_provenance = manifest_entry.get("source_provenance", {}) if isinstance(manifest_entry, dict) else {}
+        manifest_provenance = variant.mjcf_provenance or (manifest_entry.get("mjcf_provenance", {}) if isinstance(manifest_entry, dict) else {})
+        source_provenance = variant.source_provenance or (manifest_entry.get("source_provenance", {}) if isinstance(manifest_entry, dict) else {})
         source_type = provenance.get("kind") if isinstance(provenance.get("kind"), str) else None
         if source_type is None:
             # A packaged default is not a legacy edition merely because it was
@@ -207,7 +208,11 @@ def set_default_mjcf_edition(variant_name: str, edition_id: str, root: Path | No
     entry = manifest.get("variants", {}).get(variant.name)
     if not isinstance(entry, dict):
         raise MjcfEditionError(f"manifest no longer defines variant {variant.name!r}")
-    entry["mjcf"] = str(edition.relative_to(paths.robot_dir(variant.robot_version)))
+    default_id = entry.get("default_edition")
+    editions = entry.get("editions")
+    if not isinstance(default_id, str) or not isinstance(editions, dict) or not isinstance(editions.get(default_id), dict):
+        raise MjcfEditionError(f"manifest has no mutable default edition for {variant.name!r}")
+    editions[default_id]["mjcf"] = str(edition.relative_to(paths.robot_dir(variant.name)))
     _write_manifest(paths.manifest_path, manifest)
     return {"variant": variant.name, "edition_id": edition.stem, "output_path": str(edition.resolve())}
 
@@ -280,7 +285,7 @@ def import_mjcf_variant(variant_id: str, source: Path, root: Path | None = None)
     entries = manifest.get("variants")
     if not isinstance(entries, dict):
         raise MjcfEditionError("manifest variants are invalid")
-    if variant_id in entries or variant_id in manifest.get("robot_versions", {}):
+    if variant_id in entries:
         raise MjcfEditionError(f"variant already exists: {variant_id}")
     robot_dir = paths.robot_dir(variant_id)
     if robot_dir.exists():
@@ -291,28 +296,22 @@ def import_mjcf_variant(variant_id: str, source: Path, root: Path | None = None)
         # Build a temporary Variant-shaped view so import validation shares the
         # exact same mesh and path rules as existing workspaces.
         from . import Variant
-        temporary = Variant(variant_id, variant_id, 0, None, robot_dir / "mjcf" / f"{variant_id}.xml", robot_dir / "meshes", "imported", "Imported MJCF variant")
+        edition_id = "default"
+        temporary = Variant(variant_id, 0, None, robot_dir / "mjcf" / f"{variant_id}_{edition_id}.xml", robot_dir / "meshes", "imported", "Imported MJCF variant")
         _copy_referenced_meshes(source, temporary, source_root=source.parent)
         destination = temporary.mjcf
         _atomic_write(destination, source.read_bytes())
         checked = validate_mjcf_edition(destination, temporary)
-        versions = manifest.setdefault("robot_versions", {})
-        if not isinstance(versions, dict):
-            raise MjcfEditionError("manifest robot_versions are invalid")
-        versions[variant_id] = {"source_format": "mjcf", "status": "imported"}
         entries[variant_id] = {
-            "robot_version": variant_id,
-            "dof": 0,
-            "urdf": None,
-            "mjcf": f"mjcf/{destination.name}",
-            "mjcf_workspace": f"{variant_id}/mjcf",
             "status": "imported",
             "notes": "Imported MJCF workspace.",
             "default_scene": "flat_floor",
             "spawn": {"scene_frame": "robot_spawn", "xyz": [0.0, 0.0, 0.75], "rpy": [0.0, 0.0, 0.0]},
+            "default_edition": edition_id,
+            "editions": {edition_id: {"dof": 0, "label": "Default", "urdf": None, "mjcf": f"mjcf/{destination.name}"}},
         }
         _write_manifest(paths.manifest_path, manifest)
-        return {"variant": variant_id, "edition_id": destination.stem, "output_path": str(destination.resolve()), **checked}
+        return {"variant": variant_id, "edition_id": edition_id, "output_path": str(destination.resolve()), **checked}
     except Exception:
         shutil.rmtree(robot_dir, ignore_errors=True)
         raise
@@ -328,10 +327,9 @@ def import_urdf_variant(variant_id: str, source: Path, root: Path | None = None)
         raise MjcfEditionError("imported URDF must be an existing .urdf file")
     manifest = load_manifest(paths.root)
     entries = manifest.get("variants")
-    versions = manifest.get("robot_versions")
-    if not isinstance(entries, dict) or not isinstance(versions, dict):
-        raise MjcfEditionError("manifest variants or robot_versions are invalid")
-    if variant_id in entries or variant_id in versions:
+    if not isinstance(entries, dict):
+        raise MjcfEditionError("manifest variants are invalid")
+    if variant_id in entries:
         raise MjcfEditionError(f"variant already exists: {variant_id}")
     robot_dir = paths.robot_dir(variant_id)
     if robot_dir.exists():
@@ -341,7 +339,8 @@ def import_urdf_variant(variant_id: str, source: Path, root: Path | None = None)
         mesh_dir = robot_dir / "meshes"
         urdf_dir.mkdir(parents=True)
         mesh_dir.mkdir()
-        target_urdf = urdf_dir / source.name
+        edition_id = "default"
+        target_urdf = urdf_dir / f"{variant_id}_{edition_id}.urdf"
         _atomic_write(target_urdf, source.read_bytes())
         xml = ET.fromstring(source.read_bytes())
         for mesh in xml.findall(".//mesh[@filename]"):
@@ -364,24 +363,22 @@ def import_urdf_variant(variant_id: str, source: Path, root: Path | None = None)
             if not mesh_destination.exists():
                 shutil.copyfile(original, mesh_destination)
         dof = sum(1 for joint in xml.findall("joint") if joint.get("type", "fixed") in {"revolute", "continuous", "prismatic"})
-        versions[variant_id] = {"source_format": "urdf", "status": "imported"}
         entries[variant_id] = {
-            "robot_version": variant_id,
-            "dof": dof,
-            "urdf": f"urdf/{target_urdf.name}",
-            "mjcf": None,
-            "mjcf_workspace": f"{variant_id}/mjcf",
             "status": "imported",
             "notes": "Imported URDF workspace.",
             "default_scene": "flat_floor",
             "spawn": {"scene_frame": "robot_spawn", "xyz": [0.0, 0.0, 0.75], "rpy": [0.0, 0.0, 0.0]},
+            "default_edition": edition_id,
+            "editions": {edition_id: {"dof": dof, "label": "Default", "urdf": f"urdf/{target_urdf.name}", "mjcf": None}},
         }
         _write_manifest(paths.manifest_path, manifest)
         from menagerie_x.commands.mjcf import convert_variant_to_candidate
-        output = robot_dir / "mjcf" / f"{variant_id}.xml"
+        output = robot_dir / "mjcf" / f"{variant_id}_{edition_id}.xml"
         result = convert_variant_to_candidate(variant_id, variant_id, output, paths.root)
-        set_default_mjcf_edition(variant_id, variant_id, paths.root)
-        return {"variant": variant_id, "edition_id": variant_id, "output_path": str(output.resolve()), "conversion": result}
+        manifest = load_manifest(paths.root)
+        manifest["variants"][variant_id]["editions"][edition_id]["mjcf"] = f"mjcf/{output.name}"
+        _write_manifest(paths.manifest_path, manifest)
+        return {"variant": variant_id, "edition_id": edition_id, "output_path": str(output.resolve()), "conversion": result}
     except Exception:
         shutil.rmtree(robot_dir, ignore_errors=True)
         _write_manifest(paths.manifest_path, manifest)

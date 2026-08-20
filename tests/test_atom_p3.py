@@ -21,7 +21,7 @@ from menagerie_x.commands.mujoco import check_mujoco
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS = ROOT / "src" / "menagerie_x" / "assets"
 ATOM = ASSETS / "atom_p3"
-MJCF = ATOM / "mjcf" / "atom_p3_27dof_capsule_foot.xml"
+MJCF = ATOM / "mjcf" / "atom_p3_27dof.xml"
 SHA256 = "f8d27bb5d9002bb3899136a407b9492f63762ec0f1d71508fd9005abfc2c48cd"
 
 
@@ -29,11 +29,12 @@ class AtomP3CatalogTests(unittest.TestCase):
     def test_manifest_keeps_the_authorized_internal_mjcf_provenance(self) -> None:
         entry = load_manifest(ASSETS)["variants"]["atom_p3"]
 
-        self.assertEqual(entry["urdf"], None)
-        self.assertEqual(entry["source_provenance"]["kind"], "internal")
-        self.assertEqual(entry["source_provenance"]["sha256"], SHA256)
-        self.assertEqual(entry["mjcf_provenance"]["mujoco_version"], "3.11.0")
-        self.assertTrue(entry["mjcf_provenance"]["authorized_at"].endswith("+00:00"))
+        edition = entry["editions"]["27dof"]
+        self.assertEqual(edition["urdf"], None)
+        self.assertEqual(edition["source_provenance"]["kind"], "internal")
+        self.assertEqual(edition["source_provenance"]["sha256"], SHA256)
+        self.assertEqual(edition["mjcf_provenance"]["mujoco_version"], "3.11.0")
+        self.assertTrue(edition["mjcf_provenance"]["authorized_at"].endswith("+00:00"))
 
     def test_mjcf_only_variant_is_inspectable_and_cli_uses_json_null(self) -> None:
         variant = get_variant("atom_p3", ASSETS)

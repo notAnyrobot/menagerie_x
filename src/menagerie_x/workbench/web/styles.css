@@ -54,7 +54,7 @@ h1 { font-size: 18px; } h2 { font-size: 19px; }
 .collision-dock-column + .collision-dock-column { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--sonic-border); }
 .collision-draft-actions { display: grid; gap: 9px; }.collision-draft-actions .collision-status { margin: 0; }
 .hidden { display: none; }
-.robot-selector { display: grid; gap: 6px; min-width: 0; margin-top: 11px; padding: 10px; border: 1px solid var(--sonic-border); border-radius: 8px; background: var(--sonic-panel-raised); }.robot-selector label { margin-top: 2px; color: var(--sonic-text-muted); font-size: 11px; }.robot-selection-meta { min-height: 2.8em; margin: 4px 1px 0; color: var(--sonic-text-dim); font-size: 10px; line-height: 1.4; overflow-wrap: anywhere; }
+.robot-selector { display: grid; gap: 6px; min-width: 0; margin-top: 11px; padding: 10px; border: 1px solid var(--sonic-border); border-radius: 8px; background: var(--sonic-panel-raised); }.robot-selector label { margin-top: 2px; color: var(--sonic-text-muted); font-size: 11px; }.robot-selector > button { width: 100%; margin-top: 3px; }.robot-selection-meta { min-height: 2.8em; margin: 4px 1px 0; color: var(--sonic-text-dim); font-size: 10px; line-height: 1.4; overflow-wrap: anywhere; }
 .element-list, .joint-list { min-width: 0; display: grid; gap: 7px; }
 .element { min-width: 0; width: 100%; text-align: left; padding: 10px; background: var(--sonic-control); }
 .workspace { min-width: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; background: var(--sonic-black); }

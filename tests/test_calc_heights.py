@@ -4,7 +4,7 @@ import unittest
 from menagerie_x.tools import calc_heights
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-ROBOT_ROOT = ROOT / "src" / "menagerie_x" / "assets" / "astro_v1"
+ROBOT_ROOT = ROOT / "src" / "menagerie_x" / "assets" / "astro_p1"
 
 
 class KeyframeParserTests(unittest.TestCase):
@@ -28,7 +28,7 @@ class EmbodimentConfigTests(unittest.TestCase):
         config = calc_heights.create_astro_embodiment_config(ROBOT_ROOT)
 
         self.assertEqual(config.name, "astro")
-        self.assertEqual(config.mjcf_path, ROBOT_ROOT / "mjcf" / "astro_v1.xml")
+        self.assertEqual(config.mjcf_path, ROBOT_ROOT / "mjcf" / "astro_p1_30dof.xml")
         self.assertEqual(config.floating_base_joint, "floating_base_joint")
         self.assertIn("pelvis", config.body_height_targets)
         self.assertIn("torso_link", config.body_height_targets)

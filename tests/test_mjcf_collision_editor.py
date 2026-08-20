@@ -18,16 +18,16 @@ from menagerie_x.workbench.mjcf_collisions import (
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "src" / "menagerie_x" / "assets" / "astro_v1" / "mjcf" / "astro_v1.xml"
-CANDIDATE = ROOT / "src" / "menagerie_x" / "assets" / "astro_v2" / "mjcf" / "astro_v2_mesh_collision.xml"
-HALFWAY = ROOT / "src" / "menagerie_x" / "assets" / "astro_v2" / "mjcf" / "astro_v2_primitive_collision_halfway.xml"
+SOURCE = ROOT / "src" / "menagerie_x" / "assets" / "astro_p1" / "mjcf" / "astro_p1_30dof.xml"
+CANDIDATE = ROOT / "src" / "menagerie_x" / "assets" / "astro_p2" / "mjcf" / "astro_p2_30dof_mesh_collision.xml"
+HALFWAY = ROOT / "src" / "menagerie_x" / "assets" / "astro_p2" / "mjcf" / "astro_p2_30dof_primitive_collision_halfway.xml"
 
 
 class MjcfCollisionDraftTests(unittest.TestCase):
     def test_halfway_fixture_mirrors_both_directions_without_touching_center_collisions(self):
         directory = tempfile.TemporaryDirectory()
-        fixture_root = pathlib.Path(directory.name) / "astro_v2"
-        source = fixture_root / "mjcf" / "astro_v2_primitive_collision_halfway.xml"
+        fixture_root = pathlib.Path(directory.name) / "astro_p2"
+        source = fixture_root / "mjcf" / "astro_p2_30dof_primitive_collision_halfway.xml"
         source.parent.mkdir(parents=True)
         os.symlink(HALFWAY.parents[1] / "meshes", fixture_root / "meshes", target_is_directory=True)
         shutil.copyfile(HALFWAY, source)
@@ -105,7 +105,7 @@ class MjcfCollisionDraftTests(unittest.TestCase):
             session = store.create(SOURCE)
             self.assertTrue(session.temporary.is_file())
             self.assertEqual(store.source_bytes(session.identifier, SOURCE), SOURCE.read_bytes())
-            output = store.export(session.identifier, SOURCE, session.document.revision, source_variant="astro_v1")
+            output = store.export(session.identifier, SOURCE, session.document.revision, source_variant="astro_p1")
             self.assertTrue(output.is_file())
             self.assertIn("menagerie_x_candidate", output.read_text(encoding="utf-8"))
             output.unlink()

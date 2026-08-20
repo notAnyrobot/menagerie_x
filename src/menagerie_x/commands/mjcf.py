@@ -295,7 +295,7 @@ def managed_candidate_directory(variant: Variant, candidate_id: str, root: Path 
     """Compatibility name for the managed single-file candidate path."""
     candidate_id = _normalise_candidate_id(candidate_id)
     paths = get_asset_paths(root)
-    return paths.robot_dir(variant.robot_version) / "mjcf" / f"{candidate_id}.xml"
+    return paths.robot_dir(variant.name) / "mjcf" / f"{candidate_id}.xml"
 
 
 def create_managed_candidate(source_variant: str, candidate_id: str, root: Path | None = None) -> dict[str, Any]:
@@ -373,7 +373,7 @@ def list_managed_candidates(source_variant: str, root: Path | None = None) -> li
     """List review candidates and structurally sound manually named editions."""
     variant = get_variant(source_variant, root)
     records: list[dict[str, Any]] = []
-    directory = get_asset_paths(root).robot_dir(variant.robot_version) / "mjcf"
+    directory = get_asset_paths(root).robot_dir(variant.name) / "mjcf"
     paths: list[Path] = []
     if directory.is_dir():
         paths.extend(path for path in directory.glob("*.xml") if path != variant.mjcf)
@@ -585,7 +585,7 @@ def authorize_candidate(candidate_dir: Path, target_variant: str, root: Path | N
         raise MjcfCandidateError(f"target {target.name!r} already has an authorized MJCF")
     result = validate_candidate(candidate_dir, target)
     model_path = _candidate_model_path(candidate_dir)
-    robot_dir = paths.robot_dir(target.robot_version)
+    robot_dir = paths.robot_dir(target.name)
     install_path = robot_dir / "mjcf" / f"{result['candidate']['candidate_id']}.xml"
     if install_path.exists() and install_path.resolve() != model_path.resolve():
         raise MjcfCandidateError(f"refusing to overwrite existing MJCF file: {install_path}")
@@ -599,8 +599,12 @@ def authorize_candidate(candidate_dir: Path, target_variant: str, root: Path | N
         entry = manifest.get("variants", {}).get(target.name)
         if not isinstance(entry, dict):
             raise MjcfCandidateError(f"manifest no longer defines target {target.name!r}")
-        entry["mjcf"] = f"mjcf/{install_path.name}"
-        entry["mjcf_provenance"] = {
+        edition_id = entry.get("default_edition")
+        editions = entry.get("editions")
+        if not isinstance(edition_id, str) or not isinstance(editions, dict) or not isinstance(editions.get(edition_id), dict):
+            raise MjcfCandidateError(f"manifest target {target.name!r} has no default edition")
+        editions[edition_id]["mjcf"] = f"mjcf/{install_path.name}"
+        editions[edition_id]["mjcf_provenance"] = {
             "candidate_id": result["candidate"]["candidate_id"],
             "source_revision": result["candidate"]["source_revision"],
             "mujoco_version": result["candidate"]["mujoco_version"],
@@ -647,7 +651,11 @@ def flatten_authorized_mjcf(target_variant: str, root: Path | None = None) -> di
         entry = manifest.get("variants", {}).get(target.name)
         if not isinstance(entry, dict):
             raise MjcfCandidateError(f"manifest no longer defines target {target.name!r}")
-        entry["mjcf"] = f"mjcf/{destination.name}"
+        edition_id = entry.get("default_edition")
+        editions = entry.get("editions")
+        if not isinstance(edition_id, str) or not isinstance(editions, dict) or not isinstance(editions.get(edition_id), dict):
+            raise MjcfCandidateError(f"manifest target {target.name!r} has no default edition")
+        editions[edition_id]["mjcf"] = f"mjcf/{destination.name}"
         _json_write(paths.manifest_path, manifest)
         shutil.rmtree(source.parent)
         legacy_review = destination.parent / "candidates" / target.name / candidate_id

@@ -1,244 +1,62 @@
 {
-  "default_variant": "astro_v2",
-  "default_version": "astro_v2",
+  "default_variant": "astro_p2",
+  "legacy_variant_aliases": {
+    "astro_p1_27dof": {"variant": "astro_p1", "edition": "27dof"},
+    "astro_with_racket": {"variant": "astro_p1", "edition": "with_racket"}
+  },
   "name": "Menagerie X",
   "package_version": "0.1.0",
-  "robot_versions": {
-    "atom_p3": {
-      "legacy_formats": [],
-      "source_format": "mjcf",
-      "status": "imported"
-    },
-    "astro_v1": {
-      "legacy_formats": [
-        "mjcf",
-        "isaac"
-      ],
-      "source_format": "urdf",
-      "status": "legacy"
-    },
-    "astro_v2": {
-      "legacy_formats": [],
-      "source_format": "urdf",
-      "status": "current"
-    },
-    "soma23": {
-      "legacy_formats": [],
-      "source_format": "mjcf",
-      "status": "imported"
-    },
-    "unitree_g1": {
-      "source_format": "urdf",
-      "status": "imported"
-    }
-  },
-  "scenes": {
-    "flat_floor": "scenes/flat_floor/scene.json"
-  },
-  "terrains": {
-    "flat_floor": "terrains/flat_floor/terrain.json"
-  },
+  "scenes": {"flat_floor": "scenes/flat_floor/scene.json"},
+  "terrains": {"flat_floor": "terrains/flat_floor/terrain.json"},
   "variants": {
     "atom_p3": {
-      "default_scene": "flat_floor",
-      "dof": 27,
-      "mjcf": "mjcf/atom_p3_27dof_capsule_foot.xml",
-      "mjcf_provenance": {
-        "authorized_at": "2026-08-18T03:20:39+00:00",
-        "mujoco_version": "3.11.0",
-        "source_revision": "f8d27bb5d9002bb3899136a407b9492f63762ec0f1d71508fd9005abfc2c48cd"
-      },
-      "notes": "Atom P3 27-DOF imported MJCF-only description. It declares sensors but no MuJoCo actuators (nu=0).",
-      "robot_version": "atom_p3",
-      "source_provenance": {
-        "kind": "internal",
-        "sha256": "f8d27bb5d9002bb3899136a407b9492f63762ec0f1d71508fd9005abfc2c48cd",
-        "source_path": "mjcf/atom_p3_27dof_capsule_foot.xml"
-      },
-      "spawn": {
-        "rpy": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "scene_frame": "robot_spawn",
-        "xyz": [
-          0.0,
-          0.0,
-          0.98
-        ]
-      },
-      "status": "imported",
-      "urdf": null
+      "default_edition": "27dof", "default_scene": "flat_floor", "notes": "Atom P3 imported MJCF-only description.", "spawn": {"rpy": [0.0, 0.0, 0.0], "scene_frame": "robot_spawn", "xyz": [0.0, 0.0, 0.98]}, "status": "imported",
+      "editions": {
+        "27dof": {"dof": 27, "label": "27 DOF", "mjcf": "mjcf/atom_p3_27dof.xml", "notes": "It declares sensors but no MuJoCo actuators (nu=0).", "mjcf_provenance": {"authorized_at": "2026-08-18T03:20:39+00:00", "mujoco_version": "3.11.0", "source_revision": "f8d27bb5d9002bb3899136a407b9492f63762ec0f1d71508fd9005abfc2c48cd"}, "source_provenance": {"kind": "internal", "sha256": "f8d27bb5d9002bb3899136a407b9492f63762ec0f1d71508fd9005abfc2c48cd", "source_path": "mjcf/atom_p3_27dof.xml"}, "urdf": null}
+      }
     },
-    "astro_v1": {
-      "default_scene": "flat_floor",
-      "dof": 30,
-      "mjcf": "mjcf/astro_v1.xml",
-      "notes": "Full Astro V1 model with head yaw.",
-      "robot_version": "astro_v1",
-      "spawn": {
-        "rpy": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "scene_frame": "robot_spawn",
-        "xyz": [
-          0.0,
-          0.0,
-          0.75
-        ]
-      },
-      "status": "legacy",
-      "urdf": "urdf/astro_v1.urdf"
+    "astro_p1": {
+      "default_edition": "30dof", "default_scene": "flat_floor", "notes": "Astro P1 robot descriptions.", "spawn": {"rpy": [0.0, 0.0, 0.0], "scene_frame": "robot_spawn", "xyz": [0.0, 0.0, 0.75]}, "status": "legacy",
+      "editions": {
+        "30dof": {"dof": 30, "label": "30 DOF", "mjcf": "mjcf/astro_p1_30dof.xml", "notes": "Full Astro P1 model with head yaw.", "urdf": "urdf/astro_p1_30dof.urdf"},
+        "27dof": {"dof": 27, "label": "27 DOF", "mjcf": "mjcf/astro_p1_27dof.xml", "notes": "Reduced-DOF legacy joint set.", "urdf": "urdf/astro_p1_27dof.urdf"},
+        "with_racket": {"dof": 30, "label": "With racket", "mjcf": null, "notes": "URDF-only racket attachment edition.", "urdf": "urdf/astro_p1_with_racket.urdf"}
+      }
     },
-    "astro_v1_27dof": {
-      "default_scene": "flat_floor",
-      "dof": 27,
-      "mjcf": "mjcf/astro_v1_27dof.xml",
-      "notes": "Reduced-DOF description kept for consumers that require the legacy joint set.",
-      "robot_version": "astro_v1",
-      "spawn": {
-        "rpy": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "scene_frame": "robot_spawn",
-        "xyz": [
-          0.0,
-          0.0,
-          0.75
-        ]
-      },
-      "status": "legacy",
-      "urdf": "urdf/astro_v1_27dof.urdf"
-    },
-    "astro_v2": {
-      "default_scene": "flat_floor",
-      "dof": 30,
-      "mjcf": "mjcf/astro_v2_primitive_collision.xml",
-      "mjcf_provenance": {
-        "authorized_at": "2026-08-14T08:34:49.522552+00:00",
-        "candidate_id": "astro_v2-review",
-        "mujoco_version": "3.11.0",
-        "source_revision": "70752e62b85cd7b85738ea6013e4d2601a9d2b528019363bc04020ceac8c4f82"
-      },
-      "notes": "Astro V2 URDF source description.",
-      "robot_version": "astro_v2",
-      "spawn": {
-        "rpy": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "scene_frame": "robot_spawn",
-        "xyz": [
-          0.0,
-          0.0,
-          0.75
-        ]
-      },
-      "status": "current",
-      "urdf": "urdf/astro_v2.urdf"
-    },
-    "astro_with_racket": {
-      "default_scene": "flat_floor",
-      "dof": 30,
-      "mjcf": null,
-      "notes": "URDF-only racket attachment variant.",
-      "robot_version": "astro_v1",
-      "spawn": {
-        "rpy": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "scene_frame": "robot_spawn",
-        "xyz": [
-          0.0,
-          0.0,
-          0.75
-        ]
-      },
-      "status": "variant",
-      "urdf": "urdf/astro_with_racket.urdf"
+    "astro_p2": {
+      "default_edition": "30dof_primitive_collision", "default_scene": "flat_floor", "notes": "Astro P2 descriptions with mesh and primitive collision editions.", "spawn": {"rpy": [0.0, 0.0, 0.0], "scene_frame": "robot_spawn", "xyz": [0.0, 0.0, 0.75]}, "status": "current",
+      "editions": {
+        "30dof_primitive_collision": {
+          "dof": 30, "label": "30 DOF primitive collision", "mjcf": "mjcf/astro_p2_30dof_primitive_collision.xml", "notes": "Human-authorized primitive-collision MJCF paired with the canonical source URDF.", "urdf": "urdf/astro_p2_30dof_mesh_collision.urdf",
+          "mjcf_provenance": {"authorized_at": "2026-08-14T08:34:49.522552+00:00", "candidate_id": "astro_v2-review", "mujoco_version": "3.11.0", "source_revision": "70752e62b85cd7b85738ea6013e4d2601a9d2b528019363bc04020ceac8c4f82"}
+        },
+        "30dof_mesh_collision": {
+          "dof": 30, "kind": "candidate", "label": "30 DOF mesh collision", "mjcf": "mjcf/astro_p2_30dof_mesh_collision.xml", "notes": "Generated MJCF retaining mesh collision geometry.", "urdf": null
+        },
+        "30dof_primitive_collision_halfway": {
+          "dof": 30, "kind": "manual", "label": "30 DOF primitive collision halfway", "mjcf": "mjcf/astro_p2_30dof_primitive_collision_halfway.xml", "notes": "Intermediate manually authored primitive-collision edition.", "urdf": null
+        }
+      }
     },
     "soma23": {
-      "default_scene": "flat_floor",
-      "dof": 66,
-      "mjcf": "mjcf/soma23_humanoid.xml",
-      "notes": "SOMA-23 free-base humanoid imported faithfully from ProtoMotions. It has 66 motor-actuated internal DOF and primitive-only geometry.",
-      "robot_version": "soma23",
-      "source_provenance": {
-        "license": "Apache-2.0",
-        "license_file": "LICENSE.ProtoMotions",
-        "repository": "https://github.com/NVlabs/ProtoMotions",
-        "revision": "a6df301d312dc58ac40a4d994f4f1064728d854c",
-        "sha256": "0b3b4cc6967d0ebe24dd54b87a8a4b3fe1c05d44a53a8f435e2b854f3189a1b3",
-        "source_path": "protomotions/data/assets/mjcf/soma23_humanoid.xml"
-      },
-      "spawn": {
-        "rpy": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "scene_frame": "robot_spawn",
-        "xyz": [
-          0.0,
-          0.0,
-          1.0
-        ]
-      },
-      "status": "imported",
-      "urdf": null
+      "default_edition": "free_base", "default_scene": "flat_floor", "notes": "SOMA-23 free-base humanoid imported faithfully from ProtoMotions.", "spawn": {"rpy": [0.0, 0.0, 0.0], "scene_frame": "robot_spawn", "xyz": [0.0, 0.0, 1.0]}, "status": "imported",
+      "editions": {
+        "free_base": {"dof": 66, "label": "Free base", "mjcf": "mjcf/soma23_free_base.xml", "notes": "66 motor-actuated internal DOF and primitive-only geometry.", "source_provenance": {"license": "Apache-2.0", "license_file": "LICENSE.ProtoMotions", "repository": "https://github.com/NVlabs/ProtoMotions", "revision": "a6df301d312dc58ac40a4d994f4f1064728d854c", "sha256": "0b3b4cc6967d0ebe24dd54b87a8a4b3fe1c05d44a53a8f435e2b854f3189a1b3", "source_path": "protomotions/data/assets/mjcf/soma23_humanoid.xml"}, "urdf": null}
+      }
     },
     "unitree_g1": {
-      "default_scene": "flat_floor",
-      "dof": 43,
-      "mjcf": "mjcf/g1_29dof_with_hand_rev_1_0.xml",
-      "mjcf_provenance": {
-        "authorized_at": "2026-08-17T00:00:00+00:00",
-        "source_revision": "97da67732d067c3147fc5fb7b7bafc8982718f4e7f8c92ff82266a4d9c07200d"
-      },
-      "notes": "Official Unitree G1 29-DOF-with-hand revision 1.0 description. Includes 29 body joints and 14 hand joints.",
-      "robot_version": "unitree_g1",
-      "source_provenance": {
-        "license": "BSD-3-Clause",
-        "license_file": "LICENSE.Unitree",
-        "repository": "https://github.com/unitreerobotics/unitree_ros",
-        "revision": "daadf41ee9afce8f90fdc09a98506012691fa122",
-        "retargeting_urdf": {
-          "license": "Apache-2.0; bundled Unitree meshes remain BSD-3-Clause",
-          "license_file": "LICENSE.ProtoMotions",
-          "packaged_path": "urdf/for_retargeting/g1.urdf",
-          "packaging_note": "Only vendor mesh paths were adapted to ../../meshes for the Menagerie workspace.",
-          "repository": "https://github.com/NVlabs/ProtoMotions",
-          "revision": "a6df301d312dc58ac40a4d994f4f1064728d854c",
-          "packaged_sha256": "f96fd282d73a4fed139268b75309726b4582fc71f94286c28f044e5389b89276",
-          "source_sha256": "bd199a00d2bd38f17b47ecf896c3891605af658ebc76d8954b6c2060af071c8e",
-          "source_path": "protomotions/data/assets/urdf/for_retargeting/g1.urdf"
+      "default_edition": "29dof_with_hand_rev_1_0", "default_scene": "flat_floor", "notes": "Official Unitree G1 description with 29 body joints and 14 hand joints.", "spawn": {"rpy": [0.0, 0.0, 0.0], "scene_frame": "robot_spawn", "xyz": [0.0, 0.0, 0.793]}, "status": "imported",
+      "editions": {
+        "29dof_with_hand_rev_1_0": {
+          "dof": 43, "label": "29 DOF with hand rev 1.0", "mjcf": "mjcf/unitree_g1_29dof_with_hand_rev_1_0.xml", "urdf": "urdf/unitree_g1_29dof_with_hand_rev_1_0.urdf",
+          "mjcf_provenance": {"authorized_at": "2026-08-17T00:00:00+00:00", "source_revision": "97da67732d067c3147fc5fb7b7bafc8982718f4e7f8c92ff82266a4d9c07200d"},
+          "source_provenance": {"license": "BSD-3-Clause", "license_file": "LICENSE.Unitree", "repository": "https://github.com/unitreerobotics/unitree_ros", "revision": "daadf41ee9afce8f90fdc09a98506012691fa122", "sha256": "97da67732d067c3147fc5fb7b7bafc8982718f4e7f8c92ff82266a4d9c07200d", "source_path": "robots/g1_description/g1_29dof_with_hand_rev_1_0.urdf", "retargeting_urdf": {"license": "Apache-2.0; bundled Unitree meshes remain BSD-3-Clause", "license_file": "LICENSE.ProtoMotions", "packaged_path": "urdf/for_retargeting/g1.urdf", "packaging_note": "Only vendor mesh paths were adapted to ../../meshes for the Menagerie workspace.", "repository": "https://github.com/NVlabs/ProtoMotions", "revision": "a6df301d312dc58ac40a4d994f4f1064728d854c", "packaged_sha256": "f96fd282d73a4fed139268b75309726b4582fc71f94286c28f044e5389b89276", "source_sha256": "bd199a00d2bd38f17b47ecf896c3891605af658ebc76d8954b6c2060af071c8e", "source_path": "protomotions/data/assets/urdf/for_retargeting/g1.urdf"}}
         },
-        "sha256": "97da67732d067c3147fc5fb7b7bafc8982718f4e7f8c92ff82266a4d9c07200d",
-        "source_path": "robots/g1_description/g1_29dof_with_hand_rev_1_0.urdf"
-      },
-      "spawn": {
-        "rpy": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "scene_frame": "robot_spawn",
-        "xyz": [
-          0.0,
-          0.0,
-          0.793
-        ]
-      },
-      "status": "imported",
-      "urdf": "urdf/g1_29dof_with_hand_rev_1_0.urdf"
+        "29dof_box_feet": {
+          "dof": 29, "kind": "retargeting-reference", "label": "29 DOF box feet (ProtoMotions)", "mjcf": "mjcf/unitree_g1_29dof_box_feet.xml", "notes": "ProtoMotions G1 retargeting embodiment with no hand joints and box foot contacts.", "urdf": null,
+          "source_provenance": {"license": "Apache-2.0; bundled Unitree meshes remain BSD-3-Clause", "license_file": "LICENSE.ProtoMotions", "packaged_sha256": "c3836712d77463ad1ca1786b51b94eac2c8f8089505893d1a09eee1647bf218d", "repository": "https://github.com/NVlabs/ProtoMotions", "revision": "a6df301d312dc58ac40a4d994f4f1064728d854c", "source_path": "protomotions/data/assets/mjcf/g1_bm_box_feet.xml", "source_role": "kinematic model selected when ProtoMotions converts retargeted G1 CSV files"}
+        }
+      }
     }
   }
 }

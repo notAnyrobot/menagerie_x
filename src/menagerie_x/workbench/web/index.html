@@ -16,10 +16,10 @@
         </div>
         <button id="collapse-menagerie" class="icon-button" aria-label="Collapse menagerie workbench" title="Collapse menagerie workbench">‹</button>
       </div>
-      <p class="sidebar-copy">Select a robot variant, then choose one MJCF edition to inspect or continue editing.</p>
+      <p class="sidebar-copy">Select a robot variant, then choose an edition. An edition may provide URDF, MJCF, or both.</p>
       <div class="menagerie-actions" aria-label="Robot workspace actions">
         <button id="add-robot-variant" type="button">Add robot variant</button>
-        <button id="import-mjcf-edition" type="button" disabled>Import MJCF edition</button>
+        <button id="import-mjcf-edition" type="button" disabled>Import MJCF revision</button>
         <button id="export-urdf" type="button" disabled>Export URDF</button>
       </div>
       <p id="urdf-export-status" class="urdf-export-status" aria-live="polite"></p>
@@ -28,10 +28,11 @@
         <select id="robot-variant-select">
           <option value="">Select a robot variant</option>
         </select>
-        <label for="robot-edition-select">MJCF edition</label>
+        <label for="robot-edition-select">Robot edition</label>
         <select id="robot-edition-select" disabled>
           <option value="">Select a robot variant first</option>
         </select>
+        <button id="reload-description" type="button" disabled title="Refresh the robot catalog and reload the selected MJCF description from disk">Reload robots</button>
         <p id="robot-selection-meta" class="robot-selection-meta" aria-live="polite">No robot selected.</p>
       </div>
       <section class="simulation-panel" aria-label="Simulation controls">
@@ -108,8 +109,8 @@
           <button id="collision-reset" title="Restore the temporary draft from the MJCF source">Reset draft</button>
           <button id="collision-mirror-left-to-right" title="Replace right-side collision shapes with reflected left-side shapes">Mirror left → right</button>
           <button id="collision-mirror-right-to-left" title="Replace left-side collision shapes with reflected right-side shapes">Mirror right → left</button>
-          <button id="collision-overwrite" class="collision-export">Overwrite Current Edition</button>
-          <button id="collision-export" class="primary collision-export">Export New Edition</button>
+          <button id="collision-overwrite" class="collision-export">Overwrite Current MJCF</button>
+          <button id="collision-export" class="primary collision-export">Export MJCF Revision</button>
           <p id="collision-status" class="collision-status">Open the editor to create a temporary collision draft.</p>
         </div>
       </div>
@@ -124,8 +125,7 @@
         </div>
         <div class="toolbar-actions">
           <button id="restart-workbench" class="restart-workbench" type="button" title="Restart the local Workbench server and reload this page">Restart workbench</button>
-          <button id="reload-description" disabled title="Reload the selected MJCF edition from disk">Reload menagerie</button>
-          <button id="open-native-viewer" disabled title="Open the selected saved MJCF edition in native MuJoCo">Open in MuJoCo</button>
+          <button id="open-native-viewer" disabled title="Open the selected saved MJCF description in native MuJoCo">Open in MuJoCo</button>
           <button id="scene-recording-toggle" class="scene-recording-toggle" type="button" disabled>Record scene</button>
           <span id="scene-recording-state" class="visually-hidden" aria-live="polite">Ready to record the 3D viewer.</span>
         </div>
@@ -137,7 +137,7 @@
         <div class="viewer-overlay bottom legend" aria-label="Keyboard and mouse controls">
           <span><kbd>P</kbd> Physics</span><span><kbd>R</kbd> Reset</span><span><kbd>F</kbd> Follow</span><span><kbd>C</kbd> Contacts</span><span>◉ Drag to orbit</span><span>✥ Drag robot to push</span>
         </div>
-        <div id="viewer-empty" class="viewer-empty">Select a robot variant, then choose an MJCF edition.</div>
+        <div id="viewer-empty" class="viewer-empty">Select a robot variant, then choose an edition.</div>
       </section>
 
       <section class="details-bar">
@@ -165,9 +165,9 @@
         <div class="mjcf-panel-heading"><div><span class="eyebrow">MJCF conversion</span><strong id="mjcf-title">Select a variant</strong></div></div>
         <p id="mjcf-source" class="mjcf-copy">URDF remains the authored source. Workbench loads reviewed MJCF.</p>
         <label class="search-label" for="mjcf-candidate-id">MJCF file name</label>
-        <input id="mjcf-candidate-id" type="text" maxlength="64" autocomplete="off" placeholder="astro_v2-review (creates .xml)">
+        <input id="mjcf-candidate-id" type="text" maxlength="64" autocomplete="off" placeholder="astro_p2-review (creates .xml)">
         <button id="mjcf-generate" class="primary mjcf-generate">Generate Candidate</button>
-        <div class="mjcf-edition-actions" aria-label="Selected MJCF edition actions">
+        <div class="mjcf-edition-actions" aria-label="Selected MJCF description actions">
           <button id="edition-set-default" type="button">Set as default</button>
           <button id="edition-duplicate" type="button">Duplicate</button>
           <button id="edition-rename" type="button">Rename</button>

@@ -6,7 +6,7 @@ from menagerie_x.commands.viser import launch_viser
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-ROBOT_ROOT = ROOT / "src" / "menagerie_x" / "assets" / "astro_v1"
+ROBOT_ROOT = ROOT / "src" / "menagerie_x" / "assets" / "astro_p1"
 
 
 class ViserLaunchTests(unittest.TestCase):

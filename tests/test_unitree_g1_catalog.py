@@ -17,14 +17,14 @@ class UnitreeG1CatalogTests(unittest.TestCase):
         variant = get_variant("unitree_g1", ASSETS)
 
         self.assertEqual(variant.dof, 43)
-        self.assertEqual(variant.urdf.name, "g1_29dof_with_hand_rev_1_0.urdf")
-        self.assertEqual(variant.mjcf.name, "g1_29dof_with_hand_rev_1_0.xml")
+        self.assertEqual(variant.urdf.name, "unitree_g1_29dof_with_hand_rev_1_0.urdf")
+        self.assertEqual(variant.mjcf.name, "unitree_g1_29dof_with_hand_rev_1_0.xml")
         self.assertEqual(validate_assets(ASSETS), [])
 
     def test_packaged_urdfs_and_retargeting_mjcf_resolve_their_meshes(self) -> None:
         variant_dir = ASSETS / "unitree_g1"
         for urdf in (
-            variant_dir / "urdf" / "g1_29dof_with_hand_rev_1_0.urdf",
+            variant_dir / "urdf" / "unitree_g1_29dof_with_hand_rev_1_0.urdf",
             variant_dir / "urdf" / "for_retargeting" / "g1.urdf",
         ):
             root = ET.parse(urdf).getroot()
@@ -32,5 +32,5 @@ class UnitreeG1CatalogTests(unittest.TestCase):
             self.assertTrue(filenames)
             self.assertTrue(all((urdf.parent / filename).resolve().is_file() for filename in filenames))
 
-        retargeting = ET.parse(variant_dir / "mjcf" / "protomotions_g1_retargeting_box_feet.xml").getroot()
+        retargeting = ET.parse(variant_dir / "mjcf" / "unitree_g1_29dof_box_feet.xml").getroot()
         self.assertIsNotNone(retargeting.find(".//site[@name='imu']"))

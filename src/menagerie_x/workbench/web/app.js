@@ -215,7 +215,7 @@ function activateTab(name) {
 }
 
 function updateReloadDescriptionControl() {
-  reloadDescriptionButton.disabled = descriptionReloading || !activeRobot || !activeEdition;
+  reloadDescriptionButton.disabled = descriptionReloading || !activeRobot || !activeEdition?.workbench_loadable;
   importMjcfEditionButton.disabled = !activeRobot;
   editionSetDefaultButton.disabled = !activeEdition || activeEdition.default;
   editionDuplicateButton.disabled = !activeEdition;
@@ -225,15 +225,17 @@ function updateReloadDescriptionControl() {
 }
 
 function updateUrdfExportControl() {
-  const available = Boolean(activeRobot && activeEdition && activeRobot.formats?.urdf);
+  const available = Boolean(activeRobot && activeEdition?.formats?.urdf && activeEdition?.formats?.mjcf);
   exportUrdfButton.disabled = urdfExportBusy || !available;
   exportUrdfButton.title = !activeRobot
     ? "Select a robot variant"
     : !activeEdition
-      ? "Select a saved MJCF edition"
-      : !activeRobot.formats?.urdf
-        ? "This variant has no canonical URDF"
-        : "Download a URDF using collisions from the selected saved MJCF edition";
+      ? "Select an edition with both URDF and MJCF"
+      : !activeEdition.formats?.urdf
+        ? "This edition has no URDF description"
+        : !activeEdition.formats?.mjcf
+          ? "This edition has no MJCF description"
+        : "Download a URDF using collisions from the selected saved MJCF description";
 }
 
 function setUrdfExportStatus(message, error = false) {
@@ -242,8 +244,8 @@ function setUrdfExportStatus(message, error = false) {
 }
 
 async function exportSelectedUrdf() {
-  if (!activeRobot || !activeEdition || !activeRobot.formats?.urdf || urdfExportBusy) return;
-  if (collisionDraftHasChanges() && !window.confirm("Export URDF uses the selected saved MJCF edition. Unsaved temporary collision edits will not be included. Download from the saved edition?")) return;
+  if (!activeRobot || !activeEdition || !activeEdition.formats?.urdf || !activeEdition.formats?.mjcf || urdfExportBusy) return;
+  if (collisionDraftHasChanges() && !window.confirm("Export URDF uses the selected saved MJCF description. Unsaved temporary collision edits will not be included. Download from the saved description?")) return;
   urdfExportBusy = true;
   updateUrdfExportControl();
   setUrdfExportStatus("Exporting collisions from the selected saved edition…");
@@ -263,12 +265,12 @@ async function exportSelectedUrdf() {
 function updateNativeViewerControl() {
   const running = nativeViewerState === "running";
   openNativeViewerButton.textContent = running ? "MuJoCo viewer open" : "Open in MuJoCo";
-  openNativeViewerButton.disabled = nativeViewerLaunching || running || !nativeViewerAvailable || !activeRobot || !activeEdition;
+  openNativeViewerButton.disabled = nativeViewerLaunching || running || !nativeViewerAvailable || !activeRobot || !activeEdition?.workbench_loadable;
   openNativeViewerButton.title = !nativeViewerAvailable
     ? "Native MuJoCo launch is available only when the Workbench is bound to localhost"
     : running
       ? "A native MuJoCo viewer is already open"
-      : "Open the selected saved MJCF edition in native MuJoCo";
+      : "Open the selected saved MJCF description in native MuJoCo";
 }
 
 function applyNativeViewerStatus(status) {
@@ -294,13 +296,13 @@ async function refreshNativeViewerStatus() {
 
 async function openNativeViewer() {
   if (!activeRobot || !activeEdition || !nativeViewerAvailable || nativeViewerState === "running" || nativeViewerLaunching) return;
-  if (collisionDraftHasChanges() && !window.confirm("The native MuJoCo viewer opens the saved MJCF edition. Unsaved temporary collision edits will not appear until you choose Overwrite Current Edition or Export New Edition. Open the saved edition?")) return;
+  if (collisionDraftHasChanges() && !window.confirm("The native MuJoCo viewer opens the saved MJCF description. Unsaved temporary collision edits will not appear until you choose Overwrite Current MJCF or Export MJCF Revision. Open the saved description?")) return;
   nativeViewerLaunching = true;
   updateNativeViewerControl();
   try {
     const status = await apiRequest(`${editionBase()}/native-viewer`, "POST", {});
     applyNativeViewerStatus(status);
-    setMjcfStatus(`Opened ${activeEdition.label} in native MuJoCo from its saved MJCF edition.`);
+    setMjcfStatus(`Opened ${activeEdition.label} in native MuJoCo from its saved MJCF description.`);
   } catch (error) {
     setMjcfStatus(`Could not open native MuJoCo viewer: ${error.message}`, true);
     await refreshNativeViewerStatus().catch(() => {});
@@ -340,6 +342,7 @@ async function refreshMjcfCandidates() {
   const data = await api(`/api/robots/${encodeURIComponent(activeRobot.id)}/mjcf-candidates`);
   mjcfCandidates = data.candidates;
   const editions = await api(`/api/robots/${encodeURIComponent(activeRobot.id)}/editions`);
+  activeRobot.editions = editions.editions;
   mjcfEditions = editions.editions;
   ensureMjcfCandidateId();
   renderMjcfPanel();
@@ -360,14 +363,14 @@ function renderMjcfPanel() {
   const officialDefault = activeEdition?.default && activeEdition.kind === "official";
   if (retargetingReference) {
     mjcfTitle.textContent = "Retargeting reference";
-    mjcfSource.textContent = "ProtoMotions retargeting reference. It is a separate non-default MJCF edition.";
+    mjcfSource.textContent = "ProtoMotions retargeting reference. It is a separate non-default robot edition.";
   } else if (officialDefault) {
     mjcfTitle.textContent = "Official MJCF";
     mjcfSource.textContent = "Official packaged MJCF. Generate another review candidate without replacing this MJCF.";
   } else if (authorized) {
     mjcfTitle.textContent = "MJCF workspace";
     mjcfSource.textContent = activeEdition
-      ? `Selected MJCF edition: ${activeEdition.label}. Generate another review candidate without replacing it.`
+      ? `Selected MJCF description: ${activeEdition.label}. Generate another review candidate without replacing it.`
       : activeRobot.source_provenance?.repository
         ? "Official packaged MJCF available. Choose an edition to inspect or edit it."
         : `Authorized candidate: ${activeRobot.mjcf_provenance?.candidate_id || "packaged MJCF"}. Choose an edition to inspect or edit it.`;
@@ -566,7 +569,7 @@ function updateSceneRecordingControl() {
     sceneRecordingState.textContent = `Recording the 3D viewer · ${recordingFormat?.label || "video"}.`;
     sceneRecordingState.classList.remove("error");
   } else if (!simulationModel && !recordingDownloadPending) {
-    sceneRecordingState.textContent = "Load an MJCF edition before recording the 3D viewer.";
+    sceneRecordingState.textContent = "Load an MJCF description before recording the 3D viewer.";
     sceneRecordingState.classList.remove("error");
   }
 }
@@ -977,27 +980,20 @@ function applyDragForce() {
   updateDragForceIndicator();
 }
 
-function displayName(robot) {
-  return `${robot.name.replaceAll("_", " ")} · ${robot.dof} DOF`;
+function displayName(robot, edition = null) {
+  return `${robot.name.replaceAll("_", " ")} · ${edition?.dof ?? robot.dof} DOF`;
 }
 
 function editionDisplayName(edition) {
   const name = edition.label || edition.id;
-  return edition.default ? `Default MJCF · ${name}` : name;
+  const formats = [edition.formats?.urdf && "URDF", edition.formats?.mjcf && "MJCF"].filter(Boolean).join(" + ");
+  return `${edition.default ? "Default · " : ""}${name}${formats ? ` · ${formats}` : ""}`;
 }
 
 function renderRobotList() {
   robotVariantSelect.replaceChildren(new Option("Select a robot variant", ""));
   for (const robot of catalog) {
-    const errors = robot.summary.errors;
-    const warnings = robot.summary.warnings;
-    const validation = errors
-      ? `${errors} error${errors === 1 ? "" : "s"}`
-      : warnings
-        ? `${warnings} warning${warnings === 1 ? "" : "s"}`
-        : "validated";
-    const availability = robot.workbench_loadable ? validation : "no MJCF editions";
-    robotVariantSelect.append(new Option(`${robot.name} · ${robot.dof} DOF · ${availability}`, robot.id));
+    robotVariantSelect.append(new Option(robot.name, robot.id));
   }
 
   robotVariantSelect.value = activeRobot?.id || "";
@@ -1016,15 +1012,16 @@ function renderRobotList() {
     : warnings
       ? `${warnings} warning${warnings === 1 ? "" : "s"}`
       : "validated";
-  if (!mjcfEditions.length) {
-    robotEditionSelect.append(new Option("No MJCF editions available", ""));
+  const editions = activeRobot.editions || [];
+  if (!editions.length) {
+    robotEditionSelect.append(new Option("No editions available", ""));
     robotEditionSelect.disabled = true;
-    robotSelectionMeta.textContent = `${activeRobot.status} · ${activeRobot.dof} DOF · no MJCF editions`;
+    robotSelectionMeta.textContent = `${activeRobot.status} · no editions`;
     return;
   }
 
-  robotEditionSelect.append(new Option("Select an MJCF edition", ""));
-  for (const edition of mjcfEditions) {
+  robotEditionSelect.append(new Option("Select a robot edition", ""));
+  for (const edition of editions) {
     robotEditionSelect.append(new Option(editionDisplayName(edition), edition.id));
   }
   robotEditionSelect.disabled = false;
@@ -1032,8 +1029,8 @@ function renderRobotList() {
   const stamp = activeEdition?.modified_at || activeEdition?.created_at;
   const editionMeta = activeEdition
     ? `${activeEdition.kind}${stamp ? ` · ${new Date(stamp).toLocaleString()}` : ""}`
-    : "choose an MJCF edition";
-  robotSelectionMeta.textContent = `${activeRobot.status} · ${activeRobot.dof} DOF · ${validation} · ${editionMeta}`;
+    : "choose a robot edition";
+  robotSelectionMeta.textContent = `${activeRobot.status} · ${validation} · ${editionMeta}`;
 }
 
 function jointUnit(joint) {
@@ -1769,7 +1766,7 @@ function snapCollision(collision) {
 async function enterCollisionMode() {
   if (!activeRobot || !activeEdition || !simulationModel) {
     updateCollisionEditorDock(false);
-    setCollisionStatus("Select an MJCF edition before editing collisions.", true);
+    setCollisionStatus("Select an MJCF description before editing collisions.", true);
     return;
   }
   if (collisionMode && collisionDraftId) {
@@ -1911,7 +1908,7 @@ async function exportCollisionDraft() {
       body: JSON.stringify({ revision: collisionDocument.revision }),
     });
     collisionDraftDirty = false;
-    setCollisionStatus(`Exported ${data.edition_id || "MJCF edition"}: ${data.output_path}`);
+    setCollisionStatus(`Exported ${data.edition_id || "MJCF revision"}: ${data.output_path}`);
     await refreshMjcfCandidates();
     await selectEdition(data.edition_id, true);
   } catch (error) {
@@ -1928,7 +1925,7 @@ async function overwriteCollisionDraft() {
   const editionName = activeEdition.role === "authorized"
     ? `authorized MJCF ${activeEdition.source_id || activeEdition.id}`
     : activeEdition.id;
-  if (!window.confirm(`Overwrite ${editionName}? This replaces exactly this MJCF edition and cannot be undone automatically.`)) return;
+  if (!window.confirm(`Overwrite ${editionName}? This replaces exactly this MJCF description and cannot be undone automatically.`)) return;
   try {
     collisionExport.disabled = true;
     collisionOverwrite.disabled = true;
@@ -2074,7 +2071,7 @@ async function loadMujocoModel(robot, token, controller, options = {}) {
     mujoco ||= await loadMujoco({ locateFile: file => `/vendor/${file}` });
     assertCurrentLoad(token, controller);
     const sourceBase = editionBase();
-    if (!sourceBase) throw new Error("Select an MJCF edition before loading a model.");
+    if (!sourceBase) throw new Error("Select an MJCF description before loading a model.");
     const raw = await fetch(`${sourceBase}/source`, { signal: controller.signal, cache: options.forceReload ? "no-store" : "default" })
       .then(response => response.ok ? response.text() : Promise.reject(new Error("Could not load model source")));
     assertCurrentLoad(token, controller);
@@ -2141,7 +2138,7 @@ async function loadMujocoModel(robot, token, controller, options = {}) {
       updateSimulationControls("Model load failed. Select a robot to try again.");
       setEngineState(`MuJoCo WASM model check failed: ${error?.message || error}`, "error");
       viewerEmpty.hidden = false;
-      viewerEmpty.textContent = `Could not load this MJCF edition: ${error?.message || error}`;
+      viewerEmpty.textContent = `Could not load this MJCF description: ${error?.message || error}`;
       throw error;
     }
     return false;
@@ -2205,14 +2202,14 @@ async function importMjcfEdition() {
     await selectEdition(result.edition_id);
     setMjcfStatus(`Imported ${result.edition_id} into ${activeRobot.name}.`);
   } catch (error) {
-    setMjcfStatus(`Could not import MJCF edition: ${error.message}`, true);
+    setMjcfStatus(`Could not import MJCF revision: ${error.message}`, true);
   }
 }
 
 async function mutateEdition(operation) {
   if (!activeRobot || !activeEdition) return;
   const originalId = activeEdition.id;
-  if (operation === "delete" && !window.confirm(`Delete ${originalId}? This removes only the managed MJCF edition.`)) return;
+  if (operation === "delete" && !window.confirm(`Delete ${originalId}? This removes only the managed MJCF revision.`)) return;
   let payload = {};
   if (operation === "duplicate" || operation === "rename") {
     const editionId = window.prompt(`${operation === "duplicate" ? "New copy" : "New"} edition name:`, `${originalId}-copy`);
@@ -2258,7 +2255,7 @@ async function selectRobot(id) {
     assertCurrentLoad(token, controller);
     activeRobot = data.robot;
     activeEdition = null;
-    mjcfEditions = [];
+    mjcfEditions = activeRobot.editions || [];
     activeCandidateId = null;
     delete mjcfCandidateId.dataset.robotId;
     mjcfCandidateId.value = "";
@@ -2268,21 +2265,26 @@ async function selectRobot(id) {
     selectedKind = null;
     selectedTitle.textContent = displayName(activeRobot);
     selectedElement.textContent = "None";
-    selectedSource.textContent = "No MJCF edition selected";
+    selectedSource.textContent = "No MJCF description selected";
     physicsEnabled = false;
     followEnabled = false;
     disposeWasm();
     clearRobot();
     clearSceneObjects();
-    updateSimulationControls("Select an MJCF edition to load the model.");
+    updateSimulationControls("Select an MJCF description to load the model.");
     renderRobotList();
     renderElements();
     await refreshMjcfCandidates();
-    viewerEmpty.textContent = mjcfEditions.length
-      ? "Choose an MJCF edition beneath the selected robot variant."
-      : "No selectable MJCF edition. Generate or repair a candidate in the MJCF panel.";
-    setEngineState("MJCF edition selection required", "loading");
-    activateTab(mjcfEditions.length ? "joints" : "mjcf");
+    const defaultEdition = (activeRobot.editions || []).find(edition => edition.default);
+    if (defaultEdition) {
+      await selectEdition(defaultEdition.id);
+      return;
+    }
+    viewerEmpty.textContent = mjcfEditions.some(edition => edition.workbench_loadable)
+      ? "Choose an MJCF-backed edition beneath the selected robot variant."
+      : "This robot has no MJCF-backed edition. Its URDF remains catalog-visible.";
+    setEngineState("robot edition selection required", "loading");
+    activateTab(mjcfEditions.some(edition => edition.workbench_loadable) ? "joints" : "mjcf");
   } catch (error) {
     if (error?.name === "AbortError") return;
     viewerEmpty.hidden = false;
@@ -2293,15 +2295,15 @@ async function selectRobot(id) {
 
 async function selectEdition(editionId, continueCollisionEditing = false, options = {}) {
   if (!activeRobot) return;
-  const edition = mjcfEditions.find(item => item.id === editionId);
+  const edition = (activeRobot.editions || []).find(item => item.id === editionId);
   if (!edition) {
-    setMjcfStatus(`MJCF edition ${editionId} is not available for ${activeRobot.name}.`, true);
+    setMjcfStatus(`Robot edition ${editionId} is not available for ${activeRobot.name}.`, true);
     return;
   }
   // Re-selecting the active row is a no-op. In particular, it must not tear
   // down an unfinished draft just because the operator clicked its edition.
   if (edition.id === activeEdition?.id && !continueCollisionEditing && !options.forceReload) return;
-  if (edition.id !== activeEdition?.id && collisionDraftHasChanges() && !window.confirm("Discard the unsaved temporary collision draft and change MJCF edition?")) return;
+  if (edition.id !== activeEdition?.id && collisionDraftHasChanges() && !window.confirm("Discard the unsaved temporary collision draft and change MJCF description?")) return;
   const reopenEditor = continueCollisionEditing || collisionMode;
   if (collisionMode) {
     collisionDraftDirty = false;
@@ -2323,11 +2325,27 @@ async function selectEdition(editionId, continueCollisionEditing = false, option
   updateReloadDescriptionControl();
   updateNativeViewerControl();
   selectedKind = null;
-  selectedTitle.textContent = `${displayName(activeRobot)} · ${editionDisplayName(edition)}`;
+  selectedTitle.textContent = `${displayName(activeRobot, edition)} · ${editionDisplayName(edition)}`;
   selectedElement.textContent = "None";
-  selectedSource.textContent = edition.role === "authorized" ? "MJCF (authorized)" : "MJCF edition";
+  selectedSource.textContent = edition.role === "authorized" ? "MJCF (authorized)" : "MJCF revision";
+  if (!edition.workbench_loadable) {
+    selectedSource.textContent = edition.formats?.urdf ? "URDF only" : "No supported description";
+    viewerEmpty.hidden = false;
+    viewerEmpty.textContent = `${editionDisplayName(edition)} has no MJCF description. It is catalog-visible, but the Workbench viewer and collision editor require MJCF.`;
+    physicsEnabled = false;
+    followEnabled = false;
+    disposeWasm();
+    clearRobot();
+    clearSceneObjects();
+    renderRobotList();
+    renderMjcfPanel();
+    renderElements();
+    updateSimulationControls("Choose an MJCF-backed edition to load the model.");
+    setEngineState("MJCF description unavailable", "loading");
+    return;
+  }
   viewerEmpty.hidden = false;
-  viewerEmpty.textContent = "Loading MJCF edition…";
+  viewerEmpty.textContent = "Loading MJCF description…";
   physicsEnabled = false;
   followEnabled = false;
   updateSimulationControls("Loading MuJoCo model…");
@@ -2383,7 +2401,7 @@ async function reloadCurrentDescription() {
     activeRobot = robotData.robot;
     selectedTitle.textContent = displayName(activeRobot);
     await refreshMjcfCandidates();
-    if (!mjcfEditions.some(edition => edition.id === editionId)) {
+    if (!(activeRobot.editions || []).some(edition => edition.id === editionId)) {
       activeEdition = null;
       activeCandidateId = null;
       updateNativeViewerControl();
@@ -2395,11 +2413,11 @@ async function reloadCurrentDescription() {
       renderJointInspector();
       renderElements();
       renderRobotList();
-      updateSimulationControls("Choose an available MJCF edition to load the model.");
+      updateSimulationControls("Choose an available MJCF-backed edition to load the model.");
       viewerEmpty.hidden = false;
-      viewerEmpty.textContent = "The previously selected MJCF edition is no longer available. Choose an edition beneath this robot variant.";
-      setEngineState("MJCF edition selection required", "loading");
-      setMjcfStatus(`MJCF edition ${editionId} is no longer available. Choose another edition.`, true);
+      viewerEmpty.textContent = "The previously selected robot edition is no longer available. Choose another edition beneath this robot variant.";
+      setEngineState("robot edition selection required", "loading");
+      setMjcfStatus(`Robot edition ${editionId} is no longer available. Choose another edition.`, true);
       activateTab(tab);
       return;
     }
@@ -2682,11 +2700,11 @@ try {
   renderRobotList();
   renderJointInspector();
   renderElements();
-  updateSimulationControls("Select a robot variant, then an MJCF edition.");
-  selectedSource.textContent = "No MJCF edition selected";
+  updateSimulationControls("Select a robot variant, then an MJCF-backed edition.");
+  selectedSource.textContent = "No MJCF description selected";
   viewerEmpty.hidden = false;
-  viewerEmpty.textContent = "Select a robot variant, then choose an MJCF edition.";
-  setEngineState("MJCF edition selection required", "loading");
+  viewerEmpty.textContent = "Select a robot variant, then choose an edition.";
+  setEngineState("robot edition selection required", "loading");
 } catch (error) {
   viewerEmpty.textContent = error.message;
   setEngineState(error.message, "error");

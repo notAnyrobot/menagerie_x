@@ -23,7 +23,7 @@ class UrdfCollisionExportTests(unittest.TestCase):
         self.asset_root = Path(self.temporary.name)
         self.urdf = self.asset_root / "robot.urdf"
         self.mjcf = self.asset_root / "robot.xml"
-        self.variant = Variant("robot", "robot", 0, self.urdf, self.mjcf, self.asset_root, "ready", "")
+        self.variant = Variant("robot", 0, self.urdf, self.mjcf, self.asset_root, "ready", "")
 
     def tearDown(self) -> None:
         self.temporary.cleanup()
@@ -88,12 +88,12 @@ class UrdfCollisionExportTests(unittest.TestCase):
             export_urdf_with_mjcf_collisions(self.variant, self.mjcf, edition_id="reviewed", asset_root=self.asset_root)
         self.assertEqual(raised.exception.report.issues[0].code, "mjcf-include")
 
-    def test_astro_v2_reference_counts(self) -> None:
-        variant = get_variant("astro_v2", ROOT)
+    def test_astro_p2_reference_counts(self) -> None:
+        variant = get_variant("astro_p2", ROOT)
         result = export_urdf_with_mjcf_collisions(
             variant,
             variant.mjcf,
-            edition_id="astro_v2_primitive_collision",
+            edition_id="astro_p2_primitive_collision",
             asset_root=ROOT / "src" / "menagerie_x" / "assets",
         )
         root = ET.fromstring(result.content)

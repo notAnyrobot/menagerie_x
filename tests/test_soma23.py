@@ -14,7 +14,7 @@ from menagerie_x.commands.mujoco import check_mujoco
 
 ASSETS = Path(__file__).resolve().parents[1] / "src" / "menagerie_x" / "assets"
 SOMA23 = ASSETS / "soma23"
-MJCF = SOMA23 / "mjcf" / "soma23_humanoid.xml"
+MJCF = SOMA23 / "mjcf" / "soma23_free_base.xml"
 SHA256 = "0b3b4cc6967d0ebe24dd54b87a8a4b3fe1c05d44a53a8f435e2b854f3189a1b3"
 PROTOMOTIONS_REVISION = "a6df301d312dc58ac40a4d994f4f1064728d854c"
 
@@ -22,12 +22,12 @@ PROTOMOTIONS_REVISION = "a6df301d312dc58ac40a4d994f4f1064728d854c"
 class Soma23CatalogTests(unittest.TestCase):
     def test_manifest_records_the_direct_protomotions_mjcf_provenance(self) -> None:
         manifest = load_manifest(ASSETS)
-        version = manifest["robot_versions"]["soma23"]
         entry = manifest["variants"]["soma23"]
-        provenance = entry["source_provenance"]
+        edition = entry["editions"]["free_base"]
+        provenance = edition["source_provenance"]
 
-        self.assertEqual(version["source_format"], "mjcf")
-        self.assertEqual(entry["urdf"], None)
+        self.assertEqual(entry["status"], "imported")
+        self.assertEqual(edition["urdf"], None)
         self.assertEqual(provenance["repository"], "https://github.com/NVlabs/ProtoMotions")
         self.assertEqual(provenance["revision"], PROTOMOTIONS_REVISION)
         self.assertEqual(provenance["source_path"], "protomotions/data/assets/mjcf/soma23_humanoid.xml")
@@ -50,7 +50,7 @@ class Soma23CatalogTests(unittest.TestCase):
         self.assertEqual(len(root.findall(".//actuator/motor")), 66)
         self.assertEqual(root.findall(".//asset/mesh"), [])
         self.assertTrue(any(issue.code == "urdf-unavailable" for issue in inspection.issues))
-        self.assertEqual([(edition["id"], edition["kind"], edition["default"]) for edition in editions], [("soma23_humanoid", "official", True)])
+        self.assertEqual([(edition["id"], edition["kind"], edition["default"]) for edition in editions], [("soma23_free_base", "official", True)])
 
     def test_mujoco_loads_the_exact_actuated_dof_and_spawn_clears_flat_floor(self) -> None:
         variant = get_variant("soma23", ASSETS)

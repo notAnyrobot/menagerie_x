@@ -17,14 +17,14 @@ function responseStub({ status, body, headers }) {
 test("returns a URDF download with server counts", async () => {
   const result = await requestUrdfExport(async () => responseStub({
     status: 200,
-    body: '<robot name="astro_v2"/>',
+    body: '<robot name="astro_p2"/>',
     headers: {
-      "content-disposition": 'attachment; filename="astro_v2-reviewed-collisions.urdf"',
+      "content-disposition": 'attachment; filename="astro_p2-reviewed-collisions.urdf"',
       "x-menagerie-mjcf-collision-count": "47",
       "x-menagerie-urdf-collision-count": "125",
     },
   }), "/export");
-  assert.equal(result.filename, "astro_v2-reviewed-collisions.urdf");
+  assert.equal(result.filename, "astro_p2-reviewed-collisions.urdf");
   assert.equal(result.sourceCollisionCount, 47);
   assert.equal(result.outputCollisionCount, 125);
 });

@@ -9,7 +9,7 @@ from pathlib import Path
 import unittest
 import xml.etree.ElementTree as ET
 
-from menagerie_x.assets import get_variant, inspect_variant, list_mjcf_editions, validate_assets
+from menagerie_x.assets import get_variant, inspect_variant, validate_assets
 from menagerie_x.commands.mjcf import list_managed_candidates
 from menagerie_x.commands.mujoco import check_mujoco
 from menagerie_x.workbench.server import WorkbenchRequestHandler
@@ -17,9 +17,9 @@ from menagerie_x.workbench.server import WorkbenchRequestHandler
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS = ROOT / "src" / "menagerie_x" / "assets"
-G1_URDF = ASSETS / "unitree_g1" / "urdf" / "g1_29dof_with_hand_rev_1_0.urdf"
+G1_URDF = ASSETS / "unitree_g1" / "urdf" / "unitree_g1_29dof_with_hand_rev_1_0.urdf"
 RETARGETING_URDF = ASSETS / "unitree_g1" / "urdf" / "for_retargeting" / "g1.urdf"
-RETARGETING_MJCF = ASSETS / "unitree_g1" / "mjcf" / "protomotions_g1_retargeting_box_feet.xml"
+RETARGETING_MJCF = ASSETS / "unitree_g1" / "mjcf" / "unitree_g1_29dof_box_feet.xml"
 
 BASE_29_DOF = [
     "left_hip_pitch_joint", "left_hip_roll_joint", "left_hip_yaw_joint",
@@ -39,30 +39,26 @@ class UnitreeG1ImportTests(unittest.TestCase):
     def setUp(self) -> None:
         self.variant = get_variant("unitree_g1", ASSETS)
 
-    def test_catalogued_official_variant_has_a_selectable_mjcf_edition(self) -> None:
+    def test_catalogued_variant_has_official_and_retargeting_editions(self) -> None:
         self.assertEqual(self.variant.dof, 43)
         self.assertEqual(self.variant.urdf, G1_URDF)
-        editions = list_mjcf_editions(self.variant, ASSETS)
+        editions = self.variant.editions
         self.assertEqual(
-            [edition["id"] for edition in editions],
-            ["g1_29dof_with_hand_rev_1_0", "protomotions_g1_retargeting_box_feet"],
+            [edition.id for edition in editions],
+            ["29dof_with_hand_rev_1_0", "29dof_box_feet"],
         )
-        self.assertTrue(editions[0]["default"])
-        self.assertEqual(editions[0]["validation"], "valid")
-        self.assertEqual(editions[0]["kind"], "official")
-        self.assertEqual(editions[0]["source_revision"], self.variant.mjcf_provenance["source_revision"])
-        self.assertIsInstance(editions[0]["modified_at"], int)
-        self.assertLess(editions[0]["modified_at"], 10**13)  # Unix milliseconds, safe for browser Date.
-        self.assertFalse(editions[1]["default"])
-        self.assertEqual(editions[1]["kind"], "retargeting-reference")
+        self.assertTrue(editions[0].default)
+        self.assertEqual(editions[0].dof, 43)
+        self.assertFalse(editions[1].default)
+        self.assertEqual(editions[1].dof, 29)
+        self.assertEqual(editions[1].kind, "retargeting-reference")
+        self.assertEqual(editions[1].formats, {"urdf": False, "mjcf": True})
         self.assertEqual(validate_assets(ASSETS), [])
 
     def test_protomotions_retargeting_edition_is_selectable_and_self_contained(self) -> None:
-        editions = {edition["id"]: edition for edition in list_mjcf_editions(self.variant, ASSETS)}
-        reference = editions["protomotions_g1_retargeting_box_feet"]
-        self.assertEqual(reference["validation"], "valid")
-        self.assertEqual(reference["provenance"]["source_role"], "kinematic model selected when ProtoMotions converts retargeted G1 CSV files")
-        self.assertEqual(reference["provenance"]["source_path"], "protomotions/data/assets/mjcf/g1_bm_box_feet.xml")
+        reference = next(edition for edition in self.variant.editions if edition.id == "29dof_box_feet")
+        self.assertEqual(reference.source_provenance["source_role"], "kinematic model selected when ProtoMotions converts retargeted G1 CSV files")
+        self.assertEqual(reference.source_provenance["source_path"], "protomotions/data/assets/mjcf/g1_bm_box_feet.xml")
         self.assertTrue(RETARGETING_MJCF.is_file())
         self.assertTrue((ASSETS / "unitree_g1" / "LICENSE.ProtoMotions").is_file())
         self.assertTrue((ASSETS / "unitree_g1" / "NOTICE.ProtoMotions").is_file())
@@ -70,8 +66,8 @@ class UnitreeG1ImportTests(unittest.TestCase):
 
         resolver = object.__new__(WorkbenchRequestHandler)
         resolver.asset_root = ASSETS
-        record, source = resolver._edition(self.variant, reference["id"])
-        self.assertEqual(record["id"], reference["id"])
+        record, source = resolver._edition(self.variant, reference.id)
+        self.assertEqual(record["id"], reference.id)
         self.assertEqual(source, RETARGETING_MJCF)
 
     def test_protomotions_retargeting_urdf_is_kept_separate_from_the_official_default(self) -> None:
@@ -84,7 +80,7 @@ class UnitreeG1ImportTests(unittest.TestCase):
         self.assertTrue(all(path.is_file() for path in resolved_meshes))
 
         manifest = json.loads((ASSETS / "manifest.json").read_text(encoding="utf-8"))
-        provenance = manifest["variants"]["unitree_g1"]["source_provenance"]["retargeting_urdf"]
+        provenance = manifest["variants"]["unitree_g1"]["editions"]["29dof_with_hand_rev_1_0"]["source_provenance"]["retargeting_urdf"]
         self.assertEqual(provenance["packaged_path"], "urdf/for_retargeting/g1.urdf")
         self.assertEqual(provenance["source_path"], "protomotions/data/assets/urdf/for_retargeting/g1.urdf")
         self.assertEqual(provenance["packaged_sha256"], hashlib.sha256(RETARGETING_URDF.read_bytes()).hexdigest())
@@ -134,11 +130,11 @@ class UnitreeG1ImportTests(unittest.TestCase):
 
     def test_provenance_keeps_the_official_source_and_license(self) -> None:
         manifest = json.loads((ASSETS / "manifest.json").read_text(encoding="utf-8"))
-        provenance = manifest["variants"]["unitree_g1"]["source_provenance"]
+        provenance = manifest["variants"]["unitree_g1"]["editions"]["29dof_with_hand_rev_1_0"]["source_provenance"]
         self.assertEqual(provenance["repository"], "https://github.com/unitreerobotics/unitree_ros")
         self.assertEqual(provenance["source_path"], "robots/g1_description/g1_29dof_with_hand_rev_1_0.urdf")
         self.assertEqual(
-            manifest["variants"]["unitree_g1"]["mjcf_provenance"]["source_revision"],
+            manifest["variants"]["unitree_g1"]["editions"]["29dof_with_hand_rev_1_0"]["mjcf_provenance"]["source_revision"],
             provenance["sha256"],
         )
         self.assertNotEqual(provenance["sha256"], hashlib.sha256(G1_URDF.read_bytes()).hexdigest())
