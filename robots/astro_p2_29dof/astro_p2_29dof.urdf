@@ -895,13 +895,13 @@
     </collision>
     <!-- Handle return arms, perpendicular to the existing Y-axis crossbar. -->
     <collision name="neck_handle_left_support_cylinder">
-      <origin xyz="-0.091 0.051 0.337" rpy="0 1.57079632679 0" />
+      <origin xyz="-0.0885 0.051 0.337" rpy="0 1.57079632679 0" />
       <geometry>
-        <cylinder radius="0.0075" length="0.04" />
+        <cylinder radius="0.0075" length="0.035" />
       </geometry>
     </collision>
     <collision name="neck_handle_left_support_rear">
-      <origin xyz="-0.111 0.051 0.337" rpy="0 0 0" />
+      <origin xyz="-0.106 0.051 0.337" rpy="0 0 0" />
       <geometry>
         <sphere radius="0.0075" />
       </geometry>
@@ -913,13 +913,13 @@
       </geometry>
     </collision>
     <collision name="neck_handle_right_support_cylinder">
-      <origin xyz="-0.091 -0.051 0.337" rpy="0 1.57079632679 0" />
+      <origin xyz="-0.0885 -0.051 0.337" rpy="0 1.57079632679 0" />
       <geometry>
-        <cylinder radius="0.0075" length="0.04" />
+        <cylinder radius="0.0075" length="0.035" />
       </geometry>
     </collision>
     <collision name="neck_handle_right_support_rear">
-      <origin xyz="-0.111 -0.051 0.337" rpy="0 0 0" />
+      <origin xyz="-0.106 -0.051 0.337" rpy="0 0 0" />
       <geometry>
         <sphere radius="0.0075" />
       </geometry>
