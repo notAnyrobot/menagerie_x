@@ -1,0 +1,17 @@
+{
+  "preset": "astro_p2_29dof",
+  "source_repository": "https://github.com/notAnyrobot/menagerie_x",
+  "base_revision": "a001d8611c91355095331367a2ba933f5870e99f",
+  "base_description": "src/menagerie_x/assets/astro_p2/urdf/astro_p2_30dof_primitive_collision.urdf",
+  "changes": [
+    "Fix head_joint at zero yaw, retaining head link geometry, collisions, mass and inertia.",
+    "Remove head_joint from the exported joint order and omit the head IK target.",
+    "Make mesh and robot.yaml paths relative to this self-contained edition directory.",
+    "Replace both rubber-hand visual meshes and their three collision primitives per side with matching 54 mm diameter spheres at the existing hand frames; retain wrist housing collisions and inertial definitions.",
+    "Group each foot's 24 collision primitives under a fixed foot link coincident with its ankle-roll frame; retain ankle articulation, visuals and inertia, and use the foot links for contact references.",
+    "Add two 15 mm diameter capsule return arms perpendicular to the rear neck-handle crossbar, represented by cylinders and spheres.",
+    "Retain all 24 sole primitives per foot and add a three-primitive side-perimeter layer (toe cylinder, heel cylinder and connecting box), spanning local z=-0.035 to -0.007 m; no separate top-surface collider.",
+    "Align the handle return capsules with the visual arms: shift each 6 mm laterally outward and 5 mm toward the torso; preserve capsule dimensions and the crossbar."
+  ],
+  "calibration": "Not bundled; calibrate separately for each motion reference."
+}
