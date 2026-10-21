@@ -16,7 +16,7 @@ from menagerie_x.workbench.server import WorkbenchRequestHandler
 
 
 ROOT = Path(__file__).resolve().parents[1]
-ASSETS = ROOT / "src" / "menagerie_x" / "assets"
+ASSETS = ROOT / "robots"
 G1_URDF = ASSETS / "unitree_g1" / "urdf" / "unitree_g1_29dof_with_hand_rev_1_0.urdf"
 RETARGETING_URDF = ASSETS / "unitree_g1" / "urdf" / "for_retargeting" / "g1.urdf"
 RETARGETING_MJCF = ASSETS / "unitree_g1" / "mjcf" / "unitree_g1_29dof_box_feet.xml"

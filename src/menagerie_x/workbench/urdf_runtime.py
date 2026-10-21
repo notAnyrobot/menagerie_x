@@ -52,7 +52,10 @@ def _root_link(root: ET.Element) -> str:
 
 def _rewrite_meshes(root: ET.Element, source: Path) -> None:
     """Make only packaged meshes absolute for the disposable compiler input."""
-    asset_root = source.parent.parent.resolve()
+    # HHTools bundles keep the URDF beside meshes; other variants use urdf/.
+    asset_root = source.parent.resolve()
+    if not (asset_root / "meshes").is_dir():
+        asset_root = asset_root.parent
     for mesh in root.findall(".//mesh"):
         filename = mesh.get("filename")
         if not filename:

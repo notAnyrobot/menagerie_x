@@ -3,18 +3,41 @@ import io
 import pathlib
 import tempfile
 import unittest
+from unittest.mock import patch
 
-from menagerie_x.assets import AssetError, get_edition, get_variant, load_manifest, load_scene, resolve_scene, validate_assets, variants
+from menagerie_x.assets import AssetError, default_robot_root, get_asset_paths, get_edition, get_variant, load_manifest, load_scene, resolve_scene, validate_assets, variants
 from menagerie_x.commands.mujoco import check_mujoco
 from menagerie_x.cli import main as cli_main
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-ASSET_ROOT = ROOT / "src" / "menagerie_x" / "assets"
+ASSET_ROOT = ROOT / "robots"
 ROBOT_ROOT = ASSET_ROOT / "astro_p1"
 
 
 class AssetManifestTests(unittest.TestCase):
+    def test_asset_lookup_accepts_checkout_catalog_and_nested_robot_paths(self):
+        for root in (ROOT, ASSET_ROOT, ROBOT_ROOT, ROBOT_ROOT / "urdf"):
+            with self.subTest(root=root):
+                self.assertEqual(get_asset_paths(root).root, ASSET_ROOT)
+
+    def test_editable_install_finds_assets_outside_working_directory(self):
+        with tempfile.TemporaryDirectory() as temp, patch("pathlib.Path.cwd", return_value=pathlib.Path(temp)):
+            self.assertEqual(get_asset_paths().root, ASSET_ROOT)
+            self.assertEqual(default_robot_root(), ROBOT_ROOT)
+
+    def test_standalone_install_can_find_catalog_from_working_directory(self):
+        with tempfile.TemporaryDirectory() as temp:
+            installed_package = pathlib.Path(temp) / "site-packages" / "menagerie_x"
+            with patch("menagerie_x.assets.package_root", return_value=installed_package), patch("pathlib.Path.cwd", return_value=ROOT):
+                self.assertEqual(get_asset_paths().root, ASSET_ROOT)
+
+    def test_hhtools_bundle_is_registered_without_moving_its_description(self):
+        edition = get_edition("astro_p2_29dof", root=ROOT)
+        self.assertEqual(edition.dof, 29)
+        self.assertEqual(edition.urdf, ASSET_ROOT / "astro_p2_29dof" / "astro_p2_29dof.urdf")
+        self.assertEqual(edition.formats, {"urdf": True, "mjcf": False})
+
     def test_manifest_uses_repository_catalog_identity(self):
         self.assertEqual(load_manifest(ROOT)["name"], "Menagerie X")
 
@@ -25,7 +48,7 @@ class AssetManifestTests(unittest.TestCase):
         self.assertNotIn("default_version", manifest)
         self.assertNotIn("robot_versions", manifest)
         self.assertTrue(all("robot_version" not in entry for entry in manifest["variants"].values()))
-        self.assertEqual(sorted(parsed), ["astro_p1", "astro_p2", "atom_p3", "soma23", "unitree_g1"])
+        self.assertEqual(sorted(parsed), ["astro_p1", "astro_p2", "astro_p2_29dof", "atom_p3", "soma23", "unitree_g1"])
         self.assertEqual(get_variant(root=ROOT).name, "astro_p2")
         self.assertEqual(parsed["astro_p1"].dof, 30)
         self.assertTrue(parsed["astro_p1"].urdf.exists())

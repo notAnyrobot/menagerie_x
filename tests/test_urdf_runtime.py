@@ -2,7 +2,7 @@ import pathlib
 import unittest
 import xml.etree.ElementTree as ET
 
-from menagerie_x.assets import get_edition
+from menagerie_x.assets import get_edition, get_variant, resolve_scene
 from menagerie_x.workbench.urdf_runtime import prepare_urdf_runtime
 
 
@@ -10,6 +10,24 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 class UrdfRuntimeTests(unittest.TestCase):
+    def test_root_level_hhtools_description_compiles_without_changing_assets(self):
+        edition = get_edition("astro_p2_29dof", root=ROOT)
+        authored = edition.urdf.read_bytes()
+        scene = resolve_scene(get_variant("astro_p2_29dof", ROOT), ROOT).as_dict()
+
+        runtime = prepare_urdf_runtime(edition, scene)
+        try:
+            self.assertEqual(edition.urdf.read_bytes(), authored)
+            self.assertEqual(runtime.nq, 36)
+            self.assertEqual(runtime.nv, 35)
+            root = ET.parse(runtime.path).getroot()
+            mesh_root = edition.urdf.parent / "meshes"
+            meshes = root.findall("asset/mesh")
+            self.assertTrue(meshes)
+            self.assertTrue(all(pathlib.Path(mesh.attrib["file"]).is_relative_to(mesh_root) for mesh in meshes))
+        finally:
+            runtime.close()
+
     def test_manifest_exposes_explicit_free_base_mode_for_humanoids(self):
         edition = get_edition("astro_p2", "30dof_primitive_collision", ROOT)
 

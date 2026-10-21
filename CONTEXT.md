@@ -2,7 +2,7 @@
 
 ## Robot variant
 
-A distinct robot asset family stored in one directory beneath `assets`, excluding scene and terrain data. Examples include `astro_p1`, `astro_p2`, and `unitree_g1`.
+A distinct robot asset family stored in one directory beneath `robots/`, excluding scene and terrain data. Examples include `astro_p1`, `astro_p2`, and `unitree_g1`.
 
 ## Description format
 

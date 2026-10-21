@@ -19,7 +19,7 @@ from menagerie_x.commands.mujoco import check_mujoco
 
 
 ROOT = Path(__file__).resolve().parents[1]
-ASSETS = ROOT / "src" / "menagerie_x" / "assets"
+ASSETS = ROOT / "robots"
 ATOM = ASSETS / "atom_p3"
 MJCF = ATOM / "mjcf" / "atom_p3_27dof.xml"
 SHA256 = "f8d27bb5d9002bb3899136a407b9492f63762ec0f1d71508fd9005abfc2c48cd"

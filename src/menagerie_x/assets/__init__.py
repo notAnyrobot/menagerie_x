@@ -120,21 +120,21 @@ def package_root() -> Path:
 
 
 def default_robot_root() -> Path:
-    return package_root() / "assets" / "astro_p1"
+    return get_asset_paths().default_robot_dir
 
 
 def _resolve_asset_root(root: Path | None = None) -> Path:
     if root is None:
-        return (package_root() / "assets").resolve()
+        checkout_assets = package_root().parent.parent / "robots"
+        if (checkout_assets / "manifest.json").is_file():
+            return checkout_assets.resolve()
+        root = Path.cwd()
     resolved = root.resolve()
-    if (resolved / "manifest.json").is_file():
-        return resolved
-    packaged_asset_root = resolved / "src" / "menagerie_x" / "assets"
-    if (packaged_asset_root / "manifest.json").is_file():
-        return packaged_asset_root.resolve()
-    for candidate in resolved.parents:
+    for candidate in (resolved, *resolved.parents):
         if (candidate / "manifest.json").is_file():
             return candidate
+        if (candidate / "robots" / "manifest.json").is_file():
+            return candidate / "robots"
     return resolved
 
 
@@ -151,7 +151,7 @@ def load_manifest(root: Path | None = None) -> dict[str, Any]:
     try:
         return json.loads(paths.manifest_path.read_text(encoding="utf-8"))
     except FileNotFoundError as exc:
-        raise AssetError(f"manifest does not exist: {paths.manifest_path}") from exc
+        raise AssetError(f"manifest does not exist: {paths.manifest_path}; pass --root with a Menagerie checkout or robots directory") from exc
     except json.JSONDecodeError as exc:
         raise AssetError(f"manifest is not valid JSON: {paths.manifest_path}") from exc
 

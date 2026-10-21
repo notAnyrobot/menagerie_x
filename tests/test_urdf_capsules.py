@@ -10,7 +10,7 @@ from menagerie_x.commands.urdf_capsules import (
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-ROBOT_ROOT = ROOT / "src" / "menagerie_x" / "assets" / "astro_p1"
+ROBOT_ROOT = ROOT / "robots" / "astro_p1"
 
 
 class UrdfCapsuleTests(unittest.TestCase):

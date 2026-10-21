@@ -19,7 +19,7 @@ from menagerie_x.assets import (
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-ASSETS = ROOT / "src" / "menagerie_x" / "assets"
+ASSETS = ROOT / "robots"
 
 
 class MjcfEditionWorkspaceTests(unittest.TestCase):

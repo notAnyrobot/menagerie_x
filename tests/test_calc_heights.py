@@ -4,7 +4,7 @@ import unittest
 from menagerie_x.tools import calc_heights
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-ROBOT_ROOT = ROOT / "src" / "menagerie_x" / "assets" / "astro_p1"
+ROBOT_ROOT = ROOT / "robots" / "astro_p1"
 
 
 class KeyframeParserTests(unittest.TestCase):

@@ -9,6 +9,34 @@
   "scenes": {"flat_floor": "scenes/flat_floor/scene.json"},
   "terrains": {"flat_floor": "terrains/flat_floor/terrain.json"},
   "variants": {
+    "astro_p2_29dof": {
+      "default_edition": "29dof_primitive_collision",
+      "default_scene": "flat_floor",
+      "notes": "Self-contained HHTools bundle with the head fixed at zero.",
+      "status": "current",
+      "spawn": {
+        "rpy": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scene_frame": "robot_spawn",
+        "xyz": [
+          0.0,
+          0.0,
+          0.75
+        ]
+      },
+      "editions": {
+        "29dof_primitive_collision": {
+          "base_mode": "free",
+          "dof": 29,
+          "label": "29 DOF primitive collision (fixed head)",
+          "urdf": "astro_p2_29dof.urdf",
+          "mjcf": null
+        }
+      }
+    },
     "atom_p3": {
       "default_edition": "27dof", "default_scene": "flat_floor", "notes": "Atom P3 imported MJCF-only description.", "spawn": {"rpy": [0.0, 0.0, 0.0], "scene_frame": "robot_spawn", "xyz": [0.0, 0.0, 0.98]}, "status": "imported",
       "editions": {
