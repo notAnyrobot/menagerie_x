@@ -16,3 +16,13 @@ build/
 dist/
 *.egg-info/
 .DS_Store
+
+# Local backups, motion data, job output and caches.
+.local/
+
+# Track only Astro; official robots can be installed beside it locally.
+/robots/*
+!/robots/astro_p2_29dof/
+!/robots/.calibration-overlays/
+/robots/.calibration-overlays/*
+!/robots/.calibration-overlays/astro_p2_29dof/

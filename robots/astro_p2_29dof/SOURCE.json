@@ -1,0 +1,12 @@
+{
+  "preset": "astro_p2_29dof",
+  "source_repository": "https://github.com/notAnyrobot/menagerie_x",
+  "base_revision": "a001d8611c91355095331367a2ba933f5870e99f",
+  "base_description": "src/menagerie_x/assets/astro_p2/urdf/astro_p2_30dof_primitive_collision.urdf",
+  "changes": [
+    "Fix head_joint at zero yaw, retaining head link geometry, collisions, mass and inertia.",
+    "Remove head_joint from the exported joint order and omit the head IK target.",
+    "Make mesh and robot.yaml paths relative to this self-contained edition directory."
+  ],
+  "calibration": "Not bundled; calibrate separately for each motion reference."
+}
