@@ -224,6 +224,9 @@
         <color rgba="0.69804 0.69804 0.69804 1" />
       </material>
     </visual>
+  </link>
+  <!-- Rigid foot collision frame; inertia remains on the ankle-roll link. -->
+  <link name="left_foot_link">
     <collision name="left_foot_1_cylinder_collision_1">
       <origin xyz="0.07 0 -0.039" rpy="0 1.57079632679 0" />
       <geometry>
@@ -368,7 +371,31 @@
         <sphere radius="0.012" />
       </geometry>
     </collision>
+    <!-- Side-perimeter layer: rounded toe/heel and waist; sole shapes above remain unchanged. -->
+    <collision name="left_foot_side_toe">
+      <origin xyz="0.074 0 -0.021" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.047" length="0.028" />
+      </geometry>
+    </collision>
+    <collision name="left_foot_side_heel">
+      <origin xyz="-0.032 0 -0.021" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.041" length="0.028" />
+      </geometry>
+    </collision>
+    <collision name="left_foot_side_bridge">
+      <origin xyz="0.021 0 -0.021" rpy="0 0 0" />
+      <geometry>
+        <box size="0.106 0.076 0.028" />
+      </geometry>
+    </collision>
   </link>
+  <joint name="left_foot_joint" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="left_ankle_roll_link" />
+    <child link="left_foot_link" />
+  </joint>
   <joint name="left_ankle_roll_joint" type="revolute">
     <origin xyz="0 0 -0.011" rpy="0 0 0" />
     <parent link="left_ankle_pitch_link" />
@@ -554,6 +581,9 @@
         <color rgba="0.69804 0.69804 0.69804 1" />
       </material>
     </visual>
+  </link>
+  <!-- Rigid foot collision frame; inertia remains on the ankle-roll link. -->
+  <link name="right_foot_link">
     <collision name="right_foot_1_cylinder_collision_1">
       <origin xyz="0.07 0 -0.039" rpy="0 1.57079632679 0" />
       <geometry>
@@ -698,7 +728,31 @@
         <sphere radius="0.012" />
       </geometry>
     </collision>
+    <!-- Side-perimeter layer: rounded toe/heel and waist; sole shapes above remain unchanged. -->
+    <collision name="right_foot_side_toe">
+      <origin xyz="0.074 0 -0.021" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.047" length="0.028" />
+      </geometry>
+    </collision>
+    <collision name="right_foot_side_heel">
+      <origin xyz="-0.032 0 -0.021" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.041" length="0.028" />
+      </geometry>
+    </collision>
+    <collision name="right_foot_side_bridge">
+      <origin xyz="0.021 0 -0.021" rpy="0 0 0" />
+      <geometry>
+        <box size="0.106 0.076 0.028" />
+      </geometry>
+    </collision>
   </link>
+  <joint name="right_foot_joint" type="fixed">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <parent link="right_ankle_roll_link" />
+    <child link="right_foot_link" />
+  </joint>
   <joint name="right_ankle_roll_joint" type="revolute">
     <origin xyz="0 0 -0.011" rpy="0 0 0" />
     <parent link="right_ankle_pitch_link" />
@@ -835,6 +889,43 @@
     </collision>
     <collision name="waist_roll_link_4_sphere_collision_2">
       <origin xyz="-0.116 -0.0375 0.337" rpy="0 0 0" />
+      <geometry>
+        <sphere radius="0.0075" />
+      </geometry>
+    </collision>
+    <!-- Handle return arms, perpendicular to the existing Y-axis crossbar. -->
+    <collision name="neck_handle_left_support_cylinder">
+      <origin xyz="-0.091 0.051 0.337" rpy="0 1.57079632679 0" />
+      <geometry>
+        <cylinder radius="0.0075" length="0.04" />
+      </geometry>
+    </collision>
+    <collision name="neck_handle_left_support_rear">
+      <origin xyz="-0.111 0.051 0.337" rpy="0 0 0" />
+      <geometry>
+        <sphere radius="0.0075" />
+      </geometry>
+    </collision>
+    <collision name="neck_handle_left_support_front">
+      <origin xyz="-0.071 0.051 0.337" rpy="0 0 0" />
+      <geometry>
+        <sphere radius="0.0075" />
+      </geometry>
+    </collision>
+    <collision name="neck_handle_right_support_cylinder">
+      <origin xyz="-0.091 -0.051 0.337" rpy="0 1.57079632679 0" />
+      <geometry>
+        <cylinder radius="0.0075" length="0.04" />
+      </geometry>
+    </collision>
+    <collision name="neck_handle_right_support_rear">
+      <origin xyz="-0.111 -0.051 0.337" rpy="0 0 0" />
+      <geometry>
+        <sphere radius="0.0075" />
+      </geometry>
+    </collision>
+    <collision name="neck_handle_right_support_front">
+      <origin xyz="-0.071 -0.051 0.337" rpy="0 0 0" />
       <geometry>
         <sphere radius="0.0075" />
       </geometry>
@@ -1130,24 +1221,6 @@
         <color rgba="0.69804 0.69804 0.69804 1" />
       </material>
     </visual>
-    <collision name="left_hand_link_1_cylinder_collision_1">
-      <origin xyz="0.11 0 0" rpy="0 1.57079632679 0" />
-      <geometry>
-        <cylinder radius="0.027" length="0.08" />
-      </geometry>
-    </collision>
-    <collision name="left_hand_link_1_sphere_collision_1">
-      <origin xyz="0.07 0 8.881784197e-18" rpy="0 0 0" />
-      <geometry>
-        <sphere radius="0.027" />
-      </geometry>
-    </collision>
-    <collision name="left_hand_link_1_sphere_collision_2">
-      <origin xyz="0.15 0 -8.881784197e-18" rpy="0 0 0" />
-      <geometry>
-        <sphere radius="0.027" />
-      </geometry>
-    </collision>
     <collision name="left_wrist_yaw_link_cylinder_collision_1">
       <origin xyz="0.053 0 0" rpy="0 1.57079632679 0" />
       <geometry>
@@ -1171,12 +1244,19 @@
     <visual name="left_hand_link_visual">
       <origin xyz="0 0 0" rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/left_hand_link.stl" />
+        <!-- Match the 54 mm diameter wrist-yaw collision housing. -->
+        <sphere radius="0.027" />
       </geometry>
       <material name="left_hand_link_material">
         <color rgba="0.75294 0.75294 0.75294 1" />
       </material>
     </visual>
+    <collision name="left_hand_link_sphere_collision">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <sphere radius="0.027" />
+      </geometry>
+    </collision>
   </link>
   <joint name="left_hand_joint" type="fixed">
     <origin xyz="0.067502 0 0" rpy="0 0 0" />
@@ -1445,24 +1525,6 @@
         <color rgba="0.79216 0.81961 0.93333 1" />
       </material>
     </visual>
-    <collision name="right_hand_link_1_cylinder_collision_1">
-      <origin xyz="0.11 0 0" rpy="0 1.57079632679 0" />
-      <geometry>
-        <cylinder radius="0.027" length="0.08" />
-      </geometry>
-    </collision>
-    <collision name="right_hand_link_1_sphere_collision_1">
-      <origin xyz="0.07 0 8.881784197e-18" rpy="0 0 0" />
-      <geometry>
-        <sphere radius="0.027" />
-      </geometry>
-    </collision>
-    <collision name="right_hand_link_1_sphere_collision_2">
-      <origin xyz="0.15 0 -8.881784197e-18" rpy="0 0 0" />
-      <geometry>
-        <sphere radius="0.027" />
-      </geometry>
-    </collision>
     <collision name="right_wrist_yaw_link_cylinder_collision_1">
       <origin xyz="0.053 0 0" rpy="0 1.57079632679 0" />
       <geometry>
@@ -1486,12 +1548,19 @@
     <visual name="right_hand_link_visual">
       <origin xyz="0 0 0" rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/right_hand_link.stl" />
+        <!-- Match the 54 mm diameter wrist-yaw collision housing. -->
+        <sphere radius="0.027" />
       </geometry>
       <material name="right_hand_link_material">
         <color rgba="0.75294 0.75294 0.75294 1" />
       </material>
     </visual>
+    <collision name="right_hand_link_sphere_collision">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <sphere radius="0.027" />
+      </geometry>
+    </collision>
   </link>
   <joint name="right_hand_joint" type="fixed">
     <origin xyz="0.0675 0 0" rpy="0 0 0" />

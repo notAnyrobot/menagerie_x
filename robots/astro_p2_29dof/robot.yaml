@@ -100,8 +100,8 @@ smooth_joint_filter_masks:
   right_hip_yaw_link: 0.3
   right_knee_link: 0.1
 feet:
-  left_contact_link: left_ankle_roll_link
-  right_contact_link: right_ankle_roll_link
+  left_contact_link: left_foot_link
+  right_contact_link: right_foot_link
   ground_z: 0.0
   foot_height: 0.02
 rest_offsets: {}
