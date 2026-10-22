@@ -48,7 +48,7 @@ class AssetManifestTests(unittest.TestCase):
         self.assertNotIn("default_version", manifest)
         self.assertNotIn("robot_versions", manifest)
         self.assertTrue(all("robot_version" not in entry for entry in manifest["variants"].values()))
-        self.assertEqual(sorted(parsed), ["astro_p1", "astro_p2", "astro_p2_29dof", "atom_p3", "soma23", "unitree_g1"])
+        self.assertEqual(sorted(parsed), ["astro_p1", "astro_p2", "astro_p2_29dof", "astro_p2_43dof_dex3_1", "atom_p3", "soma23", "unitree_g1"])
         self.assertEqual(get_variant(root=ROOT).name, "astro_p2")
         self.assertEqual(parsed["astro_p1"].dof, 30)
         self.assertTrue(parsed["astro_p1"].urdf.exists())

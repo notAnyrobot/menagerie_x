@@ -1,0 +1,60 @@
+{
+  "preset": "astro_p2_43dof_dex3_1",
+  "base_bundle": "../astro_p2_29dof",
+  "base_revision": "d6a0ee64526c3eaaa7e7beea11bb5ead9d3f44b5",
+  "base_urdf_sha256": "361b9c14ba36a4348f5fe3b760677c3297bffc75305a8dacd69297e4f45fb334",
+  "source_repository": "https://github.com/unitreerobotics/unitree_ros",
+  "source_revision": "5994d4faef0a9cadd3287f8de0199a67eeb2a259",
+  "source_directory": "robots/dexterous_hand_description/dex3_1",
+  "license": "BSD-3-Clause",
+  "license_file": "LICENSE.Unitree",
+  "vendor_files_sha256": {
+    "LICENSE.Unitree": "84aac59fd3246e3ddc49d1387644e8fcf43b0def4f0b9fe687f372e90446df2d",
+    "upstream/dex3_1_l.urdf": "c55f54d6d27b16a62b78a3dbebe85a85a6a4a4b8851dceb5e42339605f9aff30",
+    "meshes/left_hand_palm_link.STL": "23a486b75bd78a9bf03cec25d84d87f97f3dae038cf21a743b6d469b337e4004",
+    "meshes/left_hand_thumb_0_link.STL": "a90c721661c0622685488a3c74d1e122c7da89242d3a1daef75edb83422d05e0",
+    "meshes/left_hand_thumb_1_link.STL": "445c54a45bc13ce36001556f66bc0f49c83cb40321205ae4d676bb2874325684",
+    "meshes/left_hand_thumb_2_link.STL": "3d8dbe5085acfc213d21aa8b0782e89cd79084e9678f3a85fc7b04a86b029db5",
+    "meshes/left_hand_middle_0_link.STL": "6b35f2f77211d5a366f0b9a4e47c4ee35e536731266f1a34e9efa12db579b892",
+    "meshes/left_hand_middle_1_link.STL": "9e315ebc8a7a0cb98e033985b586b20d81cf8aa761181ae61ce56fcb14077a06",
+    "meshes/left_hand_index_0_link.STL": "6b35f2f77211d5a366f0b9a4e47c4ee35e536731266f1a34e9efa12db579b892",
+    "meshes/left_hand_index_1_link.STL": "9e315ebc8a7a0cb98e033985b586b20d81cf8aa761181ae61ce56fcb14077a06",
+    "upstream/dex3_1_r.urdf": "a388e69058ec6b84306ff05a7b2b613548c833c3f8455127ab3488324553da57",
+    "meshes/right_hand_palm_link.STL": "86c0b231cc44477d64a6493e5a427ba16617a00738112dd187c652675b086fb9",
+    "meshes/right_hand_thumb_0_link.STL": "544298d0ea1088f5b276a10cc6a6a9e533efdd91594955fdc956c46211d07f83",
+    "meshes/right_hand_thumb_1_link.STL": "0a9a820da8dd10f298778b714f1364216e8a5976f4fd3a05689ea26327d44bf6",
+    "meshes/right_hand_thumb_2_link.STL": "3f1bfb37668e8f61801c8d25f171fa1949e08666be86c67acad7e0079937cc45",
+    "meshes/right_hand_middle_0_link.STL": "12ab4300c95e437e834f9aef772b3b431c671bf34338930b52ad11aef73bbd0d",
+    "meshes/right_hand_middle_1_link.STL": "c9c34efce4563cacdcfd29fc838a982976d40f5442c71219811dcbbf3923a33d",
+    "meshes/right_hand_index_0_link.STL": "12ab4300c95e437e834f9aef772b3b431c671bf34338930b52ad11aef73bbd0d",
+    "meshes/right_hand_index_1_link.STL": "c9c34efce4563cacdcfd29fc838a982976d40f5442c71219811dcbbf3923a33d"
+  },
+  "changes": [
+    "Replace old hand sphere geometry and surrogate inertia; retain original fixed hand frames.",
+    "Attach left/right official Dex3-1 palm roots at existing hand frames with identity sample adapters.",
+    "Preserve vendor visual meshes, link inertias, internal joints, limits, effort and velocity values.",
+    "Replace finger collisions with rounded mesh-bound capsule approximations; retain one AABB box per palm. Body collisions unchanged."
+  ],
+  "mounting": {
+    "status": "Unverified sample: no mechanical fit, fasteners, adapter mass, wiring, clearance or load capacity established.",
+    "palm_from_astro_hand_frame_xyz": [
+      0,
+      0,
+      0
+    ],
+    "palm_from_astro_hand_frame_rpy": [
+      0,
+      0,
+      0
+    ]
+  },
+  "mass_kg": {
+    "base": 40.582553589999996,
+    "removed_left_surrogate": 0.13951244,
+    "removed_right_surrogate": 0.13947198,
+    "vendor_each_hand": 0.69654599,
+    "assembled": 41.69666115,
+    "adapter": 0
+  },
+  "calibration": "Not bundled; no hand retargeting/controller mapping is established."
+}

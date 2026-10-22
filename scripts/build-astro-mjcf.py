@@ -10,6 +10,7 @@ import hashlib
 import json
 import math
 import tempfile
+import argparse
 import xml.etree.ElementTree as ET
 import mujoco
 import numpy as np
@@ -34,11 +35,14 @@ def origin(node):
     o = node.find('origin')
     return (vector(o.get('xyz','0 0 0')), rotation(vector(o.get('rpy','0 0 0')))) if o is not None else (np.zeros(3),np.eye(3))
 
-def main():
-    urdf = ET.parse(SOURCE).getroot()
+def main(bundle=BUNDLE, catalog_paths=False):
+    bundle = Path(bundle).resolve()
+    source = bundle / (bundle.name + '.urdf')
+    output = bundle / (bundle.name + '.xml')
+    urdf = ET.parse(source).getroot()
     imported = deepcopy(urdf)
     for mesh in imported.findall('.//mesh'):
-        mesh.set('filename',str(BUNDLE / mesh.get('filename')))
+        mesh.set('filename',str(bundle / mesh.get('filename')))
     compiler = imported.find('mujoco/compiler')
     compiler.attrib.clear()
     compiler.attrib.update(discardvisual='false',fusestatic='false',strippath='false')
@@ -50,11 +54,22 @@ def main():
         path=Path(temp)/'import.xml'
         mujoco.mj_saveLastXML(str(path),baseline)
         root=ET.parse(path).getroot()
-    root.insert(0,ET.Comment(' Generated from astro_p2_29dof.urdf by scripts/build-astro-mjcf.py. Visuals: group 1; primitive collisions: group 3. '))
+    root.insert(0,ET.Comment(f' Generated from {source.name} by scripts/build-astro-mjcf.py. Visuals: group 1; primitive collisions: group 3. '))
     root.find('compiler').attrib.update(inertiafromgeom='false',fusestatic='false',discardvisual='false')
+    if catalog_paths:
+        root.find('compiler').set('meshdir','meshes')
     for mesh in root.findall('asset/mesh'):
-        mesh.set('file','meshes/'+Path(mesh.get('file')).name)
+        mesh.set('file',('' if catalog_paths else 'meshes/')+Path(mesh.get('file')).name)
     bodies={b.get('name'):b for b in root.findall('.//body')}
+    # mj_saveLastXML rounds values. Restore high-precision vendor limits when
+    # rounding exceeds the existing conversion tolerance (baseline unchanged).
+    native_joints={j.get('name'):j for j in root.findall('.//joint')}
+    for joint in urdf.findall("joint[@type='revolute']"):
+        limit=joint.find('limit')
+        bounds=np.array([float(limit.get('lower')),float(limit.get('upper'))])
+        native=native_joints[joint.get('name')]
+        if np.max(abs(vector(native.get('range'))-bounds))>1e-6:
+            native.set('range',fmt(bounds))
     merged=[]
     for link in urdf.findall('link'):
         body=bodies[link.get('name')]
@@ -99,9 +114,10 @@ def main():
                 assert geom.get('type','sphere') in ('capsule','sphere','cylinder','box')
                 geom.set('rgba','0.1 0.65 0.95 0.65')
     ET.indent(root,space='  ')
-    OUTPUT.write_text(ET.tostring(root,encoding='unicode')+'\n')
-    model=mujoco.MjModel.from_xml_path(str(OUTPUT))
-    assert (model.nq,model.nv)==(36,35)
+    output.write_text(ET.tostring(root,encoding='unicode')+'\n')
+    model=mujoco.MjModel.from_xml_path(str(output))
+    hinge_count=len(urdf.findall("joint[@type='revolute']"))
+    assert (model.nq,model.nv)==(hinge_count+7,hinge_count+6)
     expected_mass=sum(float(i.find('mass').get('value')) for i in urdf.findall('link/inertial'))
     assert abs(model.body_mass.sum()-expected_mass)<1e-8
     for side in ('left','right'):
@@ -124,8 +140,13 @@ def main():
     counts={}
     for geom in root.findall('.//geom'):
         if geom.get('group')=='3':counts[geom.get('type','sphere')]=counts.get(geom.get('type','sphere'),0)+1
-    report={'source_sha256':hashlib.sha256(SOURCE.read_bytes()).hexdigest(),'mjcf_sha256':hashlib.sha256(OUTPUT.read_bytes()).hexdigest(),'mujoco_version':mujoco.__version__,'collision_counts':counts,'capsule_assemblies_converted':len(merged),'mass_kg':expected_mass,'max_body_pose_error':max_error,'nq':model.nq,'nv':model.nv,'capsules':merged}
-    (BUNDLE/'mjcf-conversion.json').write_text(json.dumps(report,indent=2)+'\n')
+    report={'source_sha256':hashlib.sha256(source.read_bytes()).hexdigest(),'mjcf_sha256':hashlib.sha256(output.read_bytes()).hexdigest(),'mujoco_version':mujoco.__version__,'collision_counts':counts,'capsule_assemblies_converted':len(merged),'mass_kg':expected_mass,'max_body_pose_error':max_error,'nq':model.nq,'nv':model.nv,'capsules':merged}
+    (bundle/'mjcf-conversion.json').write_text(json.dumps(report,indent=2)+'\n')
     print(json.dumps({k:v for k,v in report.items() if k!='capsules'},indent=2))
 
-if __name__=='__main__':main()
+if __name__=='__main__':
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--bundle',type=Path,default=BUNDLE,help='Astro-derived bundle with a same-named URDF')
+    parser.add_argument('--catalog-paths',action='store_true',help='Use compiler meshdir with bare mesh filenames for catalog discovery')
+    args=parser.parse_args()
+    main(args.bundle,args.catalog_paths)

@@ -372,7 +372,7 @@ class WorkbenchTests(unittest.TestCase):
 
         self.assertEqual(
             [robot["id"] for robot in catalog["robots"]],
-            ["astro_p2_29dof", "atom_p3", "astro_p1", "astro_p2", "soma23", "unitree_g1"],
+            ["astro_p2_29dof", "astro_p2_43dof_dex3_1", "atom_p3", "astro_p1", "astro_p2", "soma23", "unitree_g1"],
         )
         robots = {robot["id"]: robot for robot in catalog["robots"]}
         self.assertEqual(robots["astro_p1"]["formats"], {"urdf": True, "mjcf": True})

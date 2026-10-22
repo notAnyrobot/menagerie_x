@@ -37,6 +37,45 @@
         }
       }
     },
+    "astro_p2_43dof_dex3_1": {
+      "default_edition": "43dof_primitive_collision",
+      "default_scene": "flat_floor",
+      "mjcf_workspace": "astro_p2_43dof_dex3_1",
+      "notes": "Sample Astro 29 body DOF + two official Dex3-1 hands (14 DOF); mounting unverified; no hand calibration or retargeting support.",
+      "status": "sample",
+      "spawn": {
+        "rpy": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scene_frame": "robot_spawn",
+        "xyz": [
+          0.0,
+          0.0,
+          0.75
+        ]
+      },
+      "editions": {
+        "43dof_primitive_collision": {
+          "base_mode": "free",
+          "dof": 43,
+          "kind": "sample",
+          "label": "43 DOF: 29 body + 14 Dex3-1 hand (sample mount)",
+          "urdf": "astro_p2_43dof_dex3_1.urdf",
+          "mjcf": "astro_p2_43dof_dex3_1.xml",
+          "source_provenance": {
+            "kind": "derived-sample",
+            "repository": "https://github.com/unitreerobotics/unitree_ros",
+            "revision": "5994d4faef0a9cadd3287f8de0199a67eeb2a259",
+            "source_path": "robots/dexterous_hand_description/dex3_1",
+            "license": "BSD-3-Clause (Unitree hand assets)",
+            "license_file": "LICENSE.Unitree",
+            "details": "SOURCE.json"
+          }
+        }
+      }
+    },
     "atom_p3": {
       "default_edition": "27dof", "default_scene": "flat_floor", "notes": "Atom P3 imported MJCF-only description.", "spawn": {"rpy": [0.0, 0.0, 0.0], "scene_frame": "robot_spawn", "xyz": [0.0, 0.0, 0.98]}, "status": "imported",
       "editions": {
