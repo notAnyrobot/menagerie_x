@@ -1,0 +1,113 @@
+{
+  "mjcf_sha256": "c688a4177a1ff5ba07764f9e310bb62c33d24a47b193259922a55b6c5fe88c66",
+  "urdf_sha256": "b10f4c4f96d6801e3b2d4796cef66118704730b7f5cdded7ccb2a9531f4ccd8c",
+  "changed_geoms": [
+    "left_hand_palm_link_bounds_collision_0",
+    "left_hand_palm_rear_collision",
+    "right_hand_palm_link_bounds_collision_0",
+    "right_hand_palm_rear_collision"
+  ],
+  "source_thumb_axes_limits_verified": true,
+  "thumb_mirror_origin_error_m": 0.0,
+  "fist_closure_samples": 101,
+  "fist_closure_contacts": 0,
+  "ankle_thumb_regression_clear": 630,
+  "saved_torso_wrist_clear": 19,
+  "limits_axes_mass_inertia_preserved": true,
+  "palms_are_subsets_of_previous_boxes": true,
+  "motion_checks": {
+    "individual_full_range": {
+      "counts": {
+        "poses": 2623,
+        "baseline_clear": 2481,
+        "refined_clear": 2483
+      },
+      "new_contact_pairs": {},
+      "examples": []
+    },
+    "left_arm_combined": {
+      "counts": {
+        "poses": 3000,
+        "baseline_clear": 2791,
+        "refined_clear": 2794
+      },
+      "new_contact_pairs": {},
+      "examples": []
+    },
+    "left_hand_combined": {
+      "counts": {
+        "poses": 1000,
+        "baseline_clear": 847,
+        "refined_clear": 869
+      },
+      "new_contact_pairs": {},
+      "examples": []
+    },
+    "right_arm_combined": {
+      "counts": {
+        "poses": 3000,
+        "baseline_clear": 2789,
+        "refined_clear": 2789
+      },
+      "new_contact_pairs": {},
+      "examples": []
+    },
+    "right_hand_combined": {
+      "counts": {
+        "poses": 1000,
+        "baseline_clear": 844,
+        "refined_clear": 864
+      },
+      "new_contact_pairs": {},
+      "examples": []
+    },
+    "waist_combined": {
+      "counts": {
+        "poses": 1000,
+        "baseline_clear": 1000,
+        "refined_clear": 1000
+      },
+      "new_contact_pairs": {},
+      "examples": []
+    },
+    "left_leg_combined": {
+      "counts": {
+        "poses": 5000,
+        "baseline_clear": 4152,
+        "refined_clear": 4154
+      },
+      "new_contact_pairs": {},
+      "examples": []
+    },
+    "right_leg_combined": {
+      "counts": {
+        "poses": 5000,
+        "baseline_clear": 4140,
+        "refined_clear": 4144
+      },
+      "new_contact_pairs": {},
+      "examples": []
+    }
+  },
+  "expanded_arm_checks": {
+    "left_arm_heldout": {
+      "counts": {
+        "poses": 10000,
+        "baseline_clear": 9344,
+        "refined_clear": 9349
+      },
+      "new_contact_pairs": {},
+      "examples": []
+    },
+    "right_arm_heldout": {
+      "counts": {
+        "poses": 10000,
+        "baseline_clear": 9345,
+        "refined_clear": 9349
+      },
+      "new_contact_pairs": {},
+      "examples": []
+    }
+  },
+  "note": "Static contact tests. Motion suites use original zero hand configuration except explicit fist closure tests. Fist is a named keyframe loaded by the viewer, not a change of joint reference angles or mj_resetData semantics. No dynamic/hardware grasp validation."
+}

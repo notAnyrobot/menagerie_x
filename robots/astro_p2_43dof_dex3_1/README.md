@@ -103,3 +103,11 @@ free simulation, hand contact behavior or a collision-free operating envelope.
 | Open right | Bent right |
 |---|---|
 | ![Open right hand](preview-right-open.png) | ![Bent right hand](preview-right-bent.png) |
+
+## Later MJCF-only refinement
+
+The MJCF has additional shin/foot and palm/thumb-root contact refinements, while the URDF remains at the approved prior geometry. See [MJCF.md](MJCF.md) before regenerating: the conversion command above overwrites these MJCF-only adjustments. The sole and distal finger collisions are identical in both editions.
+
+The MJCF-only refinement also improves torso, upper-arm and wrist coverage; see `MJCF.md` and `mjcf-refinement.json` for geometry changes and static contact checks.
+
+The latest MJCF provides a `fist` keyframe and `fist-pose.json` for matching hand closure. The review viewer loads it by default and exposes linked hand closure; see `MJCF.md` and `mjcf-fist-review.json` for palm changes and validation.

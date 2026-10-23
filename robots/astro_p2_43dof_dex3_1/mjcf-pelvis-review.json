@@ -1,0 +1,123 @@
+{
+  "seed": 20261023,
+  "joint_ranges_unchanged": true,
+  "neutral_contacts": {},
+  "groups": {
+    "individual_full_range": {
+      "counts": {
+        "poses": 2623,
+        "baseline_clear": 2481,
+        "refined_clear": 2481
+      },
+      "new_contact_pairs": {},
+      "examples": []
+    },
+    "left_arm_combined": {
+      "counts": {
+        "poses": 3000,
+        "baseline_clear": 2791,
+        "refined_clear": 2791
+      },
+      "new_contact_pairs": {},
+      "examples": []
+    },
+    "left_hand_combined": {
+      "counts": {
+        "poses": 1000,
+        "baseline_clear": 847,
+        "refined_clear": 847
+      },
+      "new_contact_pairs": {},
+      "examples": []
+    },
+    "right_arm_combined": {
+      "counts": {
+        "poses": 3000,
+        "baseline_clear": 2789,
+        "refined_clear": 2789
+      },
+      "new_contact_pairs": {},
+      "examples": []
+    },
+    "right_hand_combined": {
+      "counts": {
+        "poses": 1000,
+        "baseline_clear": 844,
+        "refined_clear": 844
+      },
+      "new_contact_pairs": {},
+      "examples": []
+    },
+    "waist_combined": {
+      "counts": {
+        "poses": 1000,
+        "baseline_clear": 1000,
+        "refined_clear": 1000
+      },
+      "new_contact_pairs": {},
+      "examples": []
+    },
+    "left_leg_combined": {
+      "counts": {
+        "poses": 5000,
+        "baseline_clear": 4152,
+        "refined_clear": 4152
+      },
+      "new_contact_pairs": {},
+      "examples": []
+    },
+    "right_leg_combined": {
+      "counts": {
+        "poses": 5000,
+        "baseline_clear": 4140,
+        "refined_clear": 4140
+      },
+      "new_contact_pairs": {},
+      "examples": []
+    }
+  },
+  "mjcf_sha256": "3669ff54eba5c3aaaa642c71794fc44d5b22486d34a74b101b590611254f65d5",
+  "method": "Static mj_forward checks against immediately prior refined wrist/torso MJCF. 1 micrometre penetration threshold. 10,000 fixed-seed samples of pelvis visual against union of collision primitives at neutral pose. Not exhaustive motion or dynamic validation.",
+  "coverage": {
+    "before": {
+      "p95_outside_mm": 9.960491291693604,
+      "max_outside_mm": 15.563669771826326,
+      "outside_10mm_percent": 4.97
+    },
+    "after": {
+      "p95_outside_mm": 6.127638730781885,
+      "max_outside_mm": 12.038463346240993,
+      "outside_10mm_percent": 0.8099999999999999
+    }
+  },
+  "added_geom": "pelvis_upper_shell_collision",
+  "baseline_sha256": "4feeec2d7b08152e809a0325919eba6cbcfdf9fe321febd10341b9b681dda12c",
+  "saved_torso_wrist_cases_clear": 19,
+  "ankle_thumb_regression_poses_clear": 630,
+  "mass_inertia_other_elements_unchanged": true,
+  "expanded_arm_checks": {
+    "seed": 20261024,
+    "joint_ranges_unchanged": true,
+    "neutral_contacts": {},
+    "groups": {
+      "left_arm_heldout": {
+        "counts": {
+          "poses": 10000,
+          "baseline_clear": 9344,
+          "refined_clear": 9344
+        },
+        "new_contact_pairs": {},
+        "examples": []
+      },
+      "right_arm_heldout": {
+        "counts": {
+          "poses": 10000,
+          "baseline_clear": 9345,
+          "refined_clear": 9345
+        },
+        "new_contact_pairs": {},
+        "examples": []
+      }
+    }
+  }
+}

@@ -1,0 +1,200 @@
+{
+  "mjcf_sha256": "4feeec2d7b08152e809a0325919eba6cbcfdf9fe321febd10341b9b681dda12c",
+  "urdf_sha256": "b10f4c4f96d6801e3b2d4796cef66118704730b7f5cdded7ccb2a9531f4ccd8c",
+  "changed_existing_geoms": [
+    "left_hand_palm_link_bounds_collision_0",
+    "left_hand_thumb_1_link_cylinder_collision_0",
+    "left_knee_link_1_capsule_collision",
+    "right_hand_palm_link_bounds_collision_0",
+    "right_hand_thumb_1_link_cylinder_collision_0",
+    "right_knee_link_1_capsule_collision"
+  ],
+  "new_geoms": [
+    "left_hand_palm_rear_collision",
+    "right_hand_palm_rear_collision"
+  ],
+  "zero_pose_contacts": 0,
+  "ankle_grid_poses": 315,
+  "thumb_root_grid_poses": 315,
+  "grid_contacts": 0,
+  "mass_kg": 41.69666115,
+  "note": "MJCF-only refinement. Other joints at zero; thumb distal joints unchanged and at zero during root grid. Not full-body motion or dynamic validation. No collision exclusions added.",
+  "upper_body_refinement": {
+    "changed_geoms": [
+      "waist_roll_link_2_capsule_collision",
+      "left_wrist_yaw_link_cylinder_collision_1",
+      "right_wrist_yaw_link_cylinder_collision_1"
+    ],
+    "added_geoms": [
+      "left_upper_arm_capsule_collision",
+      "left_wrist_roll_shell_capsule_collision",
+      "right_upper_arm_capsule_collision",
+      "right_wrist_roll_shell_capsule_collision"
+    ],
+    "collision_types": {
+      "mjGEOM_CYLINDER": 11,
+      "mjGEOM_CAPSULE": 57,
+      "mjGEOM_BOX": 6,
+      "mjGEOM_SPHERE": 1
+    },
+    "coverage": {
+      "torso_link": {
+        "before": {
+          "p95_outside_mm": 18.76,
+          "max_outside_mm": 32.2
+        },
+        "after": {
+          "p95_outside_mm": 19.66,
+          "max_outside_mm": 32.2
+        }
+      },
+      "left_shoulder_pitch_link": {
+        "before": {
+          "p95_outside_mm": 1.57,
+          "max_outside_mm": 7.67
+        },
+        "after": {
+          "p95_outside_mm": 1.57,
+          "max_outside_mm": 7.67
+        }
+      },
+      "left_shoulder_roll_link": {
+        "before": {
+          "p95_outside_mm": 5.54,
+          "max_outside_mm": 11.71
+        },
+        "after": {
+          "p95_outside_mm": 5.54,
+          "max_outside_mm": 11.71
+        }
+      },
+      "left_shoulder_yaw_link": {
+        "before": {
+          "p95_outside_mm": 9.41,
+          "max_outside_mm": 16.75
+        },
+        "after": {
+          "p95_outside_mm": 0.81,
+          "max_outside_mm": 1.74
+        }
+      },
+      "left_elbow_link": {
+        "before": {
+          "p95_outside_mm": 5.69,
+          "max_outside_mm": 11.6
+        },
+        "after": {
+          "p95_outside_mm": 5.66,
+          "max_outside_mm": 11.6
+        }
+      },
+      "left_wrist_roll_link": {
+        "before": {
+          "p95_outside_mm": 12.29,
+          "max_outside_mm": 16.91
+        },
+        "after": {
+          "p95_outside_mm": 6.74,
+          "max_outside_mm": 10.92
+        }
+      },
+      "left_wrist_pitch_link": {
+        "before": {
+          "p95_outside_mm": 0.8,
+          "max_outside_mm": 4.46
+        },
+        "after": {
+          "p95_outside_mm": 0.72,
+          "max_outside_mm": 4.46
+        }
+      },
+      "left_wrist_yaw_link": {
+        "before": {
+          "p95_outside_mm": 10.68,
+          "max_outside_mm": 15.68
+        },
+        "after": {
+          "p95_outside_mm": 9.28,
+          "max_outside_mm": 14.03
+        }
+      },
+      "right_shoulder_pitch_link": {
+        "before": {
+          "p95_outside_mm": 1.62,
+          "max_outside_mm": 8.07
+        },
+        "after": {
+          "p95_outside_mm": 1.62,
+          "max_outside_mm": 8.07
+        }
+      },
+      "right_shoulder_roll_link": {
+        "before": {
+          "p95_outside_mm": 5.72,
+          "max_outside_mm": 11.83
+        },
+        "after": {
+          "p95_outside_mm": 5.72,
+          "max_outside_mm": 11.83
+        }
+      },
+      "right_shoulder_yaw_link": {
+        "before": {
+          "p95_outside_mm": 9.27,
+          "max_outside_mm": 16.59
+        },
+        "after": {
+          "p95_outside_mm": 0.85,
+          "max_outside_mm": 1.84
+        }
+      },
+      "right_elbow_link": {
+        "before": {
+          "p95_outside_mm": 5.62,
+          "max_outside_mm": 11.54
+        },
+        "after": {
+          "p95_outside_mm": 5.62,
+          "max_outside_mm": 11.54
+        }
+      },
+      "right_wrist_roll_link": {
+        "before": {
+          "p95_outside_mm": 12.34,
+          "max_outside_mm": 16.91
+        },
+        "after": {
+          "p95_outside_mm": 6.84,
+          "max_outside_mm": 10.92
+        }
+      },
+      "right_wrist_pitch_link": {
+        "before": {
+          "p95_outside_mm": 0.79,
+          "max_outside_mm": 4.45
+        },
+        "after": {
+          "p95_outside_mm": 0.69,
+          "max_outside_mm": 4.45
+        }
+      },
+      "right_wrist_yaw_link": {
+        "before": {
+          "p95_outside_mm": 10.69,
+          "max_outside_mm": 15.61
+        },
+        "after": {
+          "p95_outside_mm": 9.46,
+          "max_outside_mm": 14.19
+        }
+      }
+    },
+    "neutral_contacts": 0,
+    "full_range_single_axis_sweep_poses": 310,
+    "poses_with_added_contact_pairs": 28,
+    "previously_contact_free_sweep_poses_becoming_colliding": 0,
+    "ankle_and_thumb_regression_poses": 630,
+    "regression_contacts": 0,
+    "limitations": "10,000 fixed-seed surface samples per visual mesh, distance to union at neutral pose. Not Hausdorff distance or full articulated coverage. Sweep uses 31 values per axis, other joints zero; bilateral mirrored shoulder roll, other bilateral axes same signed value. Existing collisions at extreme poses remain; additional pairs occur only in poses already colliding in the baseline. No dynamics or exhaustive multijoint safety validation."
+  }
+}

@@ -1,0 +1,330 @@
+{
+  "mjcf_sha256": "4feeec2d7b08152e809a0325919eba6cbcfdf9fe321febd10341b9b681dda12c",
+  "resolved_cases": [
+    {
+      "q": {
+        "left_shoulder_pitch_joint": -1.8329628279418757,
+        "left_shoulder_roll_joint": -0.2482651823044187,
+        "left_shoulder_yaw_joint": 1.817845799335137,
+        "left_elbow_joint": 0.37832594977088063,
+        "left_wrist_roll_joint": 0.5742994975798981,
+        "left_wrist_pitch_joint": -0.9634485424910688,
+        "left_wrist_yaw_joint": -0.5221308972713353
+      },
+      "contacts_m": {
+        "left_shoulder_roll_link_1_capsule_collision / waist_roll_link_1_capsule_collision": -1.4397492762961706e-05
+      },
+      "current_contacts_m": {}
+    },
+    {
+      "q": {
+        "left_shoulder_pitch_joint": 1.1169016273628225,
+        "left_shoulder_roll_joint": -0.13115738601819818,
+        "left_shoulder_yaw_joint": -1.146640887031618,
+        "left_elbow_joint": 0.004084686083983935,
+        "left_wrist_roll_joint": 1.230617876994054,
+        "left_wrist_pitch_joint": -1.2334896527030972,
+        "left_wrist_yaw_joint": -0.6825533065019642
+      },
+      "contacts_m": {
+        "left_wrist_pitch_link_2_capsule_collision / waist_roll_link_2_capsule_collision": -0.0024456880403603137
+      },
+      "current_contacts_m": {}
+    },
+    {
+      "q": {
+        "left_shoulder_pitch_joint": -1.8733103450730897,
+        "left_shoulder_roll_joint": -0.2515373098268603,
+        "left_shoulder_yaw_joint": 0.36187914264312715,
+        "left_elbow_joint": 1.0876241900308024,
+        "left_wrist_roll_joint": 0.05362542581838414,
+        "left_wrist_pitch_joint": 1.2089837897106763,
+        "left_wrist_yaw_joint": 1.071940131643946
+      },
+      "contacts_m": {
+        "left_shoulder_roll_link_1_capsule_collision / waist_roll_link_1_capsule_collision": -4.772978618419049e-05
+      },
+      "current_contacts_m": {}
+    },
+    {
+      "q": {
+        "left_shoulder_pitch_joint": -0.3100689736582325,
+        "left_shoulder_roll_joint": -0.14222901847106684,
+        "left_shoulder_yaw_joint": -0.08742255302950763,
+        "left_elbow_joint": 1.016047583834877,
+        "left_wrist_roll_joint": -0.24574900277067346,
+        "left_wrist_pitch_joint": -0.27402504261240046,
+        "left_wrist_yaw_joint": 0.97307188061311
+      },
+      "contacts_m": {
+        "left_shoulder_roll_link_1_capsule_collision / waist_roll_link_2_capsule_collision": -0.0019309546367558064
+      },
+      "current_contacts_m": {}
+    },
+    {
+      "q": {
+        "left_shoulder_pitch_joint": 1.7965523704262978,
+        "left_shoulder_roll_joint": -0.24595588245288566,
+        "left_shoulder_yaw_joint": 1.7311329780218538,
+        "left_elbow_joint": 0.9291628327548247,
+        "left_wrist_roll_joint": 1.2980773708654074,
+        "left_wrist_pitch_joint": 0.6092726767532126,
+        "left_wrist_yaw_joint": -0.6923730817861362
+      },
+      "contacts_m": {
+        "left_shoulder_roll_link_1_capsule_collision / waist_roll_link_1_capsule_collision": -5.6696673045517065e-06
+      },
+      "current_contacts_m": {}
+    },
+    {
+      "q": {
+        "left_shoulder_pitch_joint": 0.859466613798805,
+        "left_shoulder_roll_joint": -0.19978723958312888,
+        "left_shoulder_yaw_joint": 1.0784036869077616,
+        "left_elbow_joint": 0.007433750973354414,
+        "left_wrist_roll_joint": -1.0344585205236627,
+        "left_wrist_pitch_joint": -0.9310277688476782,
+        "left_wrist_yaw_joint": 0.9198711110744382
+      },
+      "contacts_m": {
+        "left_shoulder_roll_link_1_capsule_collision / waist_roll_link_1_capsule_collision": -0.00015615253754105302
+      },
+      "current_contacts_m": {}
+    },
+    {
+      "q": {
+        "left_shoulder_pitch_joint": 1.0297765192094013,
+        "left_shoulder_roll_joint": 0.17768756724569457,
+        "left_shoulder_yaw_joint": -0.4553124991848687,
+        "left_elbow_joint": -0.1240693725770724,
+        "left_wrist_roll_joint": -1.506418840060512,
+        "left_wrist_pitch_joint": -0.8074193565176707,
+        "left_wrist_yaw_joint": -0.98891364405178
+      },
+      "contacts_m": {
+        "left_hand_thumb_2_link_cylinder_collision_0 / waist_roll_link_2_capsule_collision": -0.007710732308690049
+      },
+      "current_contacts_m": {}
+    },
+    {
+      "q": {
+        "left_shoulder_pitch_joint": 1.0551632342423618,
+        "left_shoulder_roll_joint": -0.20936770216225759,
+        "left_shoulder_yaw_joint": -0.6761004360181702,
+        "left_elbow_joint": 1.6464879230469034,
+        "left_wrist_roll_joint": 1.4511301343925322,
+        "left_wrist_pitch_joint": 0.07025627757384112,
+        "left_wrist_yaw_joint": -1.2873256258937331
+      },
+      "contacts_m": {
+        "left_shoulder_roll_link_1_capsule_collision / waist_roll_link_1_capsule_collision": -0.00016518901011874226
+      },
+      "current_contacts_m": {}
+    },
+    {
+      "q": {
+        "right_shoulder_pitch_joint": -1.8957273251512499,
+        "right_shoulder_roll_joint": 0.252234075726387,
+        "right_shoulder_yaw_joint": 0.5704502329195158,
+        "right_elbow_joint": 0.8211865910011775,
+        "right_wrist_roll_joint": -0.9898059076152326,
+        "right_wrist_pitch_joint": 0.6115213076223758,
+        "right_wrist_yaw_joint": -0.6026483738386686
+      },
+      "contacts_m": {
+        "right_shoulder_roll_link_1_capsule_collision / waist_roll_link_1_capsule_collision": -3.070666346190881e-05
+      },
+      "current_contacts_m": {}
+    },
+    {
+      "q": {
+        "right_shoulder_pitch_joint": -0.32136494449741626,
+        "right_shoulder_roll_joint": 0.18155947322766375,
+        "right_shoulder_yaw_joint": -0.021174181149796745,
+        "right_elbow_joint": 0.41333566103690733,
+        "right_wrist_roll_joint": 1.2392407685932376,
+        "right_wrist_pitch_joint": 0.3619888488712508,
+        "right_wrist_yaw_joint": 0.07975451040656445
+      },
+      "contacts_m": {
+        "right_shoulder_roll_link_1_capsule_collision / waist_roll_link_1_capsule_collision": -0.00012502104295954858,
+        "right_shoulder_roll_link_1_capsule_collision / waist_roll_link_2_capsule_collision": -0.006137200157831237,
+        "right_upper_arm_capsule_collision / waist_roll_link_2_capsule_collision": -0.0037605946939095886
+      },
+      "current_contacts_m": {}
+    },
+    {
+      "q": {
+        "right_shoulder_pitch_joint": 2.56512778657331,
+        "right_shoulder_roll_joint": -0.007386517627894218,
+        "right_shoulder_yaw_joint": 0.3982080331192779,
+        "right_elbow_joint": -0.40431220138668433,
+        "right_wrist_roll_joint": -0.08038323397469438,
+        "right_wrist_pitch_joint": -0.9871318082848595,
+        "right_wrist_yaw_joint": -0.20429432295003913
+      },
+      "contacts_m": {
+        "right_hand_thumb_2_link_cylinder_collision_0 / waist_roll_link_2_capsule_collision": -0.001561082658081919
+      },
+      "current_contacts_m": {}
+    },
+    {
+      "q": {
+        "right_shoulder_pitch_joint": 2.150244416816207,
+        "right_shoulder_roll_joint": -1.417508522467207,
+        "right_shoulder_yaw_joint": 0.4011000554345592,
+        "right_elbow_joint": -0.20365374698698496,
+        "right_wrist_roll_joint": 0.6185905421774902,
+        "right_wrist_pitch_joint": -1.2989659972745622,
+        "right_wrist_yaw_joint": 0.6739224549995833
+      },
+      "contacts_m": {
+        "right_hand_index_1_link_cylinder_collision_0 / waist_roll_link_2_capsule_collision": -0.005216333811198964
+      },
+      "current_contacts_m": {}
+    },
+    {
+      "q": {
+        "right_shoulder_pitch_joint": -1.8163952693956122,
+        "right_shoulder_roll_joint": 0.2482395293768791,
+        "right_shoulder_yaw_joint": 0.21041359611902832,
+        "right_elbow_joint": 0.35476736438832046,
+        "right_wrist_roll_joint": 0.675535486723621,
+        "right_wrist_pitch_joint": 1.1171494601019814,
+        "right_wrist_yaw_joint": -0.2883842705865056
+      },
+      "contacts_m": {
+        "right_shoulder_roll_link_1_capsule_collision / waist_roll_link_1_capsule_collision": -4.317086546428567e-05
+      },
+      "current_contacts_m": {}
+    },
+    {
+      "q": {
+        "right_shoulder_pitch_joint": 1.8376458156656286,
+        "right_shoulder_roll_joint": 0.2495187749748311,
+        "right_shoulder_yaw_joint": -1.2538433374920683,
+        "right_elbow_joint": 1.0704166212924369,
+        "right_wrist_roll_joint": -0.49563828718079983,
+        "right_wrist_pitch_joint": 1.0146219758127555,
+        "right_wrist_yaw_joint": 0.17810855715215212
+      },
+      "contacts_m": {
+        "right_shoulder_roll_link_1_capsule_collision / waist_roll_link_1_capsule_collision": -4.6213425973905264e-05
+      },
+      "current_contacts_m": {}
+    },
+    {
+      "q": {
+        "right_shoulder_pitch_joint": -0.832355534225848,
+        "right_shoulder_roll_joint": 0.19644914505521083,
+        "right_shoulder_yaw_joint": -0.8134466352410517,
+        "right_elbow_joint": -0.31718465545154695,
+        "right_wrist_roll_joint": 1.1050594789764454,
+        "right_wrist_pitch_joint": 0.746077141547469,
+        "right_wrist_yaw_joint": -0.09147106646087266
+      },
+      "contacts_m": {
+        "right_shoulder_roll_link_1_capsule_collision / waist_roll_link_1_capsule_collision": -8.624572902620614e-05
+      },
+      "current_contacts_m": {}
+    },
+    {
+      "q": {
+        "right_shoulder_pitch_joint": 1.4003477830983622,
+        "right_shoulder_roll_joint": 0.2253416015113312,
+        "right_shoulder_yaw_joint": 1.1761936653286198,
+        "right_elbow_joint": 1.4976733299302616,
+        "right_wrist_roll_joint": -1.5924374942144635,
+        "right_wrist_pitch_joint": -0.4201637202887313,
+        "right_wrist_yaw_joint": -1.2512858634725443
+      },
+      "contacts_m": {
+        "right_shoulder_roll_link_1_capsule_collision / waist_roll_link_1_capsule_collision": -7.40473442308251e-05
+      },
+      "current_contacts_m": {}
+    },
+    {
+      "q": {
+        "right_shoulder_pitch_joint": 1.5521794241105757,
+        "right_shoulder_roll_joint": 0.23252544356706295,
+        "right_shoulder_yaw_joint": -1.2717666018168974,
+        "right_elbow_joint": 1.4593274692382192,
+        "right_wrist_roll_joint": 0.4846553348204665,
+        "right_wrist_pitch_joint": -1.0880387177324615,
+        "right_wrist_yaw_joint": -0.09970653025763676
+      },
+      "contacts_m": {
+        "right_shoulder_roll_link_1_capsule_collision / waist_roll_link_1_capsule_collision": -2.3936498629466285e-05
+      },
+      "current_contacts_m": {}
+    },
+    {
+      "q": {
+        "right_shoulder_pitch_joint": -1.3560466849566906,
+        "right_shoulder_roll_joint": 0.1514492842275872,
+        "right_shoulder_yaw_joint": 1.2169224766287159,
+        "right_elbow_joint": -0.31237753697079373,
+        "right_wrist_roll_joint": -0.9555516750473496,
+        "right_wrist_pitch_joint": 0.197034300697855,
+        "right_wrist_yaw_joint": 1.206055680843379
+      },
+      "contacts_m": {
+        "right_wrist_pitch_link_1_capsule_collision / waist_roll_link_1_capsule_collision": -0.001006359614407426
+      },
+      "current_contacts_m": {}
+    }
+  ],
+  "resolved_case_count": 18,
+  "expanded_sampling_seed": 20261024,
+  "expanded_groups": {
+    "left_arm_heldout": {
+      "counts": {
+        "poses": 10000,
+        "baseline_clear": 9343,
+        "refined_clear": 9344
+      },
+      "new_contact_pairs": {},
+      "examples": []
+    },
+    "right_arm_heldout": {
+      "counts": {
+        "poses": 10000,
+        "baseline_clear": 9345,
+        "refined_clear": 9345
+      },
+      "new_contact_pairs": {},
+      "examples": []
+    }
+  },
+  "note": "All 18 torso cases and the wrist-to-hip case now clear. Expanded sample sets informed refinement and are regression data. Static checks do not certify arbitrary combined motions or dynamics.",
+  "resolved_wrist_case": {
+    "q": {
+      "left_shoulder_pitch_joint": 0.1293877952417679,
+      "left_shoulder_roll_joint": 0.6227415370619843,
+      "left_shoulder_yaw_joint": -1.4577378502844445,
+      "left_elbow_joint": 0.2943068119192508,
+      "left_wrist_roll_joint": -0.5623695882112456,
+      "left_wrist_pitch_joint": 0.781583921818402,
+      "left_wrist_yaw_joint": -0.37382217728146905
+    },
+    "contacts_m": {
+      "left_hip_roll_link_cylinder_collision_1 / left_wrist_yaw_link_cylinder_collision_1": -0.0005713723517461448
+    },
+    "current_contacts_m": {}
+  },
+  "mirrored_wrist_case": {
+    "q": {
+      "right_shoulder_pitch_joint": 0.1293877952417679,
+      "right_shoulder_roll_joint": -0.6227415370619843,
+      "right_shoulder_yaw_joint": 1.4577378502844445,
+      "right_elbow_joint": 0.2943068119192508,
+      "right_wrist_roll_joint": 0.5623695882112456,
+      "right_wrist_pitch_joint": 0.781583921818402,
+      "right_wrist_yaw_joint": 0.37382217728146905
+    },
+    "current_contacts_m": {
+      "right_hand_palm_rear_collision / right_hip_roll_link_cylinder_collision_1": -6.352654540603409e-08
+    },
+    "note": "Baseline-identical palm/hip overlap of 0.064 micrometres, below the 1 micrometre review threshold."
+  }
+}

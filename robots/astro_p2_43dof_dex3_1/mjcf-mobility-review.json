@@ -1,0 +1,63 @@
+{
+  "seed": 20261023,
+  "joint_ranges_unchanged": true,
+  "neutral_contacts": {},
+  "groups": {
+    "individual_full_range": {
+      "counts": {
+        "poses": 2623,
+        "baseline_clear": 2481,
+        "refined_clear": 2481
+      },
+      "new_contact_pairs": {},
+      "examples": []
+    },
+    "left_arm_combined": {
+      "counts": {
+        "poses": 3000,
+        "baseline_clear": 2791,
+        "refined_clear": 2791
+      },
+      "new_contact_pairs": {},
+      "examples": []
+    },
+    "left_hand_combined": {
+      "counts": {
+        "poses": 1000,
+        "baseline_clear": 847,
+        "refined_clear": 847
+      },
+      "new_contact_pairs": {},
+      "examples": []
+    },
+    "right_arm_combined": {
+      "counts": {
+        "poses": 3000,
+        "baseline_clear": 2789,
+        "refined_clear": 2789
+      },
+      "new_contact_pairs": {},
+      "examples": []
+    },
+    "right_hand_combined": {
+      "counts": {
+        "poses": 1000,
+        "baseline_clear": 844,
+        "refined_clear": 844
+      },
+      "new_contact_pairs": {},
+      "examples": []
+    },
+    "waist_combined": {
+      "counts": {
+        "poses": 1000,
+        "baseline_clear": 1000,
+        "refined_clear": 1000
+      },
+      "new_contact_pairs": {},
+      "examples": []
+    }
+  },
+  "mjcf_sha256": "4feeec2d7b08152e809a0325919eba6cbcfdf9fe321febd10341b9b681dda12c",
+  "method": "mj_forward static contact sweeps. Baseline is MJCF before torso/arm refinement (already includes shin/palm fixes). Penetrations deeper than 1 micrometre counted. Random poses sample joint-limit boxes, not feasible trajectories; no dynamic flexibility guarantee."
+}
