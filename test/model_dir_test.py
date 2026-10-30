@@ -29,14 +29,16 @@ class ModelDirectoryTests(unittest.TestCase):
     def test_catalog_and_family_layout(self):
         entries = list(model_entries())
         self.assertEqual({entry["family"] for entry in entries}, FAMILIES)
-        self.assertEqual(len(entries), 10)
-        self.assertEqual(len(MODEL_MAP), 8)
+        self.assertEqual(len(entries), 9)
+        self.assertEqual(len(MODEL_MAP), 7)
         self.assertEqual(len(LEGACY_MODEL_MAP), 2)
         self.assertFalse(set(MODEL_MAP) & set(LEGACY_MODEL_MAP))
         self.assertTrue(all(key.startswith("astro_p1/") for key in LEGACY_MODEL_MAP))
         self.assertEqual({entry["family"] for entry in model_entries(include_legacy=False)}, FAMILIES - {"astro_p1"})
         self.assertTrue(set(PREVIEW_OVERRIDES).issubset(set(MODEL_MAP) | set(LEGACY_MODEL_MAP)))
         self.assertEqual(len({entry["scene"] for entry in entries}), len(entries))
+        self.assertEqual({entry["model"].name for entry in entries if entry["family"] == "astro_p2"},
+                         {"astro_p2.xml", "astro_p2_with_hands.xml"})
         for family in FAMILIES:
             for name in ("README.md", "CHANGELOG.md", "LICENSING.md", "scene.xml"):
                 self.assertTrue((ROOT / family / name).is_file(), f"{family}/{name}")

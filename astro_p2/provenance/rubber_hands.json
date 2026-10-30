@@ -6,9 +6,10 @@
   "source_urdf_local": "provenance/rubber_hand_sources/astro_p2_30dof_primitive_collision.urdf",
   "source_urdf_sha256": "16bbf4d44ad1ba18d09d3bbb258247bc0d0bc172b49f4b739be95af3b41b8ca7",
   "license": "Apache-2.0; see LICENSE and LICENSING.md",
-  "body_policy": "Restore only original Astro native hand meshes, explicit hand inertias, visual properties, and hand collision capsules. Preserve refined fixed-head 29-DoF body, all wrist definitions, and Dex3-1 alternative.",
+  "body_policy": "Original Astro hand meshes, inertias and attachment transforms preserved. Default colliders later calibrated from astro_p2_simplified.xml: palms, shins, upper pelvis cylinder and merged wrist-pitch capsules. Other colliders and articulated-hand variant preserved.",
   "collision_source": {
-    "method": "Combine the original Astro wrist-local hand cylinder (radius0.027,length0.08) and its two radius0.027 end spheres as one native capsule. Subtract the original fixed hand joint translation to express endpoints in the retained hand frame. The refined wrist housing collision stays unchanged."
+    "method": "Current default palm capsules copy the maintainer-tuned simplified variant, radius .05 and wrist-yaw centerline x=.10..15. Subtract fixed hand attachment translation to preserve hand-body ownership.",
+    "original_method": "Combine the original Astro wrist-local hand cylinder (radius0.027,length0.08) and its two radius0.027 end spheres as one native capsule. Subtract the original fixed hand joint translation to express endpoints in the retained hand frame. The refined wrist housing collision stays unchanged."
   },
   "hands": {
     "left": {
@@ -45,8 +46,17 @@
         1.0
       ],
       "collision_type": "capsule",
-      "collision_radius_m": 0.027,
+      "collision_radius_m": 0.05,
       "collision_fromto_hand_frame_m": [
+        0.032498,
+        0,
+        0,
+        0.082498,
+        0,
+        0
+      ],
+      "original_collision_radius_m": 0.027,
+      "original_collision_fromto_hand_frame_m": [
         0.0024980000000000002,
         0.0,
         8.881784197e-18,
@@ -89,8 +99,17 @@
         1.0
       ],
       "collision_type": "capsule",
-      "collision_radius_m": 0.027,
+      "collision_radius_m": 0.05,
       "collision_fromto_hand_frame_m": [
+        0.0325,
+        0,
+        0,
+        0.0825,
+        0,
+        0
+      ],
+      "original_collision_radius_m": 0.027,
+      "original_collision_fromto_hand_frame_m": [
         0.0025000000000000022,
         0.0,
         8.881784197e-18,
@@ -107,5 +126,130 @@
     "nu": 0,
     "mass_kg": 40.58255359,
     "dex_mass_kg": 41.69666115
+  },
+  "collider_propagation": {
+    "source": "astro_p2_simplified.xml",
+    "verification": "../../docs/astro-default-collider-propagation.md",
+    "contact_policy": "Automatic contacts with existing two same-arm elbow/wrist-pitch overlap exclusions. Maintainer subsequently removed both wrist-roll shells and wrist-yaw cylinders; those removals are preserved.",
+    "colliders": 52,
+    "status": "Historical propagation receipt; subsequent maintainer wrist-roll/yaw collider removals and right-arm radius changes are preserved."
+  },
+  "upper_arm_refinement": {
+    "verification": "../../docs/astro-upper-arm-refinement.md",
+    "before_colliders": 54,
+    "after_colliders": 52,
+    "other_colliders_preserved": 50,
+    "merged_geom": "{side}_upper_arm_capsule_collision",
+    "body": "{side}_shoulder_roll_link",
+    "centerline_yaw_frame": {
+      "left": [
+        0,
+        0,
+        0.114,
+        0,
+        0,
+        -0.01
+      ],
+      "right": [
+        0,
+        0,
+        0.114,
+        0,
+        0,
+        -0.06
+      ]
+    },
+    "radii_m": {
+      "left": 0.037,
+      "right": 0.039
+    },
+    "housing": "Original transverse shoulder-roll housing capsule retained.",
+    "contact_tradeoff": "Both shafts now belong to shoulder-roll. Ordinary frictional automatic contacts with forearms are enabled without pairs; contact velocity/friction follows roll rather than yaw.",
+    "centerline_roll_frame": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      -0.12
+    ],
+    "centerline_yaw_frame_status": "Historical coordinates before the maintainer authorized roll-body ownership and matching shaft lengths."
+  },
+  "elbow_contact_stops": {
+    "verification": "../../docs/astro-elbow-contact-stop.md",
+    "sphere_radius_m": 0.01,
+    "forearm_local_x_m": {
+      "left": 0.052311955,
+      "right": 0.054703143
+    },
+    "contact_only_masks": [
+      0,
+      0
+    ],
+    "pairs": 2,
+    "condim": 1,
+    "onset_target_rad": -0.47,
+    "native_folded_limit_rad": -0.52,
+    "existing_colliders_preserved": 52,
+    "total_default_colliders": 53,
+    "policy": "Sphere/upper-arm pairs select near-limit contact, avoiding permanent full-capsule overlap. Native limits and default contact solver settings remain unchanged.",
+    "status": "Historical two-sphere/pair approach. All elbow proxy spheres and explicit pairs have now been removed; see automatic_elbow_contacts."
+  },
+  "left_direct_elbow_contact": {
+    "verification": "../../docs/astro-left-elbow-direct-contact.md",
+    "pair": "left_elbow_flexion_stop",
+    "geoms": [
+      "left_upper_arm_capsule_collision",
+      "left_elbow_link_1_capsule_collision"
+    ],
+    "condim": 1,
+    "onset_rad": -0.37415275612406224,
+    "removed_unused_geom": "left_elbow_stop_collision",
+    "geometry": "All retained collider attributes preserve maintainer edits.",
+    "cause": "Direct parent-child bodies filtered the actual capsules; the prior explicit pair selected only a separated small proxy.",
+    "status": "Historical explicit left pair; replaced by automatic contacts after moving shafts to shoulder-roll."
+  },
+  "automatic_elbow_contacts": {
+    "verification": "../../docs/astro-upper-arm-roll-owner.md",
+    "owner": "{side}_shoulder_roll_link",
+    "centerline_roll_frame": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      -0.12
+    ],
+    "radii_m": {
+      "left": 0.037,
+      "right": 0.039
+    },
+    "explicit_pairs": 0,
+    "internal_stop_spheres": 0,
+    "default_colliders": 52,
+    "condim": 3,
+    "contact_onset_rad": {
+      "left": -0.4816591423398296,
+      "right": -0.364977656225456
+    },
+    "authorization": "Maintainer chose to shorten right shaft to match left, then move both; other retained manual geometry is preserved."
+  },
+  "approved_collision_design": {
+    "date": "2026-10-31",
+    "model_sha256": "c492062c5b1c71874a7b7ef825c32493560065fbe6891a78727a497a42840ef9",
+    "colliders": 52,
+    "upper_arm_centerline_roll_frame": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      -0.12
+    ],
+    "explicit_pairs": 0,
+    "body_exclusions": 2,
+    "verification": "../../docs/astro-p2-collision-retirement.md",
+    "retired_variant": "retired_simplified/README.md",
+    "policy": "Preserve maintainer-approved default XML byte-for-byte; frozen simplified variant is no longer a maintained runtime entry."
   }
 }

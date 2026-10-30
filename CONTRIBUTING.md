@@ -14,7 +14,7 @@ make all
 ```
 
 `make check` checks family layout and maintained XML style. `make test` loads all
-ten retained native model/scene pairs (eight active and two legacy P1), steps
+nine retained native model/scene pairs (seven active and two legacy P1), steps
 each for 0.1 seconds with deterministic controls, checks existing keyframe reset, compares robot physics with retained
 imports, and loads copied standalone runtime folders. CI runs `make all` with
 pinned MuJoCo 3.11.0. No viewer, display, browser, or rendering backend is needed.

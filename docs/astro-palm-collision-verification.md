@@ -1,5 +1,8 @@
 # Compact palm collider correction
 
+Historical receipt for commit `846b744`. Later maintainer palm, shin and pelvis
+adjustments are covered by [manual collider verification](astro-manual-collider-verification.md).
+
 Baseline: `7a34149a15e8eb4fa5ccfce3e9147e686038e077`.
 Branch: `codex/astro-palm-colliders`.
 Scope: [accepted palm-only correction](design/astro-p2-simplified-collisions.md#accepted-palm-only-correction).
@@ -34,7 +37,7 @@ session changed the goal-specific test, checked the diff and integrated docs.
   including standalone family loading. The corrected test now checks G1-size
   equivalence, palm inclusion and intentional fingertip exclusion.
 - Both native 640×480 collider previews were refreshed and inspected. The
-  [overlay](../astro_p2/astro_p2_wrist_hand_colliders.png) shows fingers extending
+  [overlay](../astro_p2/provenance/retired_simplified/astro_p2_wrist_hand_colliders.png) shows fingers extending
   beyond the smaller cap. Render transparency is temporary; saved visual
   materials and meshes are unchanged. No simulation stepping is used for images.
 - `git diff --check` passed. No dependencies or packaging paths changed.

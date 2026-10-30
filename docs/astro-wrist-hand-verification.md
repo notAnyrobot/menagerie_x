@@ -60,7 +60,7 @@ cleanup, all **seven arm collision tests** passed again. No model/scene changes
 followed the full native acceptance run.
 
 Updated and inspected the native whole-body collider preview and a new
-[wrist/hand overlay](../astro_p2/astro_p2_wrist_hand_colliders.png). The overlay
+[wrist/hand overlay](../astro_p2/provenance/retired_simplified/astro_p2_wrist_hand_colliders.png). The overlay
 uses temporary transparency to show the unchanged hand mesh inside its collider;
 render settings do not change saved materials or physics. Images use reference
 initialization without simulation stepping. Checked 72 local document/image

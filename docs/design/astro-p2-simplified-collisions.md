@@ -80,6 +80,21 @@ full-mesh containment goal:
 
 Revision branch: `codex/astro-palm-colliders`, baseline `7a34149`.
 
+## Accepted manual collider calibration
+
+The maintainer subsequently relocated the palm centerlines to x=0.10–0.15 m,
+extended both shin centerlines to z=−0.24 through +0.003 m, and raised/thickened
+the upper pelvis cylinder to z=0.10 / half-length 0.018 m. These edits supersede
+exact G1 palm placement and exact preservation of the three affected non-arm
+geoms. Preserve their saved XML; default and articulated-hand variants remain
+unchanged. Contact masks, scene pairs, physics and joint limits stay unchanged.
+
+Verify that the proximal shin extension engages near the knee extension limit
+without introducing earlier deep-flexion contact. Existing thigh–shin contact
+near 133.3° remains a known limit on collision-free bending; the 3 mm extension
+does not change its onset or depth. See
+[verification](../astro-manual-collider-verification.md). MJX remains deferred.
+
 ## Original scope and ownership (superseded where noted above)
 
 - Add `astro_p2/astro_p2_simplified.xml` and `scene_simplified.xml` as a third

@@ -47,8 +47,6 @@ astro_p2/
 ├── scene.xml               # default scene
 ├── astro_p2_with_hands.xml  # same body plus 14 Dex3-1 finger DoFs
 ├── scene_with_hands.xml     # dexterous-hand scene
-├── astro_p2_simplified.xml  # original body colliders, optimized arms/hands
-├── scene_simplified.xml     # explicit arm contacts, original body contact policy
 ├── README.md
 ├── CHANGELOG.md
 ├── LICENSE                 # Apache-2.0 for Astro material
@@ -124,21 +122,18 @@ Collision alternatives can share the same visual appearance.
 | :---: | --- | --- | --- |
 | <a href="astro_p2/scene.xml"><img src="astro_p2/astro_p2.png" alt="Astro P2" width="120"></a> | [Astro P2](astro_p2/README.md) | 29 | [Apache-2.0](astro_p2/LICENSE) |
 | <a href="astro_p2/scene_with_hands.xml"><img src="astro_p2/astro_p2_with_hands.png" alt="Astro P2 with hands" width="120"></a> | [Astro P2 with hands](astro_p2/README.md) | 43 | [Apache-2.0 body; BSD-3-Clause hands](astro_p2/LICENSING.md) |
-| <a href="astro_p2/scene_simplified.xml"><img src="astro_p2/astro_p2_simplified.png" alt="Astro P2 with optimized arm collisions" width="120"></a> | [Astro P2 with optimized arm collisions](astro_p2/README.md) | 29 | [Apache-2.0 model; BSD-3-Clause scene](astro_p2/LICENSING.md) |
 | <a href="atom_p3/scene.xml"><img src="atom_p3/atom_p3_27dof.png" alt="Atom P3" width="120"></a> | [Atom P3](atom_p3/README.md) | 27 | [Unresolved](atom_p3/LICENSING.md) |
 | <a href="soma23/scene.xml"><img src="soma23/soma23_free_base.png" alt="SOMA-23" width="120"></a> | [SOMA-23](soma23/README.md) | 66 | [Apache-2.0](soma23/LICENSE.ProtoMotions) |
 | <a href="unitree_g1/scene.xml"><img src="unitree_g1/unitree_g1_29dof_with_hand_rev_1_0.png" alt="Unitree G1 with hands" width="120"></a> | [Unitree G1 with hands](unitree_g1/README.md) | 43 | [BSD-3-Clause](unitree_g1/LICENSE.Unitree) |
 | <a href="unitree_g1/scene_29dof_box_feet.xml"><img src="unitree_g1/unitree_g1_29dof_box_feet.png" alt="Unitree G1 with box feet" width="120"></a> | [Unitree G1 with box feet](unitree_g1/README.md) | 29 | [Apache-2.0 model; BSD-3-Clause meshes](unitree_g1/LICENSING.md) |
 | <a href="unitree_g1/scene_mjx.xml"><img src="unitree_g1/g1_mjx.png" alt="Unitree G1 with primitive collisions" width="120"></a> | [Unitree G1 with primitive collisions](unitree_g1/README.md) | 29 | [BSD-3-Clause](unitree_g1/LICENSE.Menagerie) |
 
-All Astro P2 variants have the same fixed-head, 29-DoF body. Dex3-1 adds 14
-finger joints (43 total). The additional arm-optimized model retains the default
-model's fixed hands, visuals and all non-arm colliders, including the original
-feet and torso. Only the arm/hand collision envelope is simplified, with its
-interactions explicitly selected in the scene. Other body contacts retain the
-original automatic policy. Arms use 10 shapes instead of 20; the full model has
-50 colliders. The existing detailed variants remain
-available. See the [collision-only preview](astro_p2/astro_p2_simplified_colliders.png).
+Astro P2 has a fixed-head, 29-DoF body. Dex3-1 adds 14 finger joints
+(43 total). The default model now carries the maintainer-approved collision
+geometry: 52 primitives, automatic elbow contacts and no explicit contact pairs.
+See its [collision preview](astro_p2/astro_p2_colliders.png). The separate
+simplified variant is retired; its source snapshots are preserved under
+[provenance](astro_p2/provenance/retired_simplified/README.md).
 The previous 30-DoF primitive, mesh, and intermediate
 P2 descriptions are retired; their history remains in Git. The formerly
 separate Astro 29 and Dex3-1 folders are consolidated into `astro_p2/`.

@@ -4,25 +4,26 @@
   "source_revision": "10fcf7edccd61611679601274064f034887baca6",
   "source_sha256": "cd8a85a833547164314e57559c948b35960ded43cf945ad9d630ab3d7f5e3d33",
   "license": "Apache-2.0",
-  "scope": "Arms and fixed palms only. All 40 non-arm collision geoms retain exact source definitions and contact masks. Redundant wrist-roll proxies remain removed; compact palm capsules now exactly use G1 box-feet hand geometry in Astro wrist-yaw frames.",
+  "scope": "Five optimized capsules per arm with G1-sized palm proxies manually relocated in Astro wrist-yaw frames. All 40 non-arm colliders retained; both shin capsules and the upper pelvis cylinder have maintainer joint-stop calibration. Other 37 non-arm definitions and all contact masks remain unchanged.",
   "supersedes": "The prior whole-body 27-collider experiment, six-proxy-per-arm revision and oversized full-hand mesh envelope; current geometry keeps all non-arm colliders and uses five proxies per arm.",
   "collision_count_before": 60,
   "collision_count_after": 50,
-  "non_arm_colliders_preserved": 40,
+  "non_arm_colliders_preserved": 37,
   "arm_colliders_before": 20,
   "arm_colliders_after": 10,
   "per_arm_colliders": 5,
   "contact_policy": "Original non-arm automatic contacts preserved. Optimized arm masks are zero and scene_simplified.xml declares selected arm contact pairs.",
   "preserved": [
     "All body/inertial/joint/passive/numerical properties and all 37 visual meshes/colors",
-    "Complete source non-arm collider definitions, including names, shapes, transforms, RGBA, groups and masks",
+    "37 source non-arm collider definitions; all 40 non-arm collider names, body attachments and contact parameters. Both shins and upper pelvis cylinder have manual geometry adjustments.",
     "Original default/articulated model files, source evidence, assets and previews"
   ],
   "limitations": [
     "No measured runtime speedup or hardware contact calibration is claimed.",
     "Merged forearm/pitch proxies retain the source collision envelope and can contact earlier than narrower source shaft segments.",
     "Palm contact approximation only: extended fingers and thumb can lie outside the compact capsule and do not receive separate colliders. Full native-hand mesh containment is intentionally not a goal.",
-    "No MJX runtime, PD/controller, URDF or Workbench support is introduced."
+    "No MJX runtime, PD/controller, URDF or Workbench support is introduced.",
+    "Maintainer right-forearm radius .045 leaves up to approximately 3.82 mm sampled uncovered distance on the removed wrist-roll shell; full shell containment is no longer claimed on that side. The default model retains its original wrist-roll collider."
   ],
   "arm_colliders": [
     {
@@ -91,14 +92,14 @@
       "type": "capsule",
       "radius": 0.05,
       "fromto": [
-        0.05,
-        0,
-        0,
         0.1,
+        0,
+        0,
+        0.15,
         0,
         0
       ],
-      "rationale": "Exactly adopts G1 box-feet hand capsule radius and endpoints, without offsets, in Astro wrist-yaw frame. Compact palm contact approximation intentionally omits extended digits."
+      "rationale": "G1-sized palm capsule relocated 50 mm forward by the maintainer in the Astro wrist-yaw frame; extended digits intentionally remain outside."
     },
     {
       "body": "right_shoulder_roll_link",
@@ -134,7 +135,7 @@
       "body": "right_elbow_link",
       "name": "right_forearm_collision",
       "type": "capsule",
-      "radius": 0.054,
+      "radius": 0.045,
       "fromto": [
         0.0,
         0.0,
@@ -143,7 +144,7 @@
         0.0,
         0.0
       ],
-      "rationale": "Distal endpoint extends from .075 to .09 m. Together with the wrist-pitch proximal sphere this contains the removed wrist-roll shell at every wrist orientation."
+      "rationale": "Maintainer narrowed right forearm radius to .045 while keeping endpoint x=.09. This leaves a small gap in historical removed wrist-roll shell coverage."
     },
     {
       "body": "right_wrist_pitch_link",
@@ -166,14 +167,14 @@
       "type": "capsule",
       "radius": 0.05,
       "fromto": [
-        0.05,
-        0,
-        0,
         0.1,
+        0,
+        0,
+        0.15,
         0,
         0
       ],
-      "rationale": "Exactly adopts G1 box-feet hand capsule radius and endpoints, without offsets, in Astro wrist-yaw frame. Compact palm contact approximation intentionally omits extended digits."
+      "rationale": "G1-sized palm capsule relocated 50 mm forward by the maintainer in the Astro wrist-yaw frame; extended digits intentionally remain outside."
     }
   ],
   "verification": {
@@ -204,7 +205,8 @@
         "palm_probe_distance_m": -0.04,
         "extended_finger_probe_distance_m": 0.060453610171872535
       }
-    }
+    },
+    "status": "Historical measurements at compact-palm commit 846b744, before manual palm/shin/pelvis adjustments. Current verification: ../../docs/astro-manual-collider-verification.md."
   },
   "wrist_hand_refinement": {
     "reference_model": "unitree_g1/unitree_g1_29dof_box_feet.xml",
@@ -220,7 +222,7 @@
         0
       ]
     },
-    "use": "Exact G1 box-feet hand capsule geometry (radius .05, fromto .05 0 0 .10 0 0) placed in each Astro wrist-yaw frame; no mesh-fit inflation or offsets.",
+    "use": "G1 box-feet palm radius and length retained; maintainer later translated the capsule +0.05 m along wrist-yaw x. Current centerline x=.10 to .15 m.",
     "removed_geoms": [
       "left_wrist_roll_collision",
       "right_wrist_roll_collision"
@@ -301,5 +303,32 @@
       ],
       "frame": "Each side wrist-yaw frame; identical geometry with zero lateral/vertical offsets."
     }
-  }
+  },
+  "non_arm_colliders_retained": 40,
+  "manual_collider_calibration": {
+    "owner": "Maintainer manual XML edits; preserved byte-for-byte during verification.",
+    "model_sha256": "270469a667acc18d4de973739b5a0e1164cc87d2b9e4cd4cc9c76b1120b354bb",
+    "shin_centerline": [
+      0.015,
+      0,
+      -0.24,
+      0.015,
+      0,
+      0.003
+    ],
+    "pelvis_upper_shell": {
+      "radius": 0.057,
+      "half_length": 0.018,
+      "position": [
+        0,
+        0,
+        0.1
+      ]
+    },
+    "verification": "../../docs/astro-manual-collider-verification.md",
+    "deep_flexion": "No added interference relative to the same model with shin proximal z=0; pre-existing thigh/shin contact starts at approximately 2.32697 rad (133.3 degrees).",
+    "limits": "Native limits unchanged. Contacts and native limits are compliant; high-speed overshoot remains possible.",
+    "right_forearm_radius": 0.045
+  },
+  "default_model_propagation": "Palms, shins, upper pelvis cylinder and wrist-pitch capsules copied to astro_p2.xml; see ../../docs/astro-default-collider-propagation.md. The source model XML was preserved."
 }

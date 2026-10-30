@@ -1,0 +1,36 @@
+{
+  "retired_date": "2026-10-31",
+  "reason": "Maintainer approved astro_p2.xml collision design and retired the separate simplified variant. Files are frozen provenance, not supported runtime models. Original relative paths are preserved in their contents.",
+  "files": [
+    {
+      "original_path": "astro_p2_simplified.xml",
+      "snapshot": "astro_p2_simplified.xml",
+      "sha256": "ca1172bd1e4e81cc48587bdb08cb1f1e99da4205fdd7b489d46e5a11f1669a12"
+    },
+    {
+      "original_path": "scene_simplified.xml",
+      "snapshot": "scene_simplified.xml",
+      "sha256": "da875ad3ddc20993dcddcf9054308f83ac8911eb7b7b5a281ceb3a98a83801aa"
+    },
+    {
+      "original_path": "astro_p2_simplified.png",
+      "snapshot": "astro_p2_simplified.png",
+      "sha256": "85564d7bc0f3c5c1d6b707d1226351a0219a49cb9adce0b76a8e240fd83136ca"
+    },
+    {
+      "original_path": "astro_p2_simplified_colliders.png",
+      "snapshot": "astro_p2_simplified_colliders.png",
+      "sha256": "688625a210241f94704c771049780ae2cb057086ab5b6a5badd60608aa72e300"
+    },
+    {
+      "original_path": "astro_p2_wrist_hand_colliders.png",
+      "snapshot": "astro_p2_wrist_hand_colliders.png",
+      "sha256": "21b3ec31352b989b77c73e2d05abf1e1ae6df51f6e2bcc878b2dcfd13c2b7eb8"
+    },
+    {
+      "original_path": "provenance/simplified_collisions.json",
+      "snapshot": "simplified_collisions.json",
+      "sha256": "aaf1d0a69110500c74896b23ea995adb86f522dbbee5ef6d90f75fdfcad3e79a"
+    }
+  ]
+}

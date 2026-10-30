@@ -1,6 +1,36 @@
 # Changelog
 
+## 2026-10-31
+
+- Accept the maintainer-tuned default collision design, including 0.120 m
+  upper-arm centerlines on shoulder-roll. Preserve the approved XML unchanged.
+- Retire the separate simplified model/scene from the native catalog and
+  gallery. Freeze its XML, previews and derivation record under
+  `provenance/retired_simplified/`; retain shared assets and all license notices.
+- Run native knee/elbow regressions against the maintained default model.
+
 ## 2026-10-30
+
+- Move both upper-arm shafts to shoulder-roll so elbow contacts are automatic.
+  Shorten the right shaft to the tuned left length, retain asymmetric radii,
+  and remove both elbow pairs and the remaining internal stop sphere.
+
+- Respect the maintainer's shortened left upper arm and pair its actual capsule
+  directly with the forearm capsule. Remove the unused left internal stop;
+  retain the right stop and all manually edited collider dimensions.
+
+- Add one internal contact-only stop sphere per forearm and two frictionless
+  upper-arm pairs. Folded-elbow contact starts at −0.47 rad, before the
+  −0.52 rad native limit. Preserve all existing collider envelopes and tuning.
+
+- Consolidate the two axial upper-arm shaft capsules into one per side on the
+  default model's shoulder-yaw bodies. Retain transverse shoulder housings,
+  left/right tuned radii and all other current manual collider edits.
+
+- Propagate the maintainer-tuned palms, shin capsules, upper pelvis cylinder
+  and merged wrist-pitch capsules to the default model. Preserve all other
+  colliders, the source collision alternative and the articulated-hand model.
+  Retain automatic contacts with two same-arm forearm/wrist overlap exclusions.
 
 - Replace the oversized hand envelope with the G1-style palm capsule: radius
   0.05 m, centerline x=0.05–0.10 m. Fingers/thumb may extend outside. Keep all

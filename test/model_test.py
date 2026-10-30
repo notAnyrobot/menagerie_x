@@ -151,31 +151,7 @@ class G1PrimitiveTests(unittest.TestCase):
         np.testing.assert_array_equal(robot.actuator_biasprm[:, 2], np.full(robot.nu, -2.0))
 
 
-class AstroP2ArmCollisionTests(unittest.TestCase):
-    def test_body_joints_options_and_visuals_match_default(self):
-        base = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/astro_p2.xml"))
-        simple = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/astro_p2_simplified.xml"))
-        self.assertEqual((simple.nq, simple.nv, simple.nu, simple.nbody),
-                         (base.nq, base.nv, base.nu, base.nbody))
-        self.assertEqual(simple.nu, 0)
-        for attribute in ("body_parentid", "body_pos", "body_quat", "body_mass", "body_inertia",
-                          "body_ipos", "body_iquat", "jnt_type", "jnt_pos", "jnt_axis", "jnt_range",
-                          "jnt_limited", "jnt_stiffness", "jnt_actfrcrange", "dof_damping",
-                          "dof_armature", "dof_frictionloss", "qpos0"):
-            np.testing.assert_array_equal(getattr(simple, attribute), getattr(base, attribute))
-        for attribute in ("timestep", "integrator", "solver", "iterations", "ls_iterations",
-                          "disableflags", "enableflags", "gravity"):
-            np.testing.assert_array_equal(getattr(simple.opt, attribute), getattr(base.opt, attribute))
-        visuals = np.flatnonzero(base.geom_group == 1)
-        self.assertEqual(len(visuals), 37)
-        self.assertEqual(int((simple.geom_group == 1).sum()), len(visuals))
-        for i in visuals:
-            old = base.geom(int(i))
-            new = simple.geom(old.name)
-            for attribute in ("bodyid", "type", "dataid", "pos", "quat", "size", "rgba", "matid",
-                              "group", "contype", "conaffinity"):
-                np.testing.assert_array_equal(getattr(new, attribute), getattr(old, attribute))
-
+class AstroP2CollisionTests(unittest.TestCase):
     @staticmethod
     def _non_arm_colliders(path):
         root = ET.parse(path).getroot()
@@ -187,25 +163,48 @@ class AstroP2ArmCollisionTests(unittest.TestCase):
                 for body in root.iter("body") if body.get("name") not in arm_bodies
                 for geom in body.findall("geom") if geom.get("group") == "3"}
 
-    def test_non_arm_geometry_and_contact_parameters_match_default(self):
-        retained = self._non_arm_colliders(ROOT / "astro_p2/astro_p2.xml")
-        self.assertEqual(len(retained), 40)
-        self.assertEqual(self._non_arm_colliders(ROOT / "astro_p2/astro_p2_simplified.xml"), retained)
-        base = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/astro_p2.xml"))
-        revised = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/astro_p2_simplified.xml"))
-        for name in retained:
-            for attribute in ("bodyid", "type", "size", "pos", "quat", "friction", "condim",
-                              "solref", "solimp", "margin", "gap", "contype", "conaffinity",
-                              "group", "priority"):
-                np.testing.assert_array_equal(getattr(revised.geom(name), attribute),
-                                              getattr(base.geom(name), attribute))
+    def test_knee_extension_stop_preserves_flexion_contacts(self):
+        path = ROOT / "astro_p2/astro_p2.xml"
+        current = mujoco.MjModel.from_xml_path(str(path))
+        # Counterfactual preserves every manual edit except the 3 mm knee stop.
+        root = ET.parse(path).getroot()
+        root.find("compiler").set("meshdir", str(path.parent / "assets"))
+        for side in ("left", "right"):
+            root.find(f".//geom[@name='{side}_knee_link_1_capsule_collision']").set(
+                "fromto", "0.015 0 -0.24 0.015 0 0")
+        before = mujoco.MjModel.from_xml_string(ET.tostring(root, encoding="unicode"))
+        for side in ("left", "right"):
+            pair = {current.geom(f"{side}_hip_roll_link_1_capsule_collision").id,
+                    current.geom(f"{side}_knee_link_1_capsule_collision").id}
+            joint = current.joint(f"{side}_knee_joint")
+            self.assertTrue(joint.limited[0])
+            for angle, expected_contact in ((0, False), (-0.06, False),
+                                            (-0.08, True), (-0.09, True)):
+                data = mujoco.MjData(current)
+                data.qpos[joint.qposadr[0]] = angle
+                mujoco.mj_forward(current, data)
+                self.assertEqual(any({c.geom1, c.geom2} == pair for c in data.contact),
+                                 expected_contact)
+            for yaw in (-0.5, 0, 0.5):
+                for angle in np.linspace(0, 2.44, 123):
+                    records = []
+                    for model in (current, before):
+                        data = mujoco.MjData(model)
+                        data.qpos[model.joint(f"{side}_knee_joint").qposadr[0]] = angle
+                        data.qpos[model.joint(f"{side}_hip_yaw_joint").qposadr[0]] = yaw
+                        mujoco.mj_forward(model, data)
+                        records.append(sorted((min(c.geom1, c.geom2), max(c.geom1, c.geom2),
+                                               c.dim, c.dist) for c in data.contact))
+                    # Existing deep-flexion contacts must not appear earlier or deepen.
+                    self.assertEqual(len(records[0]), len(records[1]))
+                    np.testing.assert_allclose(records[0], records[1], rtol=0, atol=1e-10)
 
     def test_lower_body_ground_contacts_match_original(self):
         retained = set(self._non_arm_colliders(ROOT / "astro_p2/astro_p2.xml"))
         retained.add("menagerie_floor")
         for pose in ({}, {"left_knee_joint": 0.45, "left_ankle_pitch_joint": -0.2}):
             records = []
-            for filename in ("scene.xml", "scene_simplified.xml"):
+            for filename in ("scene_with_hands.xml", "scene.xml"):
                 model = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2" / filename))
                 data = mujoco.MjData(model)
                 data.qpos[2] -= 0.1051
@@ -226,124 +225,6 @@ class AstroP2ArmCollisionTests(unittest.TestCase):
             for old, new in zip(*records):
                 self.assertEqual(old[:2], new[:2])
                 np.testing.assert_allclose(old[2], new[2], rtol=0, atol=1e-12)
-
-    def test_arm_proxies_follow_joint_frames_and_selected_contacts_work(self):
-        scene = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/scene_simplified.xml"))
-        for side in ("left", "right"):
-            for role, body in (("forearm", "elbow"), ("wrist_pitch", "wrist_pitch"),
-                               ("wrist_hand", "wrist_yaw")):
-                geom = scene.geom(f"{side}_{role}_collision")
-                self.assertEqual(scene.body(int(geom.bodyid[0])).name, f"{side}_{body}_link")
-            self.assertEqual(mujoco.mj_name2id(scene, mujoco.mjtObj.mjOBJ_GEOM,
-                                              f"{side}_wrist_roll_collision"), -1)
-        data = mujoco.MjData(scene)
-        for angle in (-1.1, 1.1):
-            mujoco.mj_resetData(scene, data)
-            for side in ("left", "right"):
-                for role in ("wrist_pitch", "wrist_yaw"):
-                    data.qpos[scene.joint(f"{side}_{role}_joint").qposadr[0]] = angle
-            mujoco.mj_forward(scene, data)
-            self.assertEqual(data.ncon, 0)
-        mujoco.mj_resetData(scene, data)
-        pose = {"shoulder_pitch": -0.0525, "shoulder_roll": 0.0724,
-                "shoulder_yaw": -1.6345, "elbow": 0.166,
-                "wrist_pitch": 0.047, "wrist_yaw": -0.9371}
-        for name, value in pose.items():
-            data.qpos[scene.joint(f"left_{name}_joint").qposadr[0]] = value
-        mujoco.mj_forward(scene, data)
-        selected = {scene.geom("left_wrist_hand_collision").id,
-                    scene.geom("waist_roll_link_3_capsule_collision").id}
-        self.assertTrue(any({c.geom1, c.geom2} == selected and c.dim == 1 for c in data.contact))
-        self.assertFalse(np.any(data.warning.number))
-
-    @staticmethod
-    def _capsule_surface_distances(geom, data, points):
-        axis = data.geom_xmat[geom.id].reshape(3, 3)[:, 2]
-        start = data.geom_xpos[geom.id] - geom.size[1] * axis
-        segment = 2 * geom.size[1] * axis
-        position = np.clip((points - start) @ segment / np.dot(segment, segment), 0, 1)
-        return np.linalg.norm(points - start - position[:, None] * segment, axis=1) - geom.size[0]
-
-    def test_removed_wrist_roll_shell_is_covered_through_pitch_motion(self):
-        base = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/astro_p2.xml"))
-        revised = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/astro_p2_simplified.xml"))
-        old_data, new_data = mujoco.MjData(base), mujoco.MjData(revised)
-        theta, height = np.meshgrid(np.linspace(0, 2 * np.pi, 24, endpoint=False),
-                                    np.linspace(-1, 1, 13))
-        radial = np.sqrt(1 - height.ravel() ** 2)
-        directions = np.column_stack((radial * np.cos(theta.ravel()),
-                                      radial * np.sin(theta.ravel()), height.ravel()))
-        for angle in (-1.31, 0, 1.31):
-            for side in ("left", "right"):
-                old_data.qpos[base.joint(f"{side}_wrist_pitch_joint").qposadr[0]] = angle
-            new_data.qpos[:] = old_data.qpos
-            mujoco.mj_forward(base, old_data)
-            mujoco.mj_forward(revised, new_data)
-            for side in ("left", "right"):
-                old = base.geom(f"{side}_wrist_roll_shell_capsule_collision")
-                axis = old_data.geom_xmat[old.id].reshape(3, 3)[:, 2]
-                centers = old_data.geom_xpos[old.id] + np.linspace(-old.size[1], old.size[1], 7)[:, None] * axis
-                points = (centers[:, None, :] + old.size[0] * directions[None, :, :]).reshape(-1, 3)
-                distances = []
-                for role in ("forearm", "wrist_pitch"):
-                    geom = revised.geom(f"{side}_{role}_collision")
-                    distances.append(self._capsule_surface_distances(geom, new_data, points))
-                self.assertLessEqual(float(np.minimum(*distances).max()), 1e-9)
-
-    def test_compact_palm_proxy_matches_g1_and_leaves_fingers_outside(self):
-        model = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/astro_p2_simplified.xml"))
-        data = mujoco.MjData(model)
-        mujoco.mj_forward(model, data)
-        source = ET.parse(ROOT / "unitree_g1/unitree_g1_29dof_box_feet.xml")
-        robot = ET.parse(ROOT / "astro_p2/astro_p2_simplified.xml")
-        for side in ("left", "right"):
-            reference = source.find(f".//geom[@name='{side}_hand_collision']")
-            palm = robot.find(f".//geom[@name='{side}_wrist_hand_collision']")
-            self.assertEqual(float(palm.get("size")), float(reference.get("size")))
-            np.testing.assert_array_equal(np.fromstring(palm.get("fromto"), sep=" "),
-                                          np.fromstring(reference.get("fromto"), sep=" "))
-            visual = model.geom(f"{side}_rubber_hand_visual")
-            mesh = int(visual.dataid[0])
-            start = model.mesh_vertadr[mesh]
-            vertices = model.mesh_vert[start:start + model.mesh_vertnum[mesh]]
-            points = vertices @ data.geom_xmat[visual.id].reshape(3, 3).T + data.geom_xpos[visual.id]
-            proxy = model.geom(f"{side}_wrist_hand_collision")
-            distance = self._capsule_surface_distances(proxy, data, points)
-            self.assertTrue(np.any(distance < 0))
-            self.assertTrue(np.any(distance > 0.01))
-            # Palm contact is modeled; extended fingertips deliberately are not.
-            body = model.body(f"{side}_wrist_yaw_link").id
-            local = np.array([[0.08, 0, 0.01], [0.21, 0, 0.01]])
-            probes = local @ data.xmat[body].reshape(3, 3).T + data.xpos[body]
-            distances = self._capsule_surface_distances(proxy, data, probes)
-            self.assertLess(distances[0], 0)
-            self.assertGreater(distances[1], 0)
-
-    def test_arm_geometry_and_hybrid_contact_policy(self):
-        robot = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/astro_p2_simplified.xml"))
-        scene = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/scene_simplified.xml"))
-        retained = set(self._non_arm_colliders(ROOT / "astro_p2/astro_p2.xml"))
-        arms = {robot.geom(i).name for i in range(robot.ngeom)
-                if robot.geom_group[i] == 3 and robot.geom(i).name not in retained}
-        self.assertEqual(len(arms), 10)
-        self.assertEqual(int((robot.geom_group == 3).sum()), 50)
-        for name in arms:
-            self.assertEqual(robot.geom(name).contype[0], 0)
-            self.assertEqual(robot.geom(name).conaffinity[0], 0)
-        self.assertEqual(robot.npair, 0)
-        self.assertEqual(scene.npair, 68)
-        floor = scene.geom("menagerie_floor").id
-        np.testing.assert_array_equal(scene.geom_pos[floor], [0, 0, -0.75])
-        floor_pairs = (scene.pair_geom1 == floor) | (scene.pair_geom2 == floor)
-        self.assertEqual(int(floor_pairs.sum()), 10)
-        self.assertTrue(np.all(scene.pair_dim[floor_pairs] == 3))
-        self.assertTrue(np.all(scene.pair_dim[~floor_pairs] == 1))
-        pairs = {frozenset((scene.geom(int(a)).name, scene.geom(int(b)).name))
-                 for a, b in zip(scene.pair_geom1, scene.pair_geom2)}
-        self.assertEqual(len(pairs), scene.npair)
-        self.assertTrue(all(pair & arms for pair in pairs))
-        for name in arms:
-            self.assertIn(frozenset((name, "menagerie_floor")), pairs)
 
 
 class AstroP2VariantTests(unittest.TestCase):
@@ -388,13 +269,150 @@ class AstroP2VariantTests(unittest.TestCase):
                 a, b = int(joint.dofadr[0]), int(other.dofadr[0])
                 np.testing.assert_array_equal(getattr(rubber, attribute)[a:a+count],
                                               getattr(dex, attribute)[b:b+count])
+        calibrated = {"pelvis_upper_shell_collision", "right_elbow_link_1_capsule_collision"} | {
+            f"{side}_{role}" for side in ("left", "right")
+            for role in ("knee_link_1_capsule_collision", "wrist_pitch_link_1_capsule_collision",
+                         "upper_arm_capsule_collision", "elbow_stop_collision")}
         for i in range(rubber.ngeom):
             geom = rubber.geom(i)
-            if "rubber_hand" in geom.name:
+            if "rubber_hand" in geom.name or geom.name in calibrated:
                 continue
             other = dex.geom(geom.name)
             for attribute in ("type", "size", "pos", "quat", "friction", "contype", "conaffinity"):
-                np.testing.assert_array_equal(getattr(geom, attribute), getattr(other, attribute))
+                if attribute == "quat":
+                    # Manual cleanup of near-zero fromto coordinates changes the
+                    # compiled capsule quaternion by about 2e-12, not its shape.
+                    np.testing.assert_allclose(geom.quat, other.quat, rtol=0, atol=1e-11)
+                else:
+                    np.testing.assert_array_equal(getattr(geom, attribute), getattr(other, attribute))
+
+    def test_default_collision_inventory_and_reference(self):
+        default = self.rubber
+        self.assertEqual(int((default.geom_group == 3).sum()), 52)
+        self.assertEqual(default.nexclude, 2)
+        self.assertEqual(default.npair, 0)
+        self.assertEqual(int((default.geom_group == 1).sum()), 37)
+        colliders = default.geom_group == 3
+        self.assertTrue(np.all(default.geom_contype[colliders] == 1))
+        self.assertTrue(np.all(default.geom_conaffinity[colliders] == 1))
+        visuals = default.geom_group == 1
+        self.assertTrue(np.all(default.geom_contype[visuals] == 0))
+        self.assertTrue(np.all(default.geom_conaffinity[visuals] == 0))
+        state = mujoco.MjData(default)
+        mujoco.mj_forward(default, state)
+        self.assertEqual(state.ncon, 0)
+        scene = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/scene.xml"))
+        for side in ("left", "right"):
+            for angle, expected_contact in ((0, False), (-0.08, True), (2.3, False), (2.44, True)):
+                state = mujoco.MjData(scene)
+                state.qpos[scene.joint(f"{side}_knee_joint").qposadr[0]] = angle
+                mujoco.mj_forward(scene, state)
+                pair = {scene.geom(f"{side}_hip_roll_link_1_capsule_collision").id,
+                        scene.geom(f"{side}_knee_link_1_capsule_collision").id}
+                self.assertEqual(any({c.geom1, c.geom2} == pair for c in state.contact), expected_contact)
+
+    def test_default_upper_arm_shafts_are_continuous_through_yaw(self):
+        model = self.rubber
+        data = mujoco.MjData(model)
+        for side, radius in (("left", 0.037), ("right", 0.039)):
+            shaft = model.geom(f"{side}_upper_arm_capsule_collision")
+            self.assertEqual(model.body(int(shaft.bodyid[0])).name, f"{side}_shoulder_roll_link")
+            self.assertAlmostEqual(shaft.size[0], radius)
+            self.assertEqual(mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM,
+                                              f"{side}_shoulder_roll_link_1_capsule_collision"), -1)
+            # Separate transverse housing remains; axial shaft must be invariant
+            # under shoulder yaw, while following shoulder pitch and roll.
+            self.assertEqual(model.geom(f"{side}_shoulder_roll_link_2_capsule_collision").type[0],
+                             mujoco.mjtGeom.mjGEOM_CAPSULE)
+            for pitch, roll in ((0, 0), (-1, 0.2), (1, -0.2)):
+                for yaw in np.linspace(-1.92, 1.92, 9):
+                    mujoco.mj_resetData(model, data)
+                    for role, angle in (("pitch", pitch), ("roll", roll), ("yaw", yaw)):
+                        data.qpos[model.joint(f"{side}_shoulder_{role}_joint").qposadr[0]] = angle
+                    mujoco.mj_forward(model, data)
+                    body = model.body(f"{side}_shoulder_roll_link").id
+                    frame = data.xmat[body].reshape(3, 3)
+                    half_length = 0.06
+                    expected_center = data.xpos[body] + frame @ np.array([0, 0, -half_length])
+                    np.testing.assert_allclose(data.geom_xpos[shaft.id], expected_center, atol=1e-12)
+                    axis = data.geom_xmat[shaft.id].reshape(3, 3)[:, 2]
+                    np.testing.assert_allclose(np.abs(axis @ frame[:, 2]), 1, atol=1e-12)
+                    self.assertAlmostEqual(shaft.size[1], half_length)
+            joint = model.joint(f"{side}_elbow_joint")
+            self.assertTrue(joint.limited[0])
+            np.testing.assert_array_equal(joint.range, [-0.52, 1.66])
+
+    def test_default_automatic_elbow_contacts(self):
+        model = self.rubber
+        self.assertEqual(model.npair, 0)
+        for side in ("left", "right"):
+            upper = model.geom(f"{side}_upper_arm_capsule_collision")
+            forearm = model.geom(f"{side}_elbow_link_1_capsule_collision")
+            joint = model.joint(f"{side}_elbow_joint")
+            body = int(forearm.bodyid[0])
+            self.assertEqual(model.body_parentid[model.body_parentid[body]], upper.bodyid[0])
+            self.assertEqual((upper.contype[0], upper.conaffinity[0]), (1, 1))
+            selected = {forearm.id, upper.id}
+            self.assertEqual(mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM,
+                                              f"{side}_elbow_stop_collision"), -1)
+            for yaw in (-1.92, 0, 1.92):
+                for angle, contact_expected in ((1.66, False), (0, False), (-0.15, False),
+                                                 (-0.28, False), (-0.35, False),
+                                                 (-0.4, side == "right"),
+                                                 (-0.48, side == "right"), (-0.5, True), (-0.52, True)):
+                    data = mujoco.MjData(model)
+                    data.qpos[joint.qposadr[0]] = angle
+                    data.qpos[model.joint(f"{side}_shoulder_yaw_joint").qposadr[0]] = yaw
+                    mujoco.mj_forward(model, data)
+                    contacts = [c for c in data.contact if {c.geom1, c.geom2} == selected]
+                    self.assertEqual(bool(contacts), contact_expected)
+                    self.assertTrue(all(c.dim == 3 for c in contacts))
+                    if angle == -0.5:
+                        # Native angle limit is not active here: contact must provide resistance.
+                        self.assertGreater(data.qfrc_constraint[joint.dofadr[0]], 0)
+
+    def test_default_elbow_stop_resists_folding_motion(self):
+        model = self.rubber
+        # Diagnostic only: no gravity or controller; native model file is untouched.
+        model.opt.gravity[:] = 0
+        for side in ("left", "right"):
+            joint = model.joint(f"{side}_elbow_joint")
+            for speed in (-1, -3):
+                data = mujoco.MjData(model)
+                data.qpos[joint.qposadr[0]] = -0.3
+                data.qvel[joint.dofadr[0]] = speed
+                minimum = 0
+                contacted = False
+                reversed_motion = False
+                target = f"{side}_elbow_link_1_capsule_collision"
+                selected = {model.geom(target).id,
+                            model.geom(f"{side}_upper_arm_capsule_collision").id}
+                for _ in range(150):
+                    mujoco.mj_forward(model, data)
+                    minimum = min(minimum, float(data.qpos[joint.qposadr[0]]))
+                    reversed_motion |= data.qvel[joint.dofadr[0]] > 0
+                    contacted |= any({c.geom1, c.geom2} == selected for c in data.contact)
+                    mujoco.mj_step(model, data)
+                self.assertTrue(contacted)
+                self.assertGreater(minimum, joint.range[0])
+                self.assertTrue(reversed_motion)
+                self.assertTrue(np.isfinite(data.qpos).all())
+                self.assertTrue(np.isfinite(data.qvel).all())
+                self.assertFalse(np.any(data.warning.number))
+
+    def test_left_overlapping_capsules_generate_actual_contact(self):
+        model = self.rubber
+        data = mujoco.MjData(model)
+        joint = model.joint("left_elbow_joint")
+        data.qpos[joint.qposadr[0]] = -0.5
+        mujoco.mj_forward(model, data)
+        upper = model.geom("left_upper_arm_capsule_collision").id
+        forearm = model.geom("left_elbow_link_1_capsule_collision").id
+        self.assertLess(mujoco.mj_geomDistance(model, data, upper, forearm, 1, None), 0)
+        self.assertTrue(any({c.geom1, c.geom2} == {upper, forearm} for c in data.contact))
+        self.assertGreater(data.qfrc_constraint[joint.dofadr[0]], 0)
+        self.assertEqual(mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM,
+                                          "left_elbow_stop_collision"), -1)
 
     def test_native_rubber_meshes_and_inertias_match_astro_sources(self):
         record = json.loads((ROOT / "astro_p2/provenance/rubber_hands.json").read_text())

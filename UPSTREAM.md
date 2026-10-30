@@ -22,23 +22,20 @@ with each family; see [LICENSING.md](LICENSING.md).
 
 ## Native ownership and preservation
 
-- The active collection has eight models across four families. Astro P1's two
+- The active collection has seven models across four families. Astro P1's two
   models are retained in `LEGACY_MODEL_MAP` and receive native checks until
   later retirement; they are excluded from the active gallery.
-- Astro P2 is one family with three native model/scene pairs, like upstream G1:
-  the default fixed-head 29-joint Astro P2, and the same refined body with
-  14 additional Dex3-1 finger joints, plus an arm-optimized default-hand collision
-  configuration. The old three 30-DoF P2 choices are retired.
-- Its additional arm-optimized model retains every default non-arm collider,
-  including pelvis, legs, feet, torso and head, and all visual meshes. Only arm
-  and hand collision shapes are reduced. Its hybrid policy preserves automatic
-  non-arm contacts and explicitly selects optimized-arm interactions. It does
-  not copy G1's servos or solver tuning, and does not claim MJX runtime
-  compatibility. Existing Astro models/scenes/assets remain byte-identical.
+- Astro P2 is one family with two maintained model/scene pairs: default
+  fixed-head 29-joint Astro P2 and the articulated Dex3-1 alternative. The
+  maintainer-approved default retains all assets/physics and uses 52 collision
+  primitives with automatic elbow contacts. The separate simplified model is
+  retired under `astro_p2/provenance/retired_simplified/`, with frozen source
+  hashes and licensing. It is excluded from the active catalog and tests.
+  No MJX runtime compatibility is claimed. The old 30-DoF P2 choices remain retired.
 - The rubber model restores the original Astro hand meshes, fixed-joint frames,
-  hand masses/inertias, and capsule collision envelopes. The G1 hand trial was
+  hand masses/inertias; its collision envelopes were subsequently tuned by the maintainer. The G1 hand trial was
   rejected for fit; its source evidence is retained separately. The refined
-  Astro body and Dex3-1 variant remain unchanged. See the
+  Astro body physics and Dex3-1 variant remain unchanged. See the
   [restoration record](docs/astro-native-hand-restoration.md).
 - Family-root XML is canonical and directly maintained, with actual local
   assets. No generator overwrites native edits. Astro conversion/refinement

@@ -21,7 +21,7 @@ The additional pair is `astro_p2/astro_p2_simplified.xml` and
 Its robot collision count is **27 instead of 60**: 23 capsules, two spheres and
 two boxes. All 37 visual meshes and their appearance remain the default Astro.
 Dimensions and attachments are recorded in
-[the derivation receipt](../astro_p2/provenance/simplified_collisions.json).
+[the derivation receipt](../astro_p2/provenance/retired_simplified/simplified_collisions.json).
 
 The 27 roles follow the compact G1 arrangement, using Astro-specific dimensions:
 

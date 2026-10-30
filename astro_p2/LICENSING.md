@@ -8,10 +8,9 @@ Astro body shared by `astro_p2.xml` and `astro_p2_with_hands.xml`, the default
 model's original Astro hand material, and the corresponding Astro-origin
 source descriptions retained under `provenance/`.
 
-The additional `astro_p2_simplified.xml` robot description is also Astro
-Apache-2.0 material. It reuses the same Astro-origin visual assets and physical
-body, with a separately authored arm/hand collision envelope and original
-non-arm colliders.
+The retired simplified robot snapshot under
+[provenance/retired_simplified/](provenance/retired_simplified/README.md) also
+remains Astro Apache-2.0 material. Retirement does not change its asset terms.
 
 ## Third-party hand material
 
@@ -27,9 +26,10 @@ under `provenance/rubber_hand_sources/`; they are not part of the default model.
 Presentation scenes retain their separate
 [upstream G1 notice](../LICENSES/MuJoCo-Menagerie-G1.txt).
 
-## Arm-optimized scene contact selection
+## Retired arm-optimized scene contact selection
 
-`scene_simplified.xml` adapts explicit arm contact selection from MuJoCo
+The retired `provenance/retired_simplified/scene_simplified.xml` snapshot adapts
+explicit arm contact selection from MuJoCo
 Menagerie's `unitree_g1/scene_mjx.xml` at revision
 `f3b6013629c7b94f8ee93fd977b161fa8350f9bc`, retaining its actual
 [BSD-3-Clause notice](LICENSE.Menagerie). Geom references and the floor datum
