@@ -28,7 +28,7 @@ CI is configured for Python 3.12):
   changed. The permanent suite also compares nine canonical models with the
   retained import snapshots, excluding the legacy G1 presentation plane.
 - `git diff --check` passes. Native source-distribution contents and relative
-  runtime links are checked separately below.
+  runtime links also passed the source-archive check below.
 
 The temporary hash/compiled-array snapshots are validation artifacts under
 `/tmp`, not a new runtime metadata or revision system.
@@ -47,8 +47,63 @@ include/mesh loading, editor save targets, URDF parity, and MJX were not certifi
 by these native checks. Short stepping is not a stable controller, hardware
 fidelity, or exhaustive contact-quality test.
 
+## Source archive
+
+`UV_CACHE_DIR=/tmp/menagerie-x-uv-cache uv build --sdist --out-dir
+/tmp/menagerie-x-native-dist` succeeds. The extracted source archive loads all
+22 native model/scene entry points. Relative runtime aliases are retained;
+local floating-MJCF files, `.local/`, and `retargeting/` experiments are excluded.
+
 ## Branch review
 
-Matt's code-review skill will review the committed branch against the fixed
-baseline on independent Standards and Spec axes. Findings and fixes must be
-recorded here before the local merge.
+Reviewed commit: `93f884c` on `codex/native-menagerie-refactor`.
+Fixed baseline: `27d9e7c0f3d58961f97af8cdb03acffa6b07a878`.
+Diff command: `git diff 27d9e7c0f3d58961f97af8cdb03acffa6b07a878...HEAD`.
+The originating spec is ADR 0011 and the simplified implementation outline.
+Two independent fresh-context subagents used
+[Matt's code-review skill](/home/android/.codex/plugins/cache/mattpocock/mattpocock-skills/1.3.2/skills/engineering/code-review/SKILL.md).
+Both axes found no actionable issues, so no corrective code change was needed.
+The review did not reinstate any deferred compatibility requirement.
+
+## Standards
+
+No actionable Standards findings.
+
+The diff follows `CONTRIBUTING.md` and `UPSTREAM.md`: native XML is directly
+maintained, scenes include sibling models, original assets/source XML remain
+unchanged, family changelogs document the migration, and native validation is
+independent of deferred application compatibility.
+
+No baseline smells warrant changes. Explicit catalog maps and repeated family
+documentation follow the repository's stated upstream alignment and
+standalone-family conventions.
+
+Read-only verification: inspected the implementation, removed generator/tests,
+family documentation, and pinned upstream catalog structure;
+`git diff --check` passes.
+
+Standards: **0 documented-standard violations; 0 actionable judgement-call
+findings.**
+
+## Spec
+
+No actionable Spec findings.
+
+The diff implements the simplified target: directly maintained family-root XML,
+explicit upstream-style native catalog, independent scene includes, relative
+family-local dependencies, and retirement of mirror regeneration. Astro 29's
+existing MJCF is explicitly inventoried with a new scene; its legacy URDF-only
+manifest entry remains unchanged.
+
+The reviewer independently ran
+`UV_CACHE_DIR=/tmp/menagerie-x-uv-cache make all`: all five tests passed,
+covering all 11 models and 11 scenes, short simulation, keyframe reset,
+copied-family portability, and comparisons against retained imports. The family
+diff confirms existing XML, meshes, URDFs, provenance, and notices remain
+unchanged. Application code and the legacy manifest are unchanged; Workbench,
+URDF compatibility, and MJX remain deferred.
+
+No missing or partial requirements, unasked scope expansion, or incorrectly
+implemented requirements identified.
+
+Review totals: **Standards 0 findings (worst: none); Spec 0 findings (worst: none).**
