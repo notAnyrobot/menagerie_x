@@ -2,6 +2,10 @@
 
 ## 2026-10-30
 
+- Label the articulated variant Astro P2 with hands and color its 16 hand visual
+  meshes silver. Preserve hand geometry, dynamics, collision geoms, and the
+  saved `fist` pose; refresh its native reference-pose preview.
+
 - Release Astro P2 body/default-model material under Apache-2.0, retaining
   BSD-3-Clause terms for Unitree Dex3-1 hands. Label the default model simply
   Astro P2 in the gallery, family README, and application metadata.

@@ -13,17 +13,18 @@ This family contains one fixed-head Astro P2 body with two hand configurations,
 following the sibling-model and scene pattern used by Unitree G1. Both variants
 share the latest refined **29-DoF body**. The default Astro P2 model has 29
 DoFs; the articulated Unitree Dex3-1 alternative adds 14 finger DoFs for
-**43 total**.
+**43 total**. The articulated configuration is labeled **Astro P2 with hands**;
+its Dex3-1 visual meshes use silver coloring to match the Astro body.
 
 <p float="left">
   <img src="astro_p2.png" alt="Astro P2" width="400">
-  <img src="astro_p2_with_hands.png" alt="Astro P2 with Dex3-1 hands" width="400">
+  <img src="astro_p2_with_hands.png" alt="Astro P2 with hands" width="400">
 </p>
 
 | Model | Body DoFs | Hand DoFs | Scene |
 | --- | --- | --- | --- |
 | [astro_p2.xml](astro_p2.xml) — Astro P2 | 29 | 0 | [scene.xml](scene.xml) |
-| [astro_p2_with_hands.xml](astro_p2_with_hands.xml) — Dex3-1 | 29 | 14 | [scene_with_hands.xml](scene_with_hands.xml) |
+| [astro_p2_with_hands.xml](astro_p2_with_hands.xml) — Astro P2 with hands | 29 | 14 | [scene_with_hands.xml](scene_with_hands.xml) |
 
 DoF counts exclude the floating base. Previews show native reference
 initialization without simulation stepping, with collision overlays hidden.

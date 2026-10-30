@@ -138,7 +138,7 @@
         "dex3_1": {
           "base_mode": "free",
           "dof": 43,
-          "label": "29 body + 14 Dex3-1 finger DoF",
+          "label": "Astro P2 with hands (43 DoF)",
           "mjcf": "astro_p2_with_hands.xml",
           "urdf": null,
           "notes": "Preserved Dex3-1 sample mounting and native fist keyframe; same refined 29-joint body.",

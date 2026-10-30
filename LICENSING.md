@@ -10,10 +10,11 @@ this does not apply one license to the whole collection.
 | Presentation scenes derived from upstream Unitree G1 | See [retained upstream G1 license](LICENSES/MuJoCo-Menagerie-G1.txt). |
 | Astro P2 body and default model | [Apache-2.0](astro_p2/LICENSE); includes Astro-origin meshes and descriptions. |
 | Astro P1 legacy assets | No explicit license in the retained bundle; see [status](astro_p1/LICENSING.md). |
-| Astro P2 with Dex3-1 hands | Apache-2.0 Astro body plus BSD-3-Clause Unitree hand material; see [scope](astro_p2/LICENSING.md). |
+| Astro P2 with hands | Apache-2.0 Astro body plus BSD-3-Clause Unitree hand material; see [scope](astro_p2/LICENSING.md). |
 | Atom P3 | Internal source recorded; redistribution terms unresolved. |
 | SOMA-23 | ProtoMotions Apache-2.0. |
 | Unitree G1 | Unitree BSD-3-Clause plus ProtoMotions Apache-2.0 for its retargeting material. |
+| Unitree G1 primitive configuration from MuJoCo Menagerie | BSD-3-Clause; see [upstream notice](unitree_g1/LICENSE.Menagerie) and [family scope](unitree_g1/LICENSING.md). |
 
 Family `LICENSE.*`, `NOTICE.*`, source snapshots, `SOURCE.json`, and manifest
 provenance remain in place. [UPSTREAM.md](UPSTREAM.md) identifies reused scaffold

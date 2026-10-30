@@ -109,6 +109,48 @@ class ModelTests(unittest.TestCase):
                     np.testing.assert_array_equal(getattr(model, attribute), getattr(source_model, attribute)[robot_geoms])
 
 
+class G1PrimitiveTests(unittest.TestCase):
+    def test_upstream_sources_and_assets_are_preserved(self):
+        family = ROOT / "unitree_g1"
+        record = json.loads((family / "provenance/menagerie_mjx.json").read_text())
+        for item in record["files"] + record["assets"]:
+            with self.subTest(path=item["file"]):
+                payload = (family / item["file"]).read_bytes()
+                self.assertEqual(hashlib.sha256(payload).hexdigest(), item["sha256"])
+
+    def test_primitive_colliders_and_complete_scene_contacts(self):
+        robot = mujoco.MjModel.from_xml_path(str(ROOT / "unitree_g1/g1_mjx.xml"))
+        scene = mujoco.MjModel.from_xml_path(str(ROOT / "unitree_g1/scene_mjx.xml"))
+        self.assertEqual((robot.nq, robot.nv, robot.nu), (36, 35, 29))
+        visuals = robot.geom_group == 2
+        colliders = np.isin(robot.geom_group, [3, 4])
+        self.assertEqual(int(visuals.sum()), 35)
+        self.assertTrue(np.all(robot.geom_type[visuals] == mujoco.mjtGeom.mjGEOM_MESH))
+        self.assertEqual(int(colliders.sum()), 27)
+        for kind, count in ((mujoco.mjtGeom.mjGEOM_CAPSULE, 23),
+                            (mujoco.mjtGeom.mjGEOM_SPHERE, 2),
+                            (mujoco.mjtGeom.mjGEOM_BOX, 2)):
+            self.assertEqual(int((robot.geom_type[colliders] == kind).sum()), count)
+        self.assertFalse(np.any(robot.geom_contype))
+        self.assertFalse(np.any(robot.geom_conaffinity))
+        self.assertEqual(robot.npair, 0)
+        self.assertEqual(scene.npair, 49)
+        floor = scene.geom("floor").id
+        floor_pairs = (scene.pair_geom1 == floor) | (scene.pair_geom2 == floor)
+        self.assertEqual(int(floor_pairs.sum()), 23)
+        self.assertTrue(np.all(scene.pair_dim[floor_pairs] == 3))
+        self.assertEqual(int((~floor_pairs).sum()), 26)
+        self.assertTrue(np.all(scene.pair_dim[~floor_pairs] == 1))
+        self.assertEqual(robot.nkey, 0)
+        self.assertEqual([scene.key(i).name for i in range(scene.nkey)], ["home", "knees_bent"])
+        self.assertAlmostEqual(robot.opt.timestep, 0.004)
+        # Position-servo feedback distinguishes this variant from the retained
+        # torque-motor models even though they share 29 body joint names.
+        self.assertTrue(np.all(robot.actuator_biastype == mujoco.mjtBias.mjBIAS_AFFINE))
+        np.testing.assert_array_equal(robot.actuator_biasprm[:, 1], -robot.actuator_gainprm[:, 0])
+        np.testing.assert_array_equal(robot.actuator_biasprm[:, 2], np.full(robot.nu, -2.0))
+
+
 class AstroP2VariantTests(unittest.TestCase):
     def setUp(self):
         self.rubber = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/astro_p2.xml"))

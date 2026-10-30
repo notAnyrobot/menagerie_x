@@ -2,6 +2,13 @@
 
 ## 2026-10-30
 
+- Label the articulated Astro variant Astro P2 with hands and render its hand
+  meshes in silver. Preserve its dynamics, collisions and source meshes.
+- Add MuJoCo Menagerie's G1 primitive configuration as a separate native model:
+  27 collision primitives, 49 scene contact pairs, position servos and saved
+  poses. Preserve the existing G1 variants; MJX runtime support stays deferred.
+  The active collection now has seven models across four families.
+
 - Release Astro P2 body/default-model material under Apache-2.0, retaining
   BSD-3-Clause terms for Unitree Dex3-1 hands. Label the default model simply
   Astro P2 in the gallery, family README, and application metadata.
