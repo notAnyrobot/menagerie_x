@@ -39,3 +39,31 @@ identical to the prior model; Dex model, scene, and preview are byte-identical.
 All 40 retained source records and 501 preexisting local files remain unchanged.
 Original Astro meshes are byte-identical to their source Git blobs. The updated
 preview was visually inspected, and 75 active-document links/anchors resolve.
+
+## Independent branch review
+
+Two fresh-context agents used Matt's code-review skill on commit `0ee75b7`
+against fixed baseline `899a43f7bcf1454d14504563d7f5473a7389e98f`.
+Diff: `git diff 899a43f7bcf1454d14504563d7f5473a7389e98f...HEAD`.
+
+## Standards
+
+No Standards findings. The diff follows CONTRIBUTING.md's family-local assets,
+direct native XML maintenance, retained source evidence, licensing notices,
+and family changelog requirements. No actionable baseline smells were found.
+Both restored STLs and the retained Astro URDF are byte-identical to `fcbb3f2`,
+with matching recorded hashes. The rejected G1 record preserves the baseline
+record exactly. Source fixed-joint translations and collision dimensions match
+the restored definitions and documented capsule conversion.
+
+## Spec
+
+No actionable Spec findings. The amended requirement to restore Astro's
+original meshes, inertias, fixed frames, and collision envelopes is implemented,
+while preserving the refined 29-DoF body and Dex3-1 alternative. Independently
+verified original mesh/URDF bytes; source COMs, colors, masses, and full inertia
+tensors; wrist-local capsule endpoints; structural equality of all non-hand XML;
+and current-versus-historical documentation. No missing requirements, scope
+expansion, or incorrect implementation was found.
+
+Review totals: **Standards 0 findings (worst: none); Spec 0 findings (worst: none).**
