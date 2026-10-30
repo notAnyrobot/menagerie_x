@@ -1,0 +1,10 @@
+# Adapted from MuJoCo Menagerie's local XML/generated-file checks.
+repos:
+  - repo: local
+    hooks:
+      - id: native-entrypoints
+        name: Check native model and scene entrypoints
+        entry: uv run --extra dev python scripts/sync-menagerie.py --check
+        language: system
+        pass_filenames: false
+        files: '(^manifest\.json$|\.xml$|^catalog\.py$|^scripts/sync-menagerie\.py$)'

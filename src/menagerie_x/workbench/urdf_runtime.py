@@ -56,6 +56,7 @@ def _rewrite_meshes(root: ET.Element, source: Path) -> None:
     asset_root = source.parent.resolve()
     if not (asset_root / "meshes").is_dir():
         asset_root = asset_root.parent
+    mesh_root = (asset_root / "meshes").resolve()
     for mesh in root.findall(".//mesh"):
         filename = mesh.get("filename")
         if not filename:
@@ -66,8 +67,8 @@ def _rewrite_meshes(root: ET.Element, source: Path) -> None:
             # A few vendor URDFs carry a package prefix while retaining their
             # assets in the edition's meshes sibling.  Resolve by basename,
             # but never accept a path outside that packaged directory.
-            candidate = (asset_root / "meshes" / relative.name).resolve()
-        if not candidate.is_file() or not candidate.is_relative_to(asset_root / "meshes"):
+            candidate = (mesh_root / relative.name).resolve()
+        if not candidate.is_file() or not candidate.is_relative_to(mesh_root):
             raise UrdfRuntimeError(f"URDF mesh is not a packaged asset: {filename}")
         mesh.set("filename", str(candidate))
 

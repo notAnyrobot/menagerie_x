@@ -125,16 +125,19 @@ def default_robot_root() -> Path:
 
 def _resolve_asset_root(root: Path | None = None) -> Path:
     if root is None:
-        checkout_assets = package_root().parent.parent / "robots"
+        checkout_assets = package_root().parent.parent
         if (checkout_assets / "manifest.json").is_file():
             return checkout_assets.resolve()
+        # Catalogs created before the top-level Menagerie layout.
+        if (checkout_assets / "robots" / "manifest.json").is_file():
+            return (checkout_assets / "robots" / "manifest.json").resolve().parent
         root = Path.cwd()
     resolved = root.resolve()
     for candidate in (resolved, *resolved.parents):
         if (candidate / "manifest.json").is_file():
-            return candidate
+            return (candidate / "manifest.json").resolve().parent
         if (candidate / "robots" / "manifest.json").is_file():
-            return candidate / "robots"
+            return (candidate / "robots" / "manifest.json").resolve().parent
     return resolved
 
 
@@ -151,7 +154,7 @@ def load_manifest(root: Path | None = None) -> dict[str, Any]:
     try:
         return json.loads(paths.manifest_path.read_text(encoding="utf-8"))
     except FileNotFoundError as exc:
-        raise AssetError(f"manifest does not exist: {paths.manifest_path}; pass --root with a Menagerie checkout or robots directory") from exc
+        raise AssetError(f"manifest does not exist: {paths.manifest_path}; pass --root with a Menagerie checkout") from exc
     except json.JSONDecodeError as exc:
         raise AssetError(f"manifest is not valid JSON: {paths.manifest_path}") from exc
 
@@ -273,11 +276,16 @@ def validate_assets(root: Path | None = None) -> list[str]:
     if not isinstance(raw_variants, dict) or not raw_variants:
         errors.append("manifest must define a non-empty variants object")
     else:
-        excluded_directories = {"scenes", "terrains", "__pycache__"}
+        # Model folders share the checkout with tooling. Hidden workspaces and
+        # repository infrastructure are not robot families.
+        excluded_directories = {
+            "scenes", "terrains", "__pycache__", "src", "tests", "test",
+            "docs", "scripts", "robots", "retargeting", "dist", "build", "LICENSES",
+        }
         asset_directories = {
             directory.name
             for directory in paths.root.iterdir()
-            if directory.is_dir() and directory.name not in excluded_directories
+            if directory.is_dir() and not directory.name.startswith(".") and directory.name not in excluded_directories
         }
         declared_variants = set(raw_variants)
         for missing in sorted(asset_directories - declared_variants):

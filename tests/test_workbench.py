@@ -79,7 +79,7 @@ class NativeViewerProcessManagerTests(unittest.TestCase):
             self.processes.append(process)
             return process
 
-        self.manager = NativeViewerProcessManager(ROOT / "robots", factory)
+        self.manager = NativeViewerProcessManager(ROOT, factory)
         self.variant = variants(ROOT)["astro_p2"]
         self.source = self.variant.mjcf
 
@@ -93,7 +93,7 @@ class NativeViewerProcessManagerTests(unittest.TestCase):
         self.assertEqual(status["launch"]["source"], str(self.source.resolve()))
         command = self.calls[0][0][0]
         self.assertIsNot(self.calls[0][1]["stderr"], subprocess.PIPE)
-        self.assertEqual(command[:5], [sys.executable, "-m", "menagerie_x.cli", "--root", str((ROOT / "robots").resolve())])
+        self.assertEqual(command[:5], [sys.executable, "-m", "menagerie_x.cli", "--root", str((ROOT).resolve())])
         self.assertEqual(command[-2:], ["--mjcf", str(self.source.resolve())])
         with self.assertRaises(NativeViewerAlreadyRunningError):
             self.manager.launch(self.variant, {"id": "authorized"}, self.variant.mjcf)
@@ -157,7 +157,7 @@ class NativeViewerEndpointTests(unittest.TestCase):
         _, editions = self._request("/api/robots/astro_p2/editions")
         edition = editions["editions"][0]
         resolver = object.__new__(WorkbenchRequestHandler)
-        resolver.asset_root = ROOT / "robots"
+        resolver.asset_root = ROOT
         variant = variants(ROOT)["astro_p2"]
         for record in editions["editions"]:
             _record, source = resolver._edition(variant, record["id"])
@@ -294,7 +294,7 @@ class WorkbenchRestartEndpointTests(unittest.TestCase):
         self.assertTrue(self.restarted.wait(1))
         command = self.commands[0]
         self.assertEqual(command[:3], [sys.executable, "-m", "menagerie_x.cli"])
-        self.assertEqual(command[3:7], ["--root", str((ROOT / "robots").resolve()), "workbench", "--host"])
+        self.assertEqual(command[3:7], ["--root", str((ROOT).resolve()), "workbench", "--host"])
         self.assertEqual(command[-2:], ["--port", str(self.server.server_address[1])])
 
 

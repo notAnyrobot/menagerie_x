@@ -94,7 +94,7 @@ class UrdfCollisionExportTests(unittest.TestCase):
             variant,
             variant.mjcf,
             edition_id="astro_p2_primitive_collision",
-            asset_root=ROOT / "robots",
+            asset_root=ROOT,
         )
         root = ET.fromstring(result.content)
         self.assertEqual(len(root.findall(".//collision")), 125)

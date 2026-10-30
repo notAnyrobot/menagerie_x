@@ -12,7 +12,7 @@ Unitree identifies Dex3-1 as G1's optional three-finger dexterous hand. Geometry
 internal transforms, axes, joint limits, effort/velocity fields and inertias are
 from the official standalone Dex3-1 URDFs at Unitree ROS revision
 `5994d4faef0a9cadd3287f8de0199a67eeb2a259`. See
-[the source review](../../docs/robots/astro-three-finger-hand-research.md) for
+[the source review](../docs/robots/astro-three-finger-hand-research.md) for
 primary citations and signed joint limits. Vendor URDF snapshots are retained
 verbatim in `upstream/` as source records; their original mesh paths are relative
 to the upstream tree. The assembled root-level URDF and MJCF are runnable here.
@@ -79,7 +79,7 @@ From the repository root:
 
 ```sh
 .venv/bin/python scripts/build-astro-dex3-variant.py
-.venv/bin/python scripts/build-astro-mjcf.py --bundle robots/astro_p2_43dof_dex3_1 --catalog-paths
+.venv/bin/python scripts/build-astro-mjcf.py --bundle astro_p2_43dof_dex3_1 --catalog-paths
 .venv/bin/python scripts/validate-astro-dex3-variant.py
 MUJOCO_GL=egl .venv/bin/python scripts/render-astro-dex3-preview.py
 ```
@@ -111,3 +111,13 @@ The MJCF has additional shin/foot and palm/thumb-root contact refinements, while
 The MJCF-only refinement also improves torso, upper-arm and wrist coverage; see `MJCF.md` and `mjcf-refinement.json` for geometry changes and static contact checks.
 
 The latest MJCF provides a `fist` keyframe and `fist-pose.json` for matching hand closure. The review viewer loads it by default and exposes linked hand closure; see `MJCF.md` and `mjcf-fist-review.json` for palm changes and validation.
+
+## Menagerie entry points
+
+| Edition | Internal DOF | Descriptions |
+| --- | --- | --- |
+| `43dof_primitive_collision` | 43 | [URDF](astro_p2_43dof_dex3_1.urdf) · [source MJCF](astro_p2_43dof_dex3_1.xml) · [model](astro_p2_43dof_dex3_1.xml) / [scene](scene.xml) |
+
+Mesh files live in `assets/`; `meshes/` is a relative compatibility link. Legacy source paths remain authoritative for the CLI, Workbench, and provenance hashes. Flat MJCF entry points and `scene*.xml` are maintained by `scripts/sync-menagerie.py`; scenes include the model and add presentation lighting and one ground plane. Where a source uses a zero-height robot datum, the floor is lowered by the catalog standing height so the original robot pose is preserved.
+
+See [LICENSING.md](LICENSING.md) for asset-specific terms and unresolved provenance.

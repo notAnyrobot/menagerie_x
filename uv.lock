@@ -496,6 +496,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+dev = [
+    { name = "lxml" },
+]
 viz = [
     { name = "trimesh" },
     { name = "viser" },
@@ -503,11 +506,12 @@ viz = [
 
 [package.metadata]
 requires-dist = [
+    { name = "lxml", marker = "extra == 'dev'", specifier = ">=6.0.0" },
     { name = "mujoco", specifier = "==3.11.0" },
     { name = "trimesh", marker = "extra == 'viz'", specifier = ">=4.0.0" },
     { name = "viser", marker = "extra == 'viz'", specifier = ">=1.0.0" },
 ]
-provides-extras = ["viz"]
+provides-extras = ["dev", "viz"]
 
 [[package]]
 name = "msgspec"

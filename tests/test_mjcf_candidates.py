@@ -1,3 +1,4 @@
+from catalog_fixture import copy_catalog
 import json
 import pathlib
 import shutil
@@ -19,14 +20,14 @@ from menagerie_x.commands.mjcf import (
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-ASSETS = ROOT / "robots"
+ASSETS = ROOT
 
 
 class MjcfCandidateTests(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.assets = pathlib.Path(self.directory.name) / "assets"
-        shutil.copytree(ASSETS, self.assets)
+        copy_catalog(ASSETS, self.assets)
         manifest_path = self.assets / "manifest.json"
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         edition = manifest["variants"]["astro_p2"]["editions"]["30dof_primitive_collision"]

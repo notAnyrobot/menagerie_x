@@ -18,9 +18,9 @@ from menagerie_x.workbench.mjcf_collisions import (
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "robots" / "astro_p1" / "mjcf" / "astro_p1_30dof.xml"
-CANDIDATE = ROOT / "robots" / "astro_p2" / "mjcf" / "astro_p2_30dof_mesh_collision.xml"
-HALFWAY = ROOT / "robots" / "astro_p2" / "mjcf" / "astro_p2_30dof_primitive_collision_halfway.xml"
+SOURCE = ROOT / "astro_p1" / "mjcf" / "astro_p1_30dof.xml"
+CANDIDATE = ROOT / "astro_p2" / "mjcf" / "astro_p2_30dof_mesh_collision.xml"
+HALFWAY = ROOT / "astro_p2" / "mjcf" / "astro_p2_30dof_primitive_collision_halfway.xml"
 
 
 class MjcfCollisionDraftTests(unittest.TestCase):

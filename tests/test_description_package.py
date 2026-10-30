@@ -11,7 +11,7 @@ from menagerie_x.cli import main as cli_main
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-ASSET_ROOT = ROOT / "robots"
+ASSET_ROOT = ROOT
 ROBOT_ROOT = ASSET_ROOT / "astro_p1"
 
 

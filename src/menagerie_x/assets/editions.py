@@ -142,6 +142,9 @@ def list_mjcf_editions(variant: Variant, root: Path | None = None) -> list[dict[
     if not directory.is_dir():
         return records
     for path in sorted(directory.glob("*.xml"), key=lambda item: item.name.casefold()):
+        # Standalone presentation scenes are not editable robot descriptions.
+        if path.name.startswith("scene"):
+            continue
         if path.resolve() in canonical_descriptions and path.resolve() != default:
             continue
         try:

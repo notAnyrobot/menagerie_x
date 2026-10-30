@@ -103,7 +103,7 @@ uv run menagerie_x pd-tool --no-browser
 
 The PD table panel loads the `Joint Parameters` table below. Adjust natural frequency `f` and damping ratio per joint group, then preview and apply changes to this document.
 
-The `Keyframe Heights` panel loads preset poses from `robots/astro_p1/constants.py` and uses the legacy P1 MuJoCo model to compute ground-aligned heights for:
+The `Keyframe Heights` panel loads preset poses from `astro_p1/constants.py` and uses the legacy P1 MuJoCo model to compute ground-aligned heights for:
 
 | Body | Source link |
 |---|---|
@@ -191,9 +191,9 @@ Default root height: **0.75 m**
 
 | Purpose | File |
 |---|---|
-| Simulation (legacy MJCF, 30dof edition) | `robots/astro_p1/mjcf/astro_p1_30dof.xml` |
-| Retargeting (URDF, 30dof edition) | `robots/astro_p1/urdf/astro_p1_30dof.urdf` |
-| Racket edition (URDF) | `robots/astro_p1/urdf/astro_p1_with_racket.urdf` |
+| Simulation (legacy MJCF, 30dof edition) | `astro_p1/mjcf/astro_p1_30dof.xml` |
+| Retargeting (URDF, 30dof edition) | `astro_p1/urdf/astro_p1_30dof.urdf` |
+| Racket edition (URDF) | `astro_p1/urdf/astro_p1_with_racket.urdf` |
 
 ## URDF Capsule Collision Extension
 
@@ -213,7 +213,7 @@ Generate an extended URDF from the MJCF capsule geoms:
 uv run menagerie_x urdf-capsules --output /tmp/astro_p1_capsules.urdf
 ```
 
-The generator keeps the existing URDF content and appends extension capsule collision elements to matching links. Use the generated file only with tools that explicitly support `format="astro-extension-v1"`; keep `robots/astro_p1/urdf/astro_p1_30dof.urdf` as the standard mesh-collision URDF.
+The generator keeps the existing URDF content and appends extension capsule collision elements to matching links. Use the generated file only with tools that explicitly support `format="astro-extension-v1"`; keep `astro_p1/urdf/astro_p1_30dof.urdf` as the standard mesh-collision URDF.
 
 ## Simulator Parameters
 

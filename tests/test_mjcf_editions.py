@@ -1,3 +1,4 @@
+from catalog_fixture import copy_catalog
 import pathlib
 import shutil
 import tempfile
@@ -19,14 +20,14 @@ from menagerie_x.assets import (
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-ASSETS = ROOT / "robots"
+ASSETS = ROOT
 
 
 class MjcfEditionWorkspaceTests(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.assets = pathlib.Path(self.directory.name) / "assets"
-        shutil.copytree(ASSETS, self.assets)
+        copy_catalog(ASSETS, self.assets)
 
     def tearDown(self):
         self.directory.cleanup()

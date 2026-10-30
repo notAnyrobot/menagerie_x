@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from catalog_fixture import copy_catalog
+
 import contextlib
 import hashlib
 import io
@@ -19,7 +21,7 @@ from menagerie_x.commands.mujoco import check_mujoco
 
 
 ROOT = Path(__file__).resolve().parents[1]
-ASSETS = ROOT / "robots"
+ASSETS = ROOT
 ATOM = ASSETS / "atom_p3"
 MJCF = ATOM / "mjcf" / "atom_p3_27dof.xml"
 SHA256 = "f8d27bb5d9002bb3899136a407b9492f63762ec0f1d71508fd9005abfc2c48cd"
@@ -72,7 +74,7 @@ class AtomP3CatalogTests(unittest.TestCase):
     def test_generic_mjcf_import_has_no_placeholder_urdf_and_validates_uppercase_stl(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             assets = Path(directory) / "assets"
-            shutil.copytree(ASSETS, assets)
+            copy_catalog(ASSETS, assets)
             import_mjcf_variant("external_atom", MJCF, assets)
             uppercase_empty = assets / "atom_p3" / "meshes" / "empty.STL"
             uppercase_empty.write_bytes(b"")

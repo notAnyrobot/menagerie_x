@@ -15,7 +15,7 @@ import xml.etree.ElementTree as ET
 import mujoco
 import numpy as np
 
-BUNDLE = Path(__file__).resolve().parents[1] / 'robots/astro_p2_29dof'
+BUNDLE = Path(__file__).resolve().parents[1] / 'astro_p2_29dof'
 SOURCE = BUNDLE / 'astro_p2_29dof.urdf'
 OUTPUT = BUNDLE / 'astro_p2_29dof.xml'
 

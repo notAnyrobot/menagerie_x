@@ -13,8 +13,8 @@ from menagerie_x.assets import get_variant, validate_assets
 from menagerie_x.assets.editions import list_mjcf_editions
 
 ROOT=Path(__file__).resolve().parents[1]
-BASE=ROOT/'robots/astro_p2_29dof'
-BUNDLE=ROOT/'robots/astro_p2_43dof_dex3_1'
+BASE=ROOT/'astro_p2_29dof'
+BUNDLE=ROOT/'astro_p2_43dof_dex3_1'
 NAME=BUNDLE.name
 
 def canonical(node):

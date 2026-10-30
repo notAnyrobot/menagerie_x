@@ -10,7 +10,7 @@ import mujoco
 import numpy as np
 
 ROOT=Path(__file__).resolve().parents[1]
-BUNDLE=ROOT/'robots/astro_p2_43dof_dex3_1'
+BUNDLE=ROOT/'astro_p2_43dof_dex3_1'
 
 def png(path,pixels):
     h,w,_=pixels.shape

@@ -12,7 +12,7 @@ from menagerie_x.assets.editions import list_mjcf_editions
 from menagerie_x.commands.mujoco import check_mujoco
 
 
-ASSETS = Path(__file__).resolve().parents[1] / "robots"
+ASSETS = Path(__file__).resolve().parents[1]
 SOMA23 = ASSETS / "soma23"
 MJCF = SOMA23 / "mjcf" / "soma23_free_base.xml"
 SHA256 = "0b3b4cc6967d0ebe24dd54b87a8a4b3fe1c05d44a53a8f435e2b854f3189a1b3"

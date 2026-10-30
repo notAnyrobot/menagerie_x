@@ -12,9 +12,9 @@ import struct
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
-BASE = ROOT / 'robots/astro_p2_29dof'
+BASE = ROOT / 'astro_p2_29dof'
 NAME = 'astro_p2_43dof_dex3_1'
-BUNDLE = ROOT / 'robots' / NAME
+BUNDLE = ROOT / NAME
 VENDOR = BUNDLE / 'upstream'
 REVISION = '5994d4faef0a9cadd3287f8de0199a67eeb2a259'
 

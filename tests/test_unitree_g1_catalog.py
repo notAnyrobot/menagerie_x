@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 from menagerie_x.assets import get_variant, validate_assets
 
 
-ASSETS = Path(__file__).resolve().parents[1] / "robots"
+ASSETS = Path(__file__).resolve().parents[1]
 
 
 class UnitreeG1CatalogTests(unittest.TestCase):

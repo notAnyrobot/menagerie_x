@@ -21,7 +21,7 @@ class UrdfRuntimeTests(unittest.TestCase):
             self.assertEqual(runtime.nq, 36)
             self.assertEqual(runtime.nv, 35)
             root = ET.parse(runtime.path).getroot()
-            mesh_root = edition.urdf.parent / "meshes"
+            mesh_root = (edition.urdf.parent / "meshes").resolve()
             meshes = root.findall("asset/mesh")
             self.assertTrue(meshes)
             self.assertTrue(all(pathlib.Path(mesh.attrib["file"]).is_relative_to(mesh_root) for mesh in meshes))
