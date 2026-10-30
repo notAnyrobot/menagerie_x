@@ -256,6 +256,14 @@ class AstroP2ArmCollisionTests(unittest.TestCase):
         self.assertTrue(any({c.geom1, c.geom2} == selected and c.dim == 1 for c in data.contact))
         self.assertFalse(np.any(data.warning.number))
 
+    @staticmethod
+    def _capsule_surface_distances(geom, data, points):
+        axis = data.geom_xmat[geom.id].reshape(3, 3)[:, 2]
+        start = data.geom_xpos[geom.id] - geom.size[1] * axis
+        segment = 2 * geom.size[1] * axis
+        position = np.clip((points - start) @ segment / np.dot(segment, segment), 0, 1)
+        return np.linalg.norm(points - start - position[:, None] * segment, axis=1) - geom.size[0]
+
     def test_removed_wrist_roll_shell_is_covered_through_pitch_motion(self):
         base = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/astro_p2.xml"))
         revised = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/astro_p2_simplified.xml"))
@@ -279,12 +287,7 @@ class AstroP2ArmCollisionTests(unittest.TestCase):
                 distances = []
                 for role in ("forearm", "wrist_pitch"):
                     geom = revised.geom(f"{side}_{role}_collision")
-                    axis = new_data.geom_xmat[geom.id].reshape(3, 3)[:, 2]
-                    start = new_data.geom_xpos[geom.id] - geom.size[1] * axis
-                    segment = 2 * geom.size[1] * axis
-                    position = np.clip((points - start) @ segment / np.dot(segment, segment), 0, 1)
-                    distances.append(np.linalg.norm(points - start - position[:, None] * segment, axis=1)
-                                     - geom.size[0])
+                    distances.append(self._capsule_surface_distances(geom, new_data, points))
                 self.assertLessEqual(float(np.minimum(*distances).max()), 1e-9)
 
     def test_round_hand_proxy_contains_native_hand_mesh(self):
@@ -298,12 +301,8 @@ class AstroP2ArmCollisionTests(unittest.TestCase):
             vertices = model.mesh_vert[start:start + model.mesh_vertnum[mesh]]
             points = vertices @ data.geom_xmat[visual.id].reshape(3, 3).T + data.geom_xpos[visual.id]
             proxy = model.geom(f"{side}_wrist_hand_collision")
-            axis = data.geom_xmat[proxy.id].reshape(3, 3)[:, 2]
-            start = data.geom_xpos[proxy.id] - proxy.size[1] * axis
-            segment = 2 * proxy.size[1] * axis
-            position = np.clip((points - start) @ segment / np.dot(segment, segment), 0, 1)
-            distance = np.linalg.norm(points - start - position[:, None] * segment, axis=1)
-            self.assertLessEqual(float(distance.max()), proxy.size[0] + 1e-7)
+            distance = self._capsule_surface_distances(proxy, data, points)
+            self.assertLessEqual(float(distance.max()), 1e-7)
             # Rounder than the previous radius-.03, half-length-.059 shaft.
             self.assertGreater(proxy.size[0], 0.03)
             self.assertLess(proxy.size[1], 0.059)

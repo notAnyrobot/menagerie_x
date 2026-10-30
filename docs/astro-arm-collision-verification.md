@@ -3,6 +3,7 @@
 Historical receipt for the first arm-only revision. The subsequent wrist/hand
 refinement removes redundant wrist-roll proxies and refits the hand envelope;
 see the [current accepted scope](design/astro-p2-simplified-collisions.md#accepted-wrist-and-hand-refinement).
+Current checks are recorded in [the wrist/hand receipt](astro-wrist-hand-verification.md).
 
 Implementation: `cc31426`, branch `codex/astro-arm-collisions`.
 Baseline: `1fcf365c105b10776db158a0f68d0245c2057296`.
