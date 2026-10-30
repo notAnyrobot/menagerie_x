@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Historical tool for retired Astro layouts; see astro_p2/README.md.
 """Rebuild Astro's sample Dex3-1 assembly from bundled pinned vendor sources.
 
 No network requests, retargeting, calibration, or hardware control are performed.

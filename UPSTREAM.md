@@ -21,38 +21,42 @@ with each family; see [LICENSING.md](LICENSING.md).
 
 ## Native ownership and preservation
 
-- The same seven robot families remain. Eleven already existing robot MJCFs are
-  now explicit native entries, including the separately maintained Astro 29
-  conversion. No upstream robot or physical model replaces a local one.
-- Family-root XML is canonical and directly maintained. The former
-  `scripts/sync-menagerie.py` generator is retired, so native edits cannot be
-  overwritten by synchronizing old snapshots. Nested `mjcf/` files are retained
-  byte-for-byte as source evidence and for legacy consumers. Every existing
-  tracked model, mesh, source record, and license notice is unchanged by this
-  simplified migration.
-- `assets/` stores actual meshes. The original Astro 29 and Dex3-1 HHTools XMLs
-  retain their original formatting and `meshes/` paths, with a local relative
-  `meshes -> assets` alias. Their recorded hashes remain valid. Other native
-  models already reference `assets/` directly.
-- Source robot frames, options, contacts, keyframes, sensors, and actuators stay
-  unchanged. Scenes add one floor and lighting. Existing floors retain their
-  established offsets; Astro 29's new scene uses `z=-0.75`, matching its retained
-  standing-height convention and preserving the zero-height robot datum.
+- The active collection has six models across four families. Astro P1's two
+  models are retained in `LEGACY_MODEL_MAP` and receive native checks until
+  later retirement; they are excluded from the active gallery.
+- Astro P2 is one family with two native model/scene pairs, like upstream G1:
+  a fixed-head 29-joint body with G1 rubber hands, and the same refined body with
+  14 additional Dex3-1 finger joints. The old three 30-DoF P2 choices are retired.
+- The rubber model reuses actual G1 hand meshes and separate vendor hand
+  inertias. It retains Astro wrist dynamics and explicitly documents the sample
+  attachment assumption. The G1 wrist's composite inertia is not transplanted.
+  Source hashes and custody are recorded in the
+  [hand investigation](docs/research/astro-g1-rubber-hand-adoption.md).
+- Family-root XML is canonical and directly maintained, with actual local
+  assets. No generator overwrites native edits. Astro conversion/refinement
+  originals and records are preserved byte-for-byte under `astro_p2/provenance/`;
+  its migration receipt identifies old paths and hashes. The native Dex model
+  retains its dynamics, finger definitions, and `fist` keyframe.
+- All non-hand Astro body properties are shared between the two variants. Source
+  frames are retained; both scenes use one floor at `z=-0.75`. Atom, SOMA, G1,
+  and retained P1 physical assets are unchanged by Astro consolidation.
 - The local G1 source snapshot contains a demonstration floor; its canonical
-  root model already omits that plane and the scene supplies one. Upstream G1
-  and Booster T1 were organizational references, not sources for local physics.
+  root model omits it and its scene supplies one. Its local descriptions remain
+  distinct from upstream Menagerie's G1 tuning/keyframes.
 - No `family.json`, revision/promotion framework, or application adapter is
-  introduced. Native MuJoCo loads each family without application metadata.
-- Actual license notices and explicit `LICENSING.md` records are kept where
-  redistribution terms remain unresolved; no license grant is invented.
+  introduced. Native MuJoCo loads a copied family without global metadata.
+- Actual license notices and explicit `LICENSING.md` records remain where
+  redistribution terms are unresolved; no license grant is invented.
 
 ## Deferred compatibility and omitted upstream machinery
 
-Workbench, URDF compatibility, and MJX are deferred. The preserved manifest
-still describes 12 legacy application editions, including Astro 29 as URDF-only.
-CLI/Workbench paths may select source snapshots; their saved edits are not
-synchronized into canonical native XML. Includes, initialization, and browser
-collision editing have documented gaps in the
+Workbench, URDF compatibility, and MJX are deferred. Application metadata now
+lists the five retained families and two native Astro editions; retained Astro
+URDFs describe earlier geometry and are not advertised as current equivalents.
+Legacy authoring scripts and tests may refer to retired layouts. Untracked
+experiments in the old Astro directories remain local and are excluded from
+source archives. Browser includes, initialization, and collision editing have
+known gaps in the
 [compatibility investigation](docs/research/mujoco-workbench-compatibility.md).
 
 The stale `robots/` compatibility directory has been retired; use family paths
@@ -63,5 +67,5 @@ packaging policy. The upstream download package, generated remote registry,
 unrelated gallery assets, and release workflows are omitted. Native `make all` is the acceptance gate.
 
 See the [accepted scope](docs/adr/0011-upstream-asset-structure-first.md),
-[implementation outline](docs/design/menagerie-paired-refactor-proposal.md), and
+[Astro consolidation scope](docs/design/astro-p2-variants.md), and
 [research report](docs/research/mujoco-upstream-contract.md).

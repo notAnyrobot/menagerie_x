@@ -7,8 +7,8 @@ new rights to existing descriptions, meshes, internal bundles, or legacy code.
 | --- | --- |
 | Copied upstream XML formatter and adapted catalog/model tests | Apache-2.0; see retained file headers and [license text](LICENSES/Apache-2.0.txt). |
 | Presentation scenes derived from upstream Unitree G1 | See [retained upstream G1 license](LICENSES/MuJoCo-Menagerie-G1.txt). |
-| Astro P1, P2, fixed-head body assets | No explicit license in retained bundles; see their `LICENSING.md`. |
-| Astro Dex3-1 sample | Unitree hand material BSD-3-Clause; Astro body terms unresolved. |
+| Astro P1 legacy and Astro P2 body assets | No explicit license in retained bundles; see their `LICENSING.md`. |
+| Astro P2 rubber and Dex3-1 hands | Unitree hand material BSD-3-Clause; Astro body terms unresolved. |
 | Atom P3 | Internal source recorded; redistribution terms unresolved. |
 | SOMA-23 | ProtoMotions Apache-2.0. |
 | Unitree G1 | Unitree BSD-3-Clause plus ProtoMotions Apache-2.0 for its retargeting material. |

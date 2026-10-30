@@ -18,23 +18,24 @@ from pathlib import Path
 import unittest
 import xml.etree.ElementTree as ET
 
-from catalog import MODEL_MAP, PREVIEW_OVERRIDES, model_entries
+from catalog import MODEL_MAP, LEGACY_MODEL_MAP, PREVIEW_OVERRIDES, model_entries
 from format_xml import format_xml
 
 ROOT = Path(__file__).resolve().parents[1]
-FAMILIES = {"astro_p1", "astro_p2", "astro_p2_29dof", "astro_p2_43dof_dex3_1",
-            "atom_p3", "soma23", "unitree_g1"}
-# Preserve the original HHTools conversion/refinement bytes and recorded hashes.
-PRESERVED_XML = {"astro_p2_29dof/astro_p2_29dof.xml",
-                 "astro_p2_43dof_dex3_1/astro_p2_43dof_dex3_1.xml"}
+FAMILIES = {"astro_p1", "astro_p2", "atom_p3", "soma23", "unitree_g1"}
 
 
 class ModelDirectoryTests(unittest.TestCase):
     def test_catalog_and_family_layout(self):
         entries = list(model_entries())
         self.assertEqual({entry["family"] for entry in entries}, FAMILIES)
-        self.assertEqual(len(entries), 11)
-        self.assertTrue(set(PREVIEW_OVERRIDES).issubset(MODEL_MAP))
+        self.assertEqual(len(entries), 8)
+        self.assertEqual(len(MODEL_MAP), 6)
+        self.assertEqual(len(LEGACY_MODEL_MAP), 2)
+        self.assertFalse(set(MODEL_MAP) & set(LEGACY_MODEL_MAP))
+        self.assertTrue(all(key.startswith("astro_p1/") for key in LEGACY_MODEL_MAP))
+        self.assertEqual({entry["family"] for entry in model_entries(include_legacy=False)}, FAMILIES - {"astro_p1"})
+        self.assertTrue(set(PREVIEW_OVERRIDES).issubset(set(MODEL_MAP) | set(LEGACY_MODEL_MAP)))
         self.assertEqual(len({entry["scene"] for entry in entries}), len(entries))
         for family in FAMILIES:
             for name in ("README.md", "CHANGELOG.md", "LICENSING.md", "scene.xml"):
@@ -57,8 +58,6 @@ class ModelDirectoryTests(unittest.TestCase):
         for entry in model_entries():
             for kind in ("model", "scene"):
                 path = entry[kind]
-                if str(path.relative_to(ROOT)) in PRESERVED_XML:
-                    continue
                 with self.subTest(path=str(path.relative_to(ROOT))):
                     text = path.read_text(encoding="utf-8")
                     self.assertEqual(text, format_xml(text))

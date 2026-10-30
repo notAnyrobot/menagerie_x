@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Historical tool for retired Astro layouts; see astro_p2/README.md.
 """Check sample hand assembly provenance, body preservation and URDF/MJCF FK."""
 from copy import deepcopy
 import hashlib

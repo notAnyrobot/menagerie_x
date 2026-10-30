@@ -1,0 +1,12 @@
+ProtoMotions G1 retargeting reference edition
+
+This workspace includes a modified path-local copy of:
+  protomotions/data/assets/mjcf/g1_bm_box_feet.xml
+from NVIDIA's ProtoMotions repository.
+
+ProtoMotions source: https://github.com/NVlabs/ProtoMotions
+Source license: Apache-2.0; see LICENSE.ProtoMotions.
+
+The MJCF uses Unitree G1 mesh assets.  Those assets remain under the
+BSD-3-Clause terms in LICENSE.Unitree.  The model is retained as a
+retargeting reference edition, not as the official Unitree description.

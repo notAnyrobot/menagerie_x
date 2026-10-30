@@ -1,5 +1,9 @@
 # Simplified native refactor verification
 
+This is the historical first-refactor receipt. The later Astro consolidation
+is described in [astro-p2-variants.md](design/astro-p2-variants.md) and its
+[verification receipt](astro-p2-verification.md).
+
 Baseline: `27d9e7c0f3d58961f97af8cdb03acffa6b07a878` (local `main`).
 Implementation branch: `codex/native-menagerie-refactor`.
 Reference: MuJoCo Menagerie `f3b6013629c7b94f8ee93fd977b161fa8350f9bc`.

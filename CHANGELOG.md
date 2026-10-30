@@ -2,6 +2,12 @@
 
 ## 2026-10-30
 
+- Prune Astro P2 to one family with a 29-DoF body and two hand configurations:
+  fixed G1 rubber hands or 14-DoF Dex3-1 hands (43 total). Retire the three
+  30-DoF P2 choices and consolidate the former separate Astro variant folders.
+- Mark Astro P1 as legacy, retaining its two models and loading checks until
+  later retirement. The active collection is six models across four families.
+
 - Align root and robot READMEs with MuJoCo Menagerie's gallery, overview,
   derivation, changelog, and license sections. Add 11 native scene previews
   and preserve the detailed Dex3-1 build/validation record in `DERIVATION.md`.

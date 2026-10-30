@@ -1,7 +1,12 @@
-# Astro P1 Description (MJCF)
+# Astro P1 Description (MJCF, Legacy)
 
 > [!IMPORTANT]
 > Tested with MuJoCo 3.11.0, the version pinned by this repository.
+
+> [!WARNING]
+> **Legacy:** retained for reference and scheduled for retirement. Use the
+> maintained [Astro P2 family](../astro_p2/README.md) for new work. The P1 models
+> remain available and continue to receive native loading checks until removal.
 
 ## Changelog
 

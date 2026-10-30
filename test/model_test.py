@@ -15,9 +15,12 @@
 """Native load/step and portability checks adapted from upstream model_test.py."""
 
 from pathlib import Path
+import hashlib
+import json
 import shutil
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 
 import mujoco
 import numpy as np
@@ -86,8 +89,8 @@ class ModelTests(unittest.TestCase):
                         self.assertGreater(model.nq, 0)
 
     def test_robot_physics_matches_retained_imports(self):
-        # These nine old snapshots remain evidence, not editable native inputs.
-        # HHTools models were already at the family root and stay byte-identical.
+        # Retained imports remain evidence, not editable native inputs.
+        # Astro variants are checked explicitly below against their common body.
         for entry in model_entries():
             source = entry["model"].parent / "mjcf" / entry["model"].name
             if not source.is_file():
@@ -104,3 +107,81 @@ class ModelTests(unittest.TestCase):
                 for attribute in ("geom_type", "geom_size", "geom_pos", "geom_quat", "geom_friction",
                                   "geom_contype", "geom_conaffinity"):
                     np.testing.assert_array_equal(getattr(model, attribute), getattr(source_model, attribute)[robot_geoms])
+
+
+class AstroP2VariantTests(unittest.TestCase):
+    def setUp(self):
+        self.rubber = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/astro_p2.xml"))
+        self.dex = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/astro_p2_with_hands.xml"))
+
+    def test_fixed_head_and_hand_dof_inventory(self):
+        self.assertEqual((self.rubber.nq, self.rubber.nv, self.rubber.nu), (36, 35, 0))
+        self.assertEqual((self.dex.nq, self.dex.nv, self.dex.nu), (50, 49, 0))
+        for model in (self.rubber, self.dex):
+            self.assertEqual(sum(model.jnt_type == mujoco.mjtJoint.mjJNT_FREE), 1)
+            self.assertEqual(mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, "head_joint"), -1)
+        rubber_joints = {self.rubber.joint(i).name for i in range(self.rubber.njnt)}
+        dex_joints = {self.dex.joint(i).name for i in range(self.dex.njnt)}
+        self.assertTrue(rubber_joints.issubset(dex_joints))
+        self.assertEqual(len(dex_joints - rubber_joints), 14)
+        self.assertTrue(all("hand" in name for name in dex_joints - rubber_joints))
+        self.assertEqual(self.rubber.nkey, 0)
+        self.assertGreaterEqual(mujoco.mj_name2id(self.dex, mujoco.mjtObj.mjOBJ_KEY, "fist"), 0)
+
+    def test_both_variants_share_the_refined_body(self):
+        rubber, dex = self.rubber, self.dex
+        # Hands are intentionally different; retained hand attachment frames
+        # still have exactly the same poses in their wrist-yaw frames.
+        for i in range(rubber.nbody):
+            body = rubber.body(i)
+            other = dex.body(body.name) if body.name else dex.body(0)
+            for attribute in ("pos", "quat"):
+                np.testing.assert_array_equal(getattr(body, attribute), getattr(other, attribute))
+            if body.name not in {"left_hand_link", "right_hand_link"}:
+                for attribute in ("mass", "inertia", "ipos", "iquat"):
+                    np.testing.assert_array_equal(getattr(body, attribute), getattr(other, attribute))
+        for i in range(rubber.njnt):
+            joint = rubber.joint(i)
+            other = dex.joint(joint.name)
+            for attribute in ("type", "pos", "axis", "range", "limited", "stiffness"):
+                np.testing.assert_array_equal(getattr(joint, attribute), getattr(other, attribute))
+            # Map damping/armature by named joint; deleting fingers shifts IDs.
+            count = 6 if joint.type[0] == mujoco.mjtJoint.mjJNT_FREE else 1
+            for attribute in ("dof_damping", "dof_armature", "dof_frictionloss"):
+                a, b = int(joint.dofadr[0]), int(other.dofadr[0])
+                np.testing.assert_array_equal(getattr(rubber, attribute)[a:a+count],
+                                              getattr(dex, attribute)[b:b+count])
+        for i in range(rubber.ngeom):
+            geom = rubber.geom(i)
+            if "rubber_hand" in geom.name:
+                continue
+            other = dex.geom(geom.name)
+            for attribute in ("type", "size", "pos", "quat", "friction", "contype", "conaffinity"):
+                np.testing.assert_array_equal(getattr(geom, attribute), getattr(other, attribute))
+
+    def test_rubber_meshes_and_hand_mass_match_sources(self):
+        record = json.loads((ROOT / "astro_p2/provenance/rubber_hands.json").read_text())
+        xml = ET.parse(ROOT / "astro_p2/astro_p2.xml")
+        vendor = ROOT / "astro_p2/provenance/rubber_hand_sources/unitree_g1_29dof.urdf"
+        self.assertEqual(hashlib.sha256(vendor.read_bytes()).hexdigest(), record["source_urdf_sha256"])
+        for side, source in record["hands"].items():
+            path = ROOT / "astro_p2" / source["mesh"]
+            self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), source["mesh_sha256"])
+            g1_mesh = ROOT / "unitree_g1/assets" / f"{side}_rubber_hand.stl"
+            self.assertEqual(path.read_bytes(), g1_mesh.read_bytes())
+            hand = self.rubber.body(f"{side}_hand_link")
+            self.assertAlmostEqual(float(hand.mass[0]), source["mass_kg"], places=12)
+            np.testing.assert_allclose(hand.ipos, source["com_hand_frame_m"], rtol=0, atol=1e-12)
+            np.testing.assert_allclose(hand.pos, source["astro_mount_xyz_m"], rtol=0, atol=1e-12)
+            inertial = xml.find(f".//body[@name='{side}_hand_link']/inertial")
+            tensor = source["inertia_hand_frame_kg_m2"]
+            expected = [tensor[key] for key in ("ixx", "iyy", "izz", "ixy", "ixz", "iyz")]
+            np.testing.assert_allclose(np.fromstring(inertial.get("fullinertia"), sep=" "),
+                                       expected, rtol=0, atol=1e-15)
+            capsule = xml.find(f".//geom[@name='{side}_rubber_hand_collision']")
+            self.assertEqual(capsule.get("type"), "capsule")
+            self.assertEqual(float(capsule.get("size")), source["collision_radius_m"])
+            np.testing.assert_allclose(np.fromstring(capsule.get("fromto"), sep=" "),
+                                       source["collision_fromto_hand_frame_m"], rtol=0, atol=1e-12)
+        self.assertAlmostEqual(float(self.rubber.body_mass.sum()), 40.64356917, places=9)
+        self.assertAlmostEqual(float(self.dex.body_mass.sum()), 41.69666115, places=9)

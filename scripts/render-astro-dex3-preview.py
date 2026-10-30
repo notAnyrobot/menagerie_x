@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Historical tool for retired Astro layouts; see astro_p2/README.md.
 """Render the sample model without advancing simulation (MUJOCO_GL=egl)."""
 import os
 os.environ.setdefault('MUJOCO_GL','egl')

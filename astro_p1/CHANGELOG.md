@@ -2,6 +2,9 @@
 
 ## 2026-10-30
 
+- Mark both P1 models as legacy and remove them from the active collection.
+  Retain their assets and native checks pending a later retirement.
+
 - Match the upstream README structure and add native model preview images,
   preserving the existing model descriptions and source records.
 

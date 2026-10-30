@@ -1,0 +1,139 @@
+{
+  "model": "astro_p2/astro_p2.xml",
+  "source_repository": "https://github.com/unitreerobotics/unitree_ros",
+  "source_revision": "daadf41ee9afce8f90fdc09a98506012691fa122",
+  "source_urdf": "robots/g1_description/g1_29dof.urdf",
+  "source_urdf_git_blob": "49aeacd82072a6cb9847fac05ba59d9c35b0664e",
+  "source_urdf_sha256": "e1dc89366bf96aa33ba4ef211884f6d81320ddd2ac6f8b1ad82986e64008be31",
+  "license": "BSD-3-Clause; applies to Unitree material, not Astro body",
+  "astro_body_source_commit": "fcbb3f222359df8b275fee1bc79d47721efdd2ec",
+  "astro_body_source": "astro_p2_43dof_dex3_1/astro_p2_43dof_dex3_1.xml",
+  "astro_body_source_sha256": "c688a4177a1ff5ba07764f9e310bb62c33d24a47b193259922a55b6c5fe88c66",
+  "body_policy": "Preserve latest refined Dex Astro 29-DoF body, joint definitions and non-hand collision geometry. Replace only hand subtrees; retain existing Astro hand frame positions.",
+  "mount_assumption": "Identity orientation at the retained Astro hand frames, not the G1 wrist-to-palm offset. This is a sample attachment, not verified mechanical fit or hardware calibration. No adapter mass is fabricated.",
+  "collision_source": {
+    "repository": "https://github.com/NVlabs/ProtoMotions",
+    "revision": "a6df301d312dc58ac40a4d994f4f1064728d854c",
+    "path": "protomotions/data/assets/mjcf/g1_bm_box_feet.xml",
+    "local_path": "unitree_g1/unitree_g1_29dof_box_feet.xml",
+    "method": "Retain the G1 box-feet capsule radius and length; express its wrist-frame endpoints in the source hand frame by subtracting the vendor fixed-joint translation. Reattach that local shape at the Astro hand frame. This is an inherited collision approximation, not a mesh envelope guarantee."
+  },
+  "hands": {
+    "left": {
+      "mesh": "assets/left_rubber_hand.stl",
+      "mesh_sha256": "cff2221a690fa69303f61fce68f2d155c1517b52efb6ca9262dd56e0bc6e70fe",
+      "mass_kg": 0.17,
+      "com_hand_frame_m": [
+        0.05361310808,
+        -0.0029590524,
+        0.00215413091
+      ],
+      "inertia_hand_frame_kg_m2": {
+        "ixx": 0.00010099485234748,
+        "ixy": 3.618590790516e-05,
+        "ixz": -7.4301518642e-07,
+        "iyy": 0.00028135871571621,
+        "iyz": 3.30189743286e-06,
+        "izz": 0.00021894770413514
+      },
+      "source_g1_mount_xyz_m": [
+        0.0415,
+        0.003,
+        0.0
+      ],
+      "source_g1_mount_rpy_rad": [
+        0,
+        0,
+        0
+      ],
+      "astro_mount_xyz_m": [
+        0.067502,
+        0.0,
+        0.0
+      ],
+      "astro_mount_rpy_rad": [
+        0,
+        0,
+        0
+      ],
+      "collision_type": "capsule",
+      "collision_radius_m": 0.05,
+      "collision_fromto_hand_frame_m": [
+        0.0085,
+        -0.003,
+        0.0,
+        0.0585,
+        -0.003,
+        0.0
+      ]
+    },
+    "right": {
+      "mesh": "assets/right_rubber_hand.stl",
+      "mesh_sha256": "99533b778bca6246144fa511bb9d4e555e075c641f2a0251e04372869cd99d67",
+      "mass_kg": 0.17,
+      "com_hand_frame_m": [
+        0.05361310808,
+        0.0029590524,
+        0.00215413091
+      ],
+      "inertia_hand_frame_kg_m2": {
+        "ixx": 0.00010099485234748,
+        "ixy": -3.618590790516e-05,
+        "ixz": -7.4301518642e-07,
+        "iyy": 0.00028135871571621,
+        "iyz": -3.30189743286e-06,
+        "izz": 0.00021894770413514
+      },
+      "source_g1_mount_xyz_m": [
+        0.0415,
+        -0.003,
+        0.0
+      ],
+      "source_g1_mount_rpy_rad": [
+        0,
+        0,
+        0
+      ],
+      "astro_mount_xyz_m": [
+        0.0675,
+        0.0,
+        0.0
+      ],
+      "astro_mount_rpy_rad": [
+        0,
+        0,
+        0
+      ],
+      "collision_type": "capsule",
+      "collision_radius_m": 0.05,
+      "collision_fromto_hand_frame_m": [
+        0.0085,
+        0.003,
+        0.0,
+        0.0585,
+        0.003,
+        0.0
+      ]
+    }
+  },
+  "validation": {
+    "mujoco_version": "3.11.0",
+    "nq": 36,
+    "nv": 35,
+    "nu": 0,
+    "mass_kg": 40.64356916999999,
+    "dex_mass_kg": 41.69666115,
+    "hand_mass_kg_each": 0.17,
+    "removed_dex_hand_mass_kg_each": 0.69654599,
+    "unchanged_non_hand_named_bodies": 38,
+    "unchanged_non_hand_named_geoms": 93,
+    "unchanged_named_joints_including_freebase": 30,
+    "native_model_and_scene_step_seconds": 0.1,
+    "finite_no_warning": true,
+    "unchanged_body_damping_armature_friction_dofs": 35
+  },
+  "license_files": [
+    "LICENSE.Unitree",
+    "LICENSE.ProtoMotions"
+  ]
+}

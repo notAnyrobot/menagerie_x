@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Historical tool for retired Astro layouts; see astro_p2/README.md.
 """Build the Astro MJCF from its canonical URDF using MuJoCo and NumPy.
 
 Run with .venv/bin/python scripts/build-astro-mjcf.py from any directory.

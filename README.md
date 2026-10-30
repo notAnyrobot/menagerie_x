@@ -5,7 +5,8 @@
 **Menagerie X** is a collection of robot models for the
 [MuJoCo](https://github.com/google-deepmind/mujoco) physics engine. Its organization
 follows [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie),
-with the seven existing local robot families and their 11 native MJCF models.
+with four active robot families and six native MJCF models. Astro P1 is
+retained separately as legacy, pending retirement.
 
 Each model directory contains the robot description, a scene, local assets,
 derivation notes, and licensing records. Source fidelity and available controls
@@ -14,6 +15,7 @@ vary by model; the individual READMEs describe those limits.
 - [Getting Started](#getting-started)
 - [Model Quality and Contributing](#model-quality-and-contributing)
 - [Menagerie Models](#menagerie-models)
+- [Legacy Models](#legacy-models)
 - [Acknowledgments](#acknowledgments)
 - [Changelog](#changelog)
 - [License and Disclaimer](#license-and-disclaimer)
@@ -38,27 +40,27 @@ uv sync --locked --extra dev
 All robot families follow the same native organization. For example:
 
 ```text
-astro_p1/
-├── assets/                 # visual and collision meshes
-├── astro_p1_30dof.xml       # robot definition
-├── astro_p1_30dof.png       # scene preview
-├── scene.xml               # includes the robot, adds ground and lighting
-├── astro_p1_27dof.xml       # alternative model
-├── scene_27dof.xml          # alternative scene
+astro_p2/
+├── assets/                 # shared Astro and Unitree hand meshes
+├── astro_p2.xml            # 29-DoF body with fixed G1 rubber hands
+├── astro_p2.png            # scene preview
+├── scene.xml               # default rubber-hand scene
+├── astro_p2_with_hands.xml  # same body plus 14 Dex3-1 finger DoFs
+├── scene_with_hands.xml     # dexterous-hand scene
 ├── README.md
 ├── CHANGELOG.md
-├── LICENSING.md            # actual notices/status; LICENSE.* where available
-├── mjcf/                   # retained import snapshots
-└── urdf/                   # retained URDF descriptions
+├── LICENSING.md
+├── LICENSE.Unitree
+└── provenance/             # original source/conversion records
 ```
 
-Edit the family-root model and scene XML directly. Nested imports are preserved
-source evidence; no regeneration step is required. Scenes keep each robot's
+Edit the family-root model and scene XML directly. Retained imports and
+`provenance/` records are source evidence; no regeneration step is required. Scenes keep each robot's
 coordinate datum, with lowered floors for several zero-height models.
 
 A family can be copied and loaded independently of the Python catalog or
-application manifest. Keep its `assets/` directory and `meshes -> assets` link:
-the preserved HHTools conversions still use that relative mesh path.
+application manifest. Keep its `assets/` directory. Other retained descriptions
+may also use a family-local `meshes -> assets` link.
 
 ### Usage
 
@@ -89,7 +91,8 @@ See [UPSTREAM.md](UPSTREAM.md) for ownership and migration details.
 ## Model Quality and Contributing
 
 `make all` checks native layout and XML style, loads and steps every declared
-model and scene, checks existing keyframe reset, and loads standalone copied
+active and legacy model/scene, checks the shared Astro body and hand sources,
+checks existing keyframe reset, and loads standalone copied
 family folders. CI runs the same native checks. See
 [CONTRIBUTING.md](CONTRIBUTING.md) for editing and validation conventions.
 
@@ -113,17 +116,24 @@ stepping; collision alternatives can share the same visual appearance.
 
 | Preview | Name | DoFs | License |
 | :---: | --- | --- | --- |
-| <a href="astro_p1/scene.xml"><img src="astro_p1/astro_p1_30dof.png" alt="Astro P1 (30 DoF)" width="120"></a> | [Astro P1 (30 DoF)](astro_p1/README.md) | 30 | [Unresolved](astro_p1/LICENSING.md) |
-| <a href="astro_p1/scene_27dof.xml"><img src="astro_p1/astro_p1_27dof.png" alt="Astro P1 (27 DoF)" width="120"></a> | [Astro P1 (27 DoF)](astro_p1/README.md) | 27 | [Unresolved](astro_p1/LICENSING.md) |
-| <a href="astro_p2/scene.xml"><img src="astro_p2/astro_p2_30dof_primitive_collision.png" alt="Astro P2 (primitive collisions)" width="120"></a> | [Astro P2 (primitive collisions)](astro_p2/README.md) | 30 | [Unresolved](astro_p2/LICENSING.md) |
-| <a href="astro_p2/scene_30dof_mesh_collision.xml"><img src="astro_p2/astro_p2_30dof_mesh_collision.png" alt="Astro P2 (mesh collisions)" width="120"></a> | [Astro P2 (mesh collisions)](astro_p2/README.md) | 30 | [Unresolved](astro_p2/LICENSING.md) |
-| <a href="astro_p2/scene_30dof_primitive_collision_halfway.xml"><img src="astro_p2/astro_p2_30dof_primitive_collision_halfway.png" alt="Astro P2 (intermediate primitives)" width="120"></a> | [Astro P2 (intermediate primitives)](astro_p2/README.md) | 30 | [Unresolved](astro_p2/LICENSING.md) |
-| <a href="astro_p2_29dof/scene.xml"><img src="astro_p2_29dof/astro_p2_29dof.png" alt="Astro P2 (fixed head)" width="120"></a> | [Astro P2 (fixed head)](astro_p2_29dof/README.md) | 29 | [Unresolved](astro_p2_29dof/LICENSING.md) |
-| <a href="astro_p2_43dof_dex3_1/scene.xml"><img src="astro_p2_43dof_dex3_1/astro_p2_43dof_dex3_1.png" alt="Astro P2 with Dex3-1 sample hands" width="120"></a> | [Astro P2 with Dex3-1 sample hands](astro_p2_43dof_dex3_1/README.md) | 43 | [BSD-3-Clause hands; body unresolved](astro_p2_43dof_dex3_1/LICENSING.md) |
+| <a href="astro_p2/scene.xml"><img src="astro_p2/astro_p2.png" alt="Astro P2 with G1 rubber hands" width="120"></a> | [Astro P2 with G1 rubber hands](astro_p2/README.md) | 29 | [BSD-3-Clause hands; body unresolved](astro_p2/LICENSING.md) |
+| <a href="astro_p2/scene_with_hands.xml"><img src="astro_p2/astro_p2_with_hands.png" alt="Astro P2 with Dex3-1 hands" width="120"></a> | [Astro P2 with Dex3-1 hands](astro_p2/README.md) | 43 | [BSD-3-Clause hands; body unresolved](astro_p2/LICENSING.md) |
 | <a href="atom_p3/scene.xml"><img src="atom_p3/atom_p3_27dof.png" alt="Atom P3" width="120"></a> | [Atom P3](atom_p3/README.md) | 27 | [Unresolved](atom_p3/LICENSING.md) |
 | <a href="soma23/scene.xml"><img src="soma23/soma23_free_base.png" alt="SOMA-23" width="120"></a> | [SOMA-23](soma23/README.md) | 66 | [Apache-2.0](soma23/LICENSE.ProtoMotions) |
 | <a href="unitree_g1/scene.xml"><img src="unitree_g1/unitree_g1_29dof_with_hand_rev_1_0.png" alt="Unitree G1 with hands" width="120"></a> | [Unitree G1 with hands](unitree_g1/README.md) | 43 | [BSD-3-Clause](unitree_g1/LICENSE.Unitree) |
 | <a href="unitree_g1/scene_29dof_box_feet.xml"><img src="unitree_g1/unitree_g1_29dof_box_feet.png" alt="Unitree G1 with box feet" width="120"></a> | [Unitree G1 with box feet](unitree_g1/README.md) | 29 | [Apache-2.0 model; BSD-3-Clause meshes](unitree_g1/LICENSING.md) |
+
+Both Astro P2 variants have the same fixed-head, 29-DoF body. Dex3-1 adds 14
+finger joints (43 total). The previous 30-DoF primitive, mesh, and intermediate
+P2 descriptions are retired; their history remains in Git. The formerly
+separate Astro 29 and Dex3-1 folders are consolidated into `astro_p2/`.
+
+## Legacy Models
+
+[Astro P1](astro_p1/README.md) is **legacy and scheduled for retirement**. Its
+[30-DoF](astro_p1/scene.xml) and [27-DoF](astro_p1/scene_27dof.xml) models remain
+available and receive native loading checks until removal. They are excluded
+from the active gallery and active model map. Use Astro P2 for new work.
 
 ## Acknowledgments
 

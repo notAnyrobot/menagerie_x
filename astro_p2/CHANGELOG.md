@@ -2,13 +2,14 @@
 
 ## 2026-10-30
 
-- Match the upstream README structure and add native model preview images,
-  preserving the existing model descriptions and source records.
-
-- Make family-root model/scene XML directly maintained native inputs; retire
-  mirror regeneration and defer Workbench, URDF compatibility, and MJX.
-- Preserve all existing robot descriptions, assets, source evidence, and notices.
-
-- Move this existing family to the repository root; keep all original descriptions and meshes unchanged.
-- Store mesh files in `assets/`, retaining `meshes/` and `robots/` compatibility paths.
-- Document formats, provenance, and limitations; add native scenes for manifest-declared MJCF editions.
+- Consolidate the fixed-head Astro body and Dex3-1 configuration into one family
+  with sibling `astro_p2.xml` / `astro_p2_with_hands.xml` models and scenes.
+- Maintain only the 29-body-DoF versions; retire all three 30-DoF P2 model choices
+  and their active gallery entries. The old history remains in Git.
+- Reuse actual Unitree G1 left/right rubber hands, including standalone vendor
+  hand masses and inertias, at explicitly documented sample Astro mounts.
+- Keep both variants on the same latest refined Astro body. Preserve the Dex3-1
+  finger definitions and `fist` keyframe.
+- Deduplicate shared assets and preserve the old fixed-head/Dex3-1 sources,
+  reports, URDFs, and licenses under `provenance/` with a migration hash receipt.
+- Keep Workbench, URDF compatibility, and MJX deferred.
