@@ -4,6 +4,7 @@ Historical receipt: the whole-body 27-shape implementation below was rejected
 after visual review. The current scope preserves original non-arm colliders
 and optimizes arms/hands only; see the
 [accepted revision](design/astro-p2-simplified-collisions.md#accepted-revision-preserve-the-body-optimize-arms-only).
+Current verification is recorded in [the arm-only receipt](astro-arm-collision-verification.md).
 
 Implementation: `99937dc`, branch `codex/astro-p2-simplified-collisions`.
 Baseline: `20ad78c0c1c661f9200094b51395f7c85e9861e2`.
