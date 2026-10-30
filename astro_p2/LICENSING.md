@@ -8,6 +8,10 @@ Astro body shared by `astro_p2.xml` and `astro_p2_with_hands.xml`, the default
 model's original Astro hand material, and the corresponding Astro-origin
 source descriptions retained under `provenance/`.
 
+The additional `astro_p2_simplified.xml` robot description is also Astro
+Apache-2.0 material. It reuses the same Astro-origin visual assets and physical
+body, with a separately authored coarse collision envelope.
+
 ## Third-party hand material
 
 Unitree Dex3-1 hand definitions and meshes retain the
@@ -21,6 +25,18 @@ Historical G1 hand-trial sources retain their Unitree and ProtoMotions notices
 under `provenance/rubber_hand_sources/`; they are not part of the default model.
 Presentation scenes retain their separate
 [upstream G1 notice](../LICENSES/MuJoCo-Menagerie-G1.txt).
+
+## Simplified scene contact selection
+
+`scene_simplified.xml` adapts the explicit contact-pair pattern and parameters
+from MuJoCo Menagerie's `unitree_g1/scene_mjx.xml` at revision
+`f3b6013629c7b94f8ee93fd977b161fa8350f9bc`, retaining its actual
+[BSD-3-Clause notice](LICENSE.Menagerie). Geom references and the floor datum
+are adapted to Astro; upstream G1 body geometry, gains and solver settings are
+not imported into the Astro robot. This notice applies to the adapted scene,
+not to unrelated Astro model assets.
+
+[Pinned contact-pattern source](https://github.com/google-deepmind/mujoco_menagerie/blob/f3b6013629c7b94f8ee93fd977b161fa8350f9bc/unitree_g1/scene_mjx.xml).
 
 ## Source records
 

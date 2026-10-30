@@ -151,6 +151,95 @@ class G1PrimitiveTests(unittest.TestCase):
         np.testing.assert_array_equal(robot.actuator_biasprm[:, 2], np.full(robot.nu, -2.0))
 
 
+class AstroP2SimplifiedTests(unittest.TestCase):
+    def test_body_joints_options_and_visuals_match_default(self):
+        base = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/astro_p2.xml"))
+        simple = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/astro_p2_simplified.xml"))
+        self.assertEqual((simple.nq, simple.nv, simple.nu, simple.nbody),
+                         (base.nq, base.nv, base.nu, base.nbody))
+        self.assertEqual(simple.nu, 0)
+        for attribute in ("body_parentid", "body_pos", "body_quat", "body_mass", "body_inertia",
+                          "body_ipos", "body_iquat", "jnt_type", "jnt_pos", "jnt_axis", "jnt_range",
+                          "jnt_limited", "jnt_stiffness", "jnt_actfrcrange", "dof_damping",
+                          "dof_armature", "dof_frictionloss", "qpos0"):
+            np.testing.assert_array_equal(getattr(simple, attribute), getattr(base, attribute))
+        for attribute in ("timestep", "integrator", "solver", "iterations", "ls_iterations",
+                          "disableflags", "enableflags", "gravity"):
+            np.testing.assert_array_equal(getattr(simple.opt, attribute), getattr(base.opt, attribute))
+        visuals = np.flatnonzero(base.geom_group == 1)
+        self.assertEqual(len(visuals), 37)
+        self.assertEqual(int((simple.geom_group == 1).sum()), len(visuals))
+        for i in visuals:
+            old = base.geom(int(i))
+            new = simple.geom(old.name)
+            for attribute in ("bodyid", "type", "dataid", "pos", "quat", "size", "rgba", "matid",
+                              "group", "contype", "conaffinity"):
+                np.testing.assert_array_equal(getattr(new, attribute), getattr(old, attribute))
+
+    def test_support_and_selected_self_contacts_are_active(self):
+        scene = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/scene_simplified.xml"))
+        data = mujoco.MjData(scene)
+        mujoco.mj_forward(scene, data)
+        self.assertEqual(data.ncon, 0)
+        # Preserve the source reference pose; ground it only for this probe.
+        data.qpos[2] -= 0.1051
+        mujoco.mj_forward(scene, data)
+        floor = scene.geom("menagerie_floor").id
+        supported = set()
+        for contact in data.contact:
+            if floor in (contact.geom1, contact.geom2):
+                other = contact.geom2 if contact.geom1 == floor else contact.geom1
+                supported.add(scene.geom(int(other)).name)
+                self.assertEqual(contact.dim, 3)
+        self.assertEqual(supported, {f"{side}_foot{i}_collision"
+                                     for side in ("left", "right") for i in (1, 2, 3)})
+        mujoco.mj_resetData(scene, data)
+        # A bounded arm pose that exercises the declared hand/torso contact.
+        pose = {"shoulder_pitch": -0.0525, "shoulder_roll": 0.0724,
+                "shoulder_yaw": -1.6345, "elbow": 0.1660,
+                "wrist_pitch": 0.0470, "wrist_yaw": -0.9371}
+        for name, value in pose.items():
+            joint = scene.joint(f"left_{name}_joint")
+            self.assertTrue(joint.range[0] <= value <= joint.range[1])
+            data.qpos[joint.qposadr[0]] = value
+        mujoco.mj_forward(scene, data)
+        selected = {scene.geom("left_hand_collision").id, scene.geom("torso_collision").id}
+        self.assertTrue(any({contact.geom1, contact.geom2} == selected and contact.dim == 1
+                            for contact in data.contact))
+        self.assertFalse(np.any(data.warning.number))
+
+    def test_compact_geometry_and_explicit_contact_policy(self):
+        robot = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/astro_p2_simplified.xml"))
+        scene = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/scene_simplified.xml"))
+        colliders = np.isin(robot.geom_group, [3, 4])
+        self.assertEqual(int(colliders.sum()), 27)
+        for kind, count in ((mujoco.mjtGeom.mjGEOM_CAPSULE, 23),
+                            (mujoco.mjtGeom.mjGEOM_SPHERE, 2),
+                            (mujoco.mjtGeom.mjGEOM_BOX, 2)):
+            self.assertEqual(int((robot.geom_type[colliders] == kind).sum()), count)
+        self.assertFalse(np.any(robot.geom_contype))
+        self.assertFalse(np.any(robot.geom_conaffinity))
+        self.assertEqual(robot.npair, 0)
+        self.assertEqual(scene.npair, 49)
+        floor = scene.geom("menagerie_floor").id
+        np.testing.assert_array_equal(scene.geom_pos[floor], [0, 0, -0.75])
+        floor_pairs = (scene.pair_geom1 == floor) | (scene.pair_geom2 == floor)
+        self.assertEqual(int(floor_pairs.sum()), 23)
+        self.assertTrue(np.all(scene.pair_dim[floor_pairs] == 3))
+        self.assertTrue(np.all(scene.pair_dim[~floor_pairs] == 1))
+        pairs = {frozenset((int(a), int(b))) for a, b in zip(scene.pair_geom1, scene.pair_geom2)}
+        self.assertEqual(len(pairs), scene.npair)
+        referenced = set(map(int, np.concatenate((scene.pair_geom1, scene.pair_geom2))))
+        self.assertEqual({scene.geom(i).name for i in referenced - {floor}},
+                         {robot.geom(int(i)).name for i in np.flatnonzero(colliders)})
+        for side in ("left", "right"):
+            box = scene.geom(f"{side}_foot_box_collision").id
+            self.assertNotIn(frozenset((box, floor)), pairs)
+            for number in (1, 2, 3):
+                capsule = scene.geom(f"{side}_foot{number}_collision").id
+                self.assertIn(frozenset((capsule, floor)), pairs)
+
+
 class AstroP2VariantTests(unittest.TestCase):
     def setUp(self):
         self.rubber = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/astro_p2.xml"))

@@ -22,12 +22,18 @@ with each family; see [LICENSING.md](LICENSING.md).
 
 ## Native ownership and preservation
 
-- The active collection has seven models across four families. Astro P1's two
+- The active collection has eight models across four families. Astro P1's two
   models are retained in `LEGACY_MODEL_MAP` and receive native checks until
   later retirement; they are excluded from the active gallery.
-- Astro P2 is one family with two native model/scene pairs, like upstream G1:
+- Astro P2 is one family with three native model/scene pairs, like upstream G1:
   the default fixed-head 29-joint Astro P2, and the same refined body with
-  14 additional Dex3-1 finger joints. The old three 30-DoF P2 choices are retired.
+  14 additional Dex3-1 finger joints, plus a simplified default-hand collision
+  configuration. The old three 30-DoF P2 choices are retired.
+- Its additional simplified model retains the default Astro body and visual
+  meshes, replacing 60 detailed primitives with 27 compact colliders. Its scene
+  adapts G1's explicit contact pattern to Astro's dimensions and floor datum.
+  It does not copy G1's servos or solver tuning, and does not claim MJX runtime
+  compatibility. Existing Astro models/scenes/assets remain byte-identical.
 - The rubber model restores the original Astro hand meshes, fixed-joint frames,
   hand masses/inertias, and capsule collision envelopes. The G1 hand trial was
   rejected for fit; its source evidence is retained separately. The refined

@@ -1,0 +1,479 @@
+{
+  "model": "astro_p2_simplified.xml",
+  "source_model": "astro_p2.xml",
+  "source_revision": "20ad78c0c1c661f9200094b51395f7c85e9861e2",
+  "source_sha256": "cd8a85a833547164314e57559c948b35960ded43cf945ad9d630ab3d7f5e3d33",
+  "license": "Apache-2.0",
+  "collision_count_before": 60,
+  "collision_count_after": 27,
+  "approach_reference": {
+    "repository": "https://github.com/google-deepmind/mujoco_menagerie",
+    "revision": "f3b6013629c7b94f8ee93fd977b161fa8350f9bc",
+    "path": "unitree_g1/g1_mjx.xml",
+    "use": "Compact primitive roles and explicit-contact approach; dimensions authored in Astro frames."
+  },
+  "preserved": [
+    "All 37 source visual meshes, placements, and colors",
+    "Complete body tree, inertias, joint definitions, and passive parameters",
+    "29 body joints, free base, zero actuators, default initial state and numerical options",
+    "Original Astro hand material and every existing source/asset file"
+  ],
+  "contact_policy": "All robot masks zero; scene_simplified.xml supplies explicit pairs.",
+  "limitations": [
+    "Approximate collision envelope; small details and some interactions of the detailed model are omitted.",
+    "No hardware fitting, controller tuning, MJX runtime compatibility or performance claim."
+  ],
+  "colliders": [
+    {
+      "body": "pelvis",
+      "name": "pelvis_collision",
+      "type": "sphere",
+      "size": [
+        0.08
+      ],
+      "group": 3,
+      "pos": [
+        0,
+        0,
+        0.025
+      ]
+    },
+    {
+      "body": "waist_roll_link",
+      "name": "torso_collision",
+      "type": "capsule",
+      "size": [
+        0.12
+      ],
+      "group": 3,
+      "fromto": [
+        0,
+        0,
+        0.07,
+        0,
+        0,
+        0.24
+      ]
+    },
+    {
+      "body": "head_link",
+      "name": "head_collision",
+      "type": "sphere",
+      "size": [
+        0.075
+      ],
+      "group": 3,
+      "pos": [
+        0,
+        0,
+        0.083
+      ]
+    },
+    {
+      "body": "left_hip_roll_link",
+      "name": "left_hip_collision",
+      "type": "capsule",
+      "size": [
+        0.055
+      ],
+      "group": 3,
+      "fromto": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        -0.075
+      ]
+    },
+    {
+      "body": "left_hip_yaw_link",
+      "name": "left_thigh_collision",
+      "type": "capsule",
+      "size": [
+        0.053
+      ],
+      "group": 3,
+      "fromto": [
+        0,
+        0,
+        -0.005,
+        -0.016,
+        0,
+        -0.13
+      ]
+    },
+    {
+      "body": "left_knee_link",
+      "name": "left_shin_collision",
+      "type": "capsule",
+      "size": [
+        0.053
+      ],
+      "group": 3,
+      "fromto": [
+        0.015,
+        0,
+        0,
+        0.015,
+        0,
+        -0.23
+      ]
+    },
+    {
+      "body": "left_ankle_pitch_link",
+      "name": "left_linkage_brace_collision",
+      "type": "capsule",
+      "size": [
+        0.03
+      ],
+      "group": 3,
+      "fromto": [
+        0,
+        0,
+        0.015,
+        0,
+        0,
+        -0.025
+      ]
+    },
+    {
+      "body": "left_foot_link",
+      "name": "left_foot1_collision",
+      "type": "capsule",
+      "size": [
+        0.012
+      ],
+      "group": 3,
+      "fromto": [
+        -0.045,
+        0.034,
+        -0.039,
+        0.1,
+        0.034,
+        -0.039
+      ]
+    },
+    {
+      "body": "left_foot_link",
+      "name": "left_foot2_collision",
+      "type": "capsule",
+      "size": [
+        0.012
+      ],
+      "group": 3,
+      "fromto": [
+        -0.058,
+        0,
+        -0.039,
+        0.11,
+        0,
+        -0.039
+      ]
+    },
+    {
+      "body": "left_foot_link",
+      "name": "left_foot3_collision",
+      "type": "capsule",
+      "size": [
+        0.012
+      ],
+      "group": 3,
+      "fromto": [
+        -0.045,
+        -0.034,
+        -0.039,
+        0.1,
+        -0.034,
+        -0.039
+      ]
+    },
+    {
+      "body": "left_foot_link",
+      "name": "left_foot_box_collision",
+      "type": "box",
+      "size": [
+        0.0975,
+        0.047,
+        0.022
+      ],
+      "group": 4,
+      "pos": [
+        0.0245,
+        0,
+        -0.029
+      ]
+    },
+    {
+      "body": "left_shoulder_roll_link",
+      "name": "left_shoulder_yaw_collision",
+      "type": "capsule",
+      "size": [
+        0.039
+      ],
+      "group": 3,
+      "fromto": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        -0.17
+      ]
+    },
+    {
+      "body": "left_elbow_link",
+      "name": "left_elbow_yaw_collision",
+      "type": "capsule",
+      "size": [
+        0.039
+      ],
+      "group": 3,
+      "fromto": [
+        0,
+        0,
+        0,
+        0.1,
+        0,
+        0
+      ]
+    },
+    {
+      "body": "left_wrist_pitch_link",
+      "name": "left_wrist_collision",
+      "type": "capsule",
+      "size": [
+        0.034
+      ],
+      "group": 3,
+      "fromto": [
+        -0.02,
+        0,
+        0,
+        0.09,
+        0,
+        0
+      ]
+    },
+    {
+      "body": "left_hand_link",
+      "name": "left_hand_collision",
+      "type": "capsule",
+      "size": [
+        0.027
+      ],
+      "group": 3,
+      "fromto": [
+        0.0024980000000000002,
+        0,
+        0,
+        0.08249799999999999,
+        0,
+        0
+      ]
+    },
+    {
+      "body": "right_hip_roll_link",
+      "name": "right_hip_collision",
+      "type": "capsule",
+      "size": [
+        0.055
+      ],
+      "group": 3,
+      "fromto": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        -0.075
+      ]
+    },
+    {
+      "body": "right_hip_yaw_link",
+      "name": "right_thigh_collision",
+      "type": "capsule",
+      "size": [
+        0.053
+      ],
+      "group": 3,
+      "fromto": [
+        0,
+        0,
+        -0.005,
+        -0.016,
+        0,
+        -0.13
+      ]
+    },
+    {
+      "body": "right_knee_link",
+      "name": "right_shin_collision",
+      "type": "capsule",
+      "size": [
+        0.053
+      ],
+      "group": 3,
+      "fromto": [
+        0.015,
+        0,
+        0,
+        0.015,
+        0,
+        -0.23
+      ]
+    },
+    {
+      "body": "right_ankle_pitch_link",
+      "name": "right_linkage_brace_collision",
+      "type": "capsule",
+      "size": [
+        0.03
+      ],
+      "group": 3,
+      "fromto": [
+        0,
+        0,
+        0.015,
+        0,
+        0,
+        -0.025
+      ]
+    },
+    {
+      "body": "right_foot_link",
+      "name": "right_foot1_collision",
+      "type": "capsule",
+      "size": [
+        0.012
+      ],
+      "group": 3,
+      "fromto": [
+        -0.045,
+        0.034,
+        -0.039,
+        0.1,
+        0.034,
+        -0.039
+      ]
+    },
+    {
+      "body": "right_foot_link",
+      "name": "right_foot2_collision",
+      "type": "capsule",
+      "size": [
+        0.012
+      ],
+      "group": 3,
+      "fromto": [
+        -0.058,
+        0,
+        -0.039,
+        0.11,
+        0,
+        -0.039
+      ]
+    },
+    {
+      "body": "right_foot_link",
+      "name": "right_foot3_collision",
+      "type": "capsule",
+      "size": [
+        0.012
+      ],
+      "group": 3,
+      "fromto": [
+        -0.045,
+        -0.034,
+        -0.039,
+        0.1,
+        -0.034,
+        -0.039
+      ]
+    },
+    {
+      "body": "right_foot_link",
+      "name": "right_foot_box_collision",
+      "type": "box",
+      "size": [
+        0.0975,
+        0.047,
+        0.022
+      ],
+      "group": 4,
+      "pos": [
+        0.0245,
+        0,
+        -0.029
+      ]
+    },
+    {
+      "body": "right_shoulder_roll_link",
+      "name": "right_shoulder_yaw_collision",
+      "type": "capsule",
+      "size": [
+        0.039
+      ],
+      "group": 3,
+      "fromto": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        -0.17
+      ]
+    },
+    {
+      "body": "right_elbow_link",
+      "name": "right_elbow_yaw_collision",
+      "type": "capsule",
+      "size": [
+        0.039
+      ],
+      "group": 3,
+      "fromto": [
+        0,
+        0,
+        0,
+        0.1,
+        0,
+        0
+      ]
+    },
+    {
+      "body": "right_wrist_pitch_link",
+      "name": "right_wrist_collision",
+      "type": "capsule",
+      "size": [
+        0.034
+      ],
+      "group": 3,
+      "fromto": [
+        -0.02,
+        0,
+        0,
+        0.09,
+        0,
+        0
+      ]
+    },
+    {
+      "body": "right_hand_link",
+      "name": "right_hand_collision",
+      "type": "capsule",
+      "size": [
+        0.027
+      ],
+      "group": 3,
+      "fromto": [
+        0.0025000000000000022,
+        0,
+        0,
+        0.08249999999999999,
+        0,
+        0
+      ]
+    }
+  ]
+}

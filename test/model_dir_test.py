@@ -29,8 +29,8 @@ class ModelDirectoryTests(unittest.TestCase):
     def test_catalog_and_family_layout(self):
         entries = list(model_entries())
         self.assertEqual({entry["family"] for entry in entries}, FAMILIES)
-        self.assertEqual(len(entries), 9)
-        self.assertEqual(len(MODEL_MAP), 7)
+        self.assertEqual(len(entries), 10)
+        self.assertEqual(len(MODEL_MAP), 8)
         self.assertEqual(len(LEGACY_MODEL_MAP), 2)
         self.assertFalse(set(MODEL_MAP) & set(LEGACY_MODEL_MAP))
         self.assertTrue(all(key.startswith("astro_p1/") for key in LEGACY_MODEL_MAP))

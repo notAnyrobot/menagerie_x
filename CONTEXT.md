@@ -5,13 +5,16 @@ Accepted design decisions and their implementation status are recorded in
 [the per-robot decision log](docs/design/per-robot-design-decisions.md).
 
 Canonical native robot/scene XML lives at each family root; root `catalog.py`
-curates seven active models plus two legacy P1 models, independently of the
+curates eight active models plus two legacy P1 models, independently of the
 application `manifest.json`. Astro P2 is one family with a shared 29-joint body
-and default Astro P2 / articulated Dex3-1 variants. Astro P2 body/default-model
+and default Astro P2 / articulated Dex3-1 variants, plus an optional simplified
+collision model with the original fixed hands. Astro P2 body/default-model
 material is Apache-2.0; Unitree Dex3-1 hand material remains BSD-3-Clause.
 The articulated variant is labeled Astro P2 with hands and uses silver hand
 visuals. G1 also includes Menagerie's 27-primitive configuration and its complete
 49-pair scene as native XML; MJX device execution is not yet verified.
+The simplified Astro pair uses 27 primitives and explicit scene contacts while
+retaining Astro's unactuated dynamics, source frames, and existing variants.
 There is no regeneration step. `make all` is the native acceptance gate.
 Workbench, URDF compatibility, and MJX remain deferred. See
 [UPSTREAM.md](UPSTREAM.md) for preservation and ownership details.

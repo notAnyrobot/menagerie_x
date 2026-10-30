@@ -2,6 +2,13 @@
 
 ## 2026-10-30
 
+- Add Astro P2 with simplified collisions as a separate native model/scene:
+  27 Astro-sized primitives and 49 selected contact pairs. Preserve the existing
+  default/articulated variants, physical body and visual meshes; keep native
+  passive dynamics and defer MJX runtime support.
+- Add reference-pose mesh and collision-only previews, and retain the upstream
+  BSD notice for the adapted Menagerie G1 scene contact pattern.
+
 - Label the articulated variant Astro P2 with hands and color its 16 hand visual
   meshes silver. Preserve hand geometry, dynamics, collision geoms, and the
   saved `fist` pose; refresh its native reference-pose preview.

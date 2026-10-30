@@ -31,6 +31,7 @@ class ModelType(int, enum.Enum):
 MODEL_MAP = {
     "astro_p2/astro_p2": ModelType.HUMANOID,
     "astro_p2/astro_p2_with_hands": ModelType.HUMANOID,
+    "astro_p2/astro_p2_simplified": ModelType.HUMANOID,
     "atom_p3/atom_p3_27dof": ModelType.HUMANOID,
     "soma23/soma23_free_base": ModelType.HUMANOID,
     "unitree_g1/unitree_g1_29dof_with_hand_rev_1_0": ModelType.HUMANOID,
@@ -46,6 +47,7 @@ LEGACY_MODEL_MAP = {
 
 PREVIEW_OVERRIDES = {
     "astro_p2/astro_p2_with_hands": "astro_p2/scene_with_hands.xml",
+    "astro_p2/astro_p2_simplified": "astro_p2/scene_simplified.xml",
     "astro_p1/astro_p1_27dof": "astro_p1/scene_27dof.xml",
     "unitree_g1/unitree_g1_29dof_box_feet": "unitree_g1/scene_29dof_box_feet.xml",
     "unitree_g1/g1_mjx": "unitree_g1/scene_mjx.xml",

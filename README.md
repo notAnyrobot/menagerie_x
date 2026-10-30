@@ -5,7 +5,7 @@
 **Menagerie X** is a collection of robot models for the
 [MuJoCo](https://github.com/google-deepmind/mujoco) physics engine. Its organization
 follows [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie),
-with four active robot families and seven native MJCF models. Astro P1 is
+with four active robot families and eight native MJCF models. Astro P1 is
 retained separately as legacy, pending retirement.
 
 Each model directory contains the robot description, a scene, local assets,
@@ -47,6 +47,8 @@ astro_p2/
 ├── scene.xml               # default scene
 ├── astro_p2_with_hands.xml  # same body plus 14 Dex3-1 finger DoFs
 ├── scene_with_hands.xml     # dexterous-hand scene
+├── astro_p2_simplified.xml  # same default model with 27 collision primitives
+├── scene_simplified.xml     # explicit self/floor contact pairs
 ├── README.md
 ├── CHANGELOG.md
 ├── LICENSE                 # Apache-2.0 for Astro material
@@ -122,14 +124,19 @@ Collision alternatives can share the same visual appearance.
 | :---: | --- | --- | --- |
 | <a href="astro_p2/scene.xml"><img src="astro_p2/astro_p2.png" alt="Astro P2" width="120"></a> | [Astro P2](astro_p2/README.md) | 29 | [Apache-2.0](astro_p2/LICENSE) |
 | <a href="astro_p2/scene_with_hands.xml"><img src="astro_p2/astro_p2_with_hands.png" alt="Astro P2 with hands" width="120"></a> | [Astro P2 with hands](astro_p2/README.md) | 43 | [Apache-2.0 body; BSD-3-Clause hands](astro_p2/LICENSING.md) |
+| <a href="astro_p2/scene_simplified.xml"><img src="astro_p2/astro_p2_simplified.png" alt="Astro P2 with simplified collisions" width="120"></a> | [Astro P2 with simplified collisions](astro_p2/README.md) | 29 | [Apache-2.0 model; BSD-3-Clause scene](astro_p2/LICENSING.md) |
 | <a href="atom_p3/scene.xml"><img src="atom_p3/atom_p3_27dof.png" alt="Atom P3" width="120"></a> | [Atom P3](atom_p3/README.md) | 27 | [Unresolved](atom_p3/LICENSING.md) |
 | <a href="soma23/scene.xml"><img src="soma23/soma23_free_base.png" alt="SOMA-23" width="120"></a> | [SOMA-23](soma23/README.md) | 66 | [Apache-2.0](soma23/LICENSE.ProtoMotions) |
 | <a href="unitree_g1/scene.xml"><img src="unitree_g1/unitree_g1_29dof_with_hand_rev_1_0.png" alt="Unitree G1 with hands" width="120"></a> | [Unitree G1 with hands](unitree_g1/README.md) | 43 | [BSD-3-Clause](unitree_g1/LICENSE.Unitree) |
 | <a href="unitree_g1/scene_29dof_box_feet.xml"><img src="unitree_g1/unitree_g1_29dof_box_feet.png" alt="Unitree G1 with box feet" width="120"></a> | [Unitree G1 with box feet](unitree_g1/README.md) | 29 | [Apache-2.0 model; BSD-3-Clause meshes](unitree_g1/LICENSING.md) |
 | <a href="unitree_g1/scene_mjx.xml"><img src="unitree_g1/g1_mjx.png" alt="Unitree G1 with primitive collisions" width="120"></a> | [Unitree G1 with primitive collisions](unitree_g1/README.md) | 29 | [BSD-3-Clause](unitree_g1/LICENSE.Menagerie) |
 
-Both Astro P2 variants have the same fixed-head, 29-DoF body. Dex3-1 adds 14
-finger joints (43 total). The previous 30-DoF primitive, mesh, and intermediate
+All Astro P2 variants have the same fixed-head, 29-DoF body. Dex3-1 adds 14
+finger joints (43 total). The additional simplified model retains the default
+model's fixed hands and visuals, reduces its 60 collision primitives to 27, and
+uses an explicit scene contact list. The existing detailed variants remain
+available. See the [collision-only preview](astro_p2/astro_p2_simplified_colliders.png).
+The previous 30-DoF primitive, mesh, and intermediate
 P2 descriptions are retired; their history remains in Git. The formerly
 separate Astro 29 and Dex3-1 folders are consolidated into `astro_p2/`.
 

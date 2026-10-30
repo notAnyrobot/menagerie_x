@@ -2,6 +2,11 @@
 
 ## 2026-10-30
 
+- Add a separate simplified Astro P2 configuration with 27 collision primitives
+  and an explicit scene contact list. Preserve the existing Astro variants,
+  meshes, rigid-body/joint properties and unactuated controls. MJX runtime stays
+  deferred. The active native collection now contains eight models.
+
 - Label the articulated Astro variant Astro P2 with hands and render its hand
   meshes in silver. Preserve its dynamics, collisions and source meshes.
 - Add MuJoCo Menagerie's G1 primitive configuration as a separate native model:
