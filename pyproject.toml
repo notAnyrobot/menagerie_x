@@ -31,7 +31,7 @@ packages = ["src/menagerie_x"]
 only-include = [
     "src/menagerie_x", "manifest.json",
     "astro_p1", "astro_p2", "astro_p2_29dof", "astro_p2_43dof_dex3_1",
-    "atom_p3", "soma23", "unitree_g1", "robots", "scenes", "terrains",
+    "atom_p3", "soma23", "unitree_g1", "scenes", "terrains",
     "test", "tests", "docs", "LICENSES", "README.md", "CONTEXT.md",
     "CONTRIBUTING.md", "GLOSSARY.md", "CHANGELOG.md", "UPSTREAM.md", "LICENSING.md",
     "catalog.py", "format_xml.py", "hatch_build.py", "Makefile", "pyproject.toml", "uv.lock",

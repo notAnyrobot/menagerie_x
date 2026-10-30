@@ -71,7 +71,7 @@ catalog.py                # curated native model/preview map, like upstream
 format_xml.py             # upstream XML formatter
 test/                     # native layout, loading, stepping, portability checks
 docs/                     # investigation and accepted scope decisions
-manifest.json, robots/    # retained legacy application metadata / paths
+manifest.json             # retained legacy application metadata
 src/menagerie_x/, tests/  # retained CLI, Workbench, and application tests
 scenes/, terrains/        # legacy Workbench JSON environments
 ```
@@ -96,7 +96,9 @@ or rendering dependencies. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Deferred application compatibility
 
-CLI and Workbench code, URDFs, old paths, and application tests are preserved.
+CLI and Workbench code, URDFs, and application tests are preserved.
+The retired `robots/` compatibility directory is removed; use top-level paths
+such as `astro_p2/scene.xml` instead of `robots/astro_p2/scene.xml`.
 **Workbench, URDF compatibility, and MJX are deferred.** The legacy application
 manifest may select nested snapshots rather than the canonical native XML;
 application edits do not update the native model. Browser include/asset loading,

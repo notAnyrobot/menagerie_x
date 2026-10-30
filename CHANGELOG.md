@@ -2,6 +2,10 @@
 
 ## 2026-10-30
 
+- Retire the stale `robots/` compatibility links and remove them from source
+  archives. Use top-level family paths; retain the family-local mesh aliases
+  required by preserved native conversions and legacy descriptions.
+
 - Complete the simplified native refactor: root model/scene XML is canonical,
   with an explicit upstream-style catalog and no mirror generator.
 - Include the existing Astro 29 MJCF and its new scene in the 11-model native

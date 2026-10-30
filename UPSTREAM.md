@@ -55,11 +55,12 @@ synchronized into canonical native XML. Includes, initialization, and browser
 collision editing have documented gaps in the
 [compatibility investigation](docs/research/mujoco-workbench-compatibility.md).
 
-Relative `robots/` and `meshes/` aliases, URDFs, conversion scripts, and application
-code remain available. `hatch_build.py` retains relative aliases in source
-archives; wheels retain the code-only packaging policy. The upstream download
-package, generated remote registry, unrelated gallery assets, and release
-workflows are omitted. Native `make all` is the acceptance gate.
+The stale `robots/` compatibility directory has been retired; use family paths
+at the repository root. The family-local `meshes/` aliases, URDFs, conversion
+scripts, and application code remain available. `hatch_build.py` retains the
+relative mesh aliases in source archives; wheels retain the code-only
+packaging policy. The upstream download package, generated remote registry,
+unrelated gallery assets, and release workflows are omitted. Native `make all` is the acceptance gate.
 
 See the [accepted scope](docs/adr/0011-upstream-asset-structure-first.md),
 [implementation outline](docs/design/menagerie-paired-refactor-proposal.md), and

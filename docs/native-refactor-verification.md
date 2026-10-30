@@ -54,6 +54,17 @@ fidelity, or exhaustive contact-quality test.
 22 native model/scene entry points. Relative runtime aliases are retained;
 local floating-MJCF files, `.local/`, and `retargeting/` experiments are excluded.
 
+## Follow-up: retire the robots compatibility directory
+
+On `codex/retire-robots-aliases`, the stale root `robots/` directory (ten
+relative aliases and its README) was removed. Actual family assets remain at
+the repository root. Source packaging now preserves only the seven family-local
+mesh aliases. `make all` passes, and an extracted rebuilt source archive has no
+root `robots/` directory and loads all 22 native model/scene entry points.
+All 377 original family asset/source hashes remain unchanged. Untracked local
+scripts that still name `robots/...` were preserved and need path updates before
+reuse. Workbench, URDF compatibility, and MJX remain deferred.
+
 ## Branch review
 
 Reviewed commit: `93f884c` on `codex/native-menagerie-refactor`.

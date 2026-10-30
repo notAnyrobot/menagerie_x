@@ -1,7 +1,7 @@
 """Preserve relative directory links in the source distribution.
 
 Hatch traverses directory links and suppresses repeated inodes. Restoring the
-links keeps legacy descriptions runnable without duplicating all mesh assets.
+links keeps family-local mesh paths runnable without duplicating asset data.
 """
 import gzip
 import json
@@ -18,7 +18,6 @@ class PreserveCatalogLinks(BuildHookInterface):
         manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
         families = manifest["variants"]
         candidates = [root / family / "meshes" for family in families]
-        candidates += [root / "robots" / name for name in (*families, "scenes", "terrains", "manifest.json")]
         links = {str(path.relative_to(root)): os.readlink(path) for path in candidates if path.is_symlink()}
         artifact = Path(artifact_path)
         temporary = artifact.with_suffix(artifact.suffix + ".tmp")
