@@ -5,7 +5,7 @@
 **Menagerie X** is a collection of robot models for the
 [MuJoCo](https://github.com/google-deepmind/mujoco) physics engine. Its organization
 follows [MuJoCo Menagerie](https://github.com/google-deepmind/mujoco_menagerie),
-with four active robot families and six native MJCF models. Astro P1 is
+with four active robot families and seven native MJCF models. Astro P1 is
 retained separately as legacy, pending retirement.
 
 Each model directory contains the robot description, a scene, local assets,
