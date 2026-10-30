@@ -1,22 +1,56 @@
-# Astro P2
+# Astro P2 Description (MJCF)
 
-Astro P2 descriptions with mesh and primitive collision editions.
+> [!IMPORTANT]
+> Tested with MuJoCo 3.11.0, the version pinned by this repository.
 
-## Menagerie entry points
+## Changelog
 
-| Edition | Internal DOF | Descriptions |
+Model history: [CHANGELOG.md](CHANGELOG.md).
+
+## Overview
+
+This directory contains three 30-DoF Astro P2 descriptions with different
+collision models: primitive, mesh, and the retained intermediate primitive
+choice. Original MJCF and available URDF descriptions remain in `mjcf/` and
+`urdf/`. Their complete public derivation history is not available.
+
+<p float="left">
+  <img src="astro_p2_30dof_primitive_collision.png" alt="Astro P2 with primitive collisions" width="400">
+  <img src="astro_p2_30dof_mesh_collision.png" alt="Astro P2 with mesh collisions" width="400">
+  <img src="astro_p2_30dof_primitive_collision_halfway.png" alt="Astro P2 intermediate primitive model" width="400">
+</p>
+
+| Model | DoFs | Scene |
 | --- | --- | --- |
-| `30dof_primitive_collision` | 30 | [URDF](urdf/astro_p2_30dof_primitive_collision.urdf) · [source snapshot](mjcf/astro_p2_30dof_primitive_collision.xml) · [model](astro_p2_30dof_primitive_collision.xml) / [scene](scene.xml) |
-| `30dof_mesh_collision` | 30 | [URDF](urdf/astro_p2_30dof_mesh_collision.urdf) · [source snapshot](mjcf/astro_p2_30dof_mesh_collision.xml) · [model](astro_p2_30dof_mesh_collision.xml) / [scene](scene_30dof_mesh_collision.xml) |
-| `30dof_primitive_collision_halfway` | 30 | [source snapshot](mjcf/astro_p2_30dof_primitive_collision_halfway.xml) · [model](astro_p2_30dof_primitive_collision_halfway.xml) / [scene](scene_30dof_primitive_collision_halfway.xml) |
+| [astro_p2_30dof_primitive_collision.xml](astro_p2_30dof_primitive_collision.xml) | 30 | [scene.xml](scene.xml) |
+| [astro_p2_30dof_mesh_collision.xml](astro_p2_30dof_mesh_collision.xml) | 30 | [scene_30dof_mesh_collision.xml](scene_30dof_mesh_collision.xml) |
+| [astro_p2_30dof_primitive_collision_halfway.xml](astro_p2_30dof_primitive_collision_halfway.xml) | 30 | [scene_30dof_primitive_collision_halfway.xml](scene_30dof_primitive_collision_halfway.xml) |
 
-The family-root model and scene XML are canonical and maintained directly.
-Scenes include a sibling robot model and add presentation lighting and one
-ground plane. Robot frames and physical descriptions are unchanged; the floor
-is lowered where needed to preserve the original zero-height robot datum.
-Meshes live in `assets/`, with the retained relative `meshes -> assets` alias.
-Nested `mjcf/` imports, where present, are preserved source snapshots.
-Workbench, URDF compatibility, and MJX are deferred; legacy application edits
-may target those snapshots and do not update the canonical native XML.
+DoF counts exclude the floating base. Open the scene to include the robot,
+ground plane, and lighting. The images show native reference initialization,
+without advancing simulation.
 
-See [LICENSING.md](LICENSING.md) for asset-specific terms and unresolved provenance.
+## MJCF derivation steps
+
+1. Retained the three existing MJCF collision choices and their original source snapshots.
+2. Placed the maintained robot XML at the family root, using `assets/` for mesh dependencies.
+3. Preserved each model's physical parameters and collision definitions; no actuators or new gains were added.
+4. Added one scene per model. Each scene keeps the zero-height robot datum and places the floor at `z=-0.75`.
+
+## Model notes
+
+All three models have no actuators (`nu=0`). Primitive and mesh choices share
+visual geometry, so their preview images look alike; their collision geometry
+differs. The intermediate primitive model is retained as an existing choice,
+without an additional fidelity claim.
+
+Retained URDFs are available for the
+[primitive](urdf/astro_p2_30dof_primitive_collision.urdf) and
+[mesh](urdf/astro_p2_30dof_mesh_collision.urdf) descriptions.
+Maintain root XML directly; nested MJCF files remain source evidence.
+
+## License
+
+No explicit redistribution license accompanies the retained Astro assets.
+[LICENSING.md](LICENSING.md) records the unresolved terms and presentation-scene
+attribution.

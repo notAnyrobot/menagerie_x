@@ -1,22 +1,52 @@
-# Astro P1
+# Astro P1 Description (MJCF)
 
-Astro P1 robot descriptions.
+> [!IMPORTANT]
+> Tested with MuJoCo 3.11.0, the version pinned by this repository.
 
-## Menagerie entry points
+## Changelog
 
-| Edition | Internal DOF | Descriptions |
+Model history: [CHANGELOG.md](CHANGELOG.md).
+
+## Overview
+
+This directory contains the retained 27- and 30-DoF descriptions of the Astro P1
+humanoid. The original URDF and MJCF imports are preserved under `urdf/` and
+`mjcf/`; a complete public upstream source record is not available.
+
+<p float="left">
+  <img src="astro_p1_30dof.png" alt="Astro P1 with 30 DoFs" width="400">
+  <img src="astro_p1_27dof.png" alt="Astro P1 with 27 DoFs" width="400">
+</p>
+
+| Model | DoFs | Scene |
 | --- | --- | --- |
-| `30dof` | 30 | [URDF](urdf/astro_p1_30dof.urdf) · [source snapshot](mjcf/astro_p1_30dof.xml) · [model](astro_p1_30dof.xml) / [scene](scene.xml) |
-| `27dof` | 27 | [URDF](urdf/astro_p1_27dof.urdf) · [source snapshot](mjcf/astro_p1_27dof.xml) · [model](astro_p1_27dof.xml) / [scene](scene_27dof.xml) |
-| `with_racket` | 30 | [URDF](urdf/astro_p1_with_racket.urdf) |
+| [astro_p1_30dof.xml](astro_p1_30dof.xml) | 30 | [scene.xml](scene.xml) |
+| [astro_p1_27dof.xml](astro_p1_27dof.xml) | 27 | [scene_27dof.xml](scene_27dof.xml) |
 
-The family-root model and scene XML are canonical and maintained directly.
-Scenes include a sibling robot model and add presentation lighting and one
-ground plane. Robot frames and physical descriptions are unchanged; the floor
-is lowered where needed to preserve the original zero-height robot datum.
-Meshes live in `assets/`, with the retained relative `meshes -> assets` alias.
-Nested `mjcf/` imports, where present, are preserved source snapshots.
-Workbench, URDF compatibility, and MJX are deferred; legacy application edits
-may target those snapshots and do not update the canonical native XML.
+DoF counts exclude the floating base. Open the scene to include the robot,
+ground plane, and lighting. The images show native reference initialization,
+without advancing simulation.
 
-See [LICENSING.md](LICENSING.md) for asset-specific terms and unresolved provenance.
+## MJCF derivation steps
+
+1. Started from the retained [30-DoF MJCF](mjcf/astro_p1_30dof.xml) and [27-DoF MJCF](mjcf/astro_p1_27dof.xml) imports.
+2. Placed the native robot XML at the family root and pointed mesh lookup at `assets/`.
+3. Preserved the imported bodies, inertias, joint definitions, actuators, and sensors.
+4. Added sibling scene files containing a ground plane at `z=0` and presentation lighting.
+
+## Model notes
+
+The models have 30 and 27 actuators respectively. Their imported gains are
+retained; short load/step checks do not establish a tuned controller.
+
+Retained URDFs: [30 DoF](urdf/astro_p1_30dof.urdf),
+[27 DoF](urdf/astro_p1_27dof.urdf), and
+[with racket](urdf/astro_p1_with_racket.urdf). The racket variant has no native
+MJCF entry. Maintain the root XML directly; nested MJCF files are source
+snapshots.
+
+## License
+
+The retained Astro bundle has no explicit redistribution license or complete
+public provenance record. See [LICENSING.md](LICENSING.md) for the recorded status
+and the separate terms for presentation scenes.

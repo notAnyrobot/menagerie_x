@@ -2,6 +2,10 @@
 
 ## 2026-10-30
 
+- Align root and robot READMEs with MuJoCo Menagerie's gallery, overview,
+  derivation, changelog, and license sections. Add 11 native scene previews
+  and preserve the detailed Dex3-1 build/validation record in `DERIVATION.md`.
+
 - Retire the stale `robots/` compatibility links and remove them from source
   archives. Use top-level family paths; retain the family-local mesh aliases
   required by preserved native conversions and legacy descriptions.

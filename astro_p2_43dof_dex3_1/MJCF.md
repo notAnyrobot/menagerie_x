@@ -7,7 +7,7 @@ All collision geoms are primitives: 57 native capsules (43 body + 14 finger), 12
 6 boxes (two feet + two per palm), and one sphere. Source explicit
 inertias are retained with inference disabled. Fixed frames remain named.
 
-Read [README.md](README.md) for sample mounting assumptions, joint-order mapping,
+Read [DERIVATION.md](DERIVATION.md) for sample mounting assumptions, joint-order mapping,
 source licensing, mass accounting, regeneration and validation. Relative mesh
 paths are self-contained; keep `meshes/` next to the XML. No floor, initial
 standing offset, actuator, controller, hand calibration or retargeting is added.

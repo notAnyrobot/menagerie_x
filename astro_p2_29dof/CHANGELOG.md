@@ -2,6 +2,9 @@
 
 ## 2026-10-30
 
+- Match the upstream README structure and add native model preview images,
+  preserving the existing model descriptions and source records.
+
 - Make family-root model/scene XML directly maintained native inputs; retire
   mirror regeneration and defer Workbench, URDF compatibility, and MJX.
 - Add a native scene for the existing 29-DOF conversion without changing the
