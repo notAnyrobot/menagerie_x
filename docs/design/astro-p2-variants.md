@@ -3,7 +3,15 @@
 Requested on 2026-10-30; baseline `fcbb3f222359df8b275fee1bc79d47721efdd2ec`.
 Branch: `codex/astro-p2-variants`.
 
-## Accepted scope
+## Current hand selection
+
+The user rejected the G1 rubber-hand fit after previewing it. The default now
+uses Astro's original native rubber-hand meshes, source inertias, fixed frames,
+and collision envelopes. The 29-DoF body and Dex3-1 alternative remain unchanged.
+This supersedes item 5 below; it does not change the family/retirement decisions.
+See [restoration verification](../astro-native-hand-restoration.md).
+
+## Original accepted scope
 
 1. Mark Astro P1 as legacy and retain its assets and native loading checks until
    a later retirement. Its appearance in the supplied screenshot does not

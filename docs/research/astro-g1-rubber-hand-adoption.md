@@ -5,6 +5,11 @@ Investigated on 2026-10-30 for the requested two-variant Astro P2 family:
 Dex3-1 hands (43 internal DoFs total). Workbench, URDF compatibility, and MJX
 remain deferred.
 
+> Historical investigation: the user subsequently rejected the G1 hand fit.
+> The maintained default restores [native Astro hands](../astro-native-hand-restoration.md).
+> The G1 trial record is preserved in
+> [rejected_g1_rubber_hands.json](../../astro_p2/provenance/rejected_g1_rubber_hands.json).
+
 ## Primary sources
 
 - [Existing refined Astro Dex model](https://github.com/notAnyrobot/menagerie_x/blob/fcbb3f222359df8b275fee1bc79d47721efdd2ec/astro_p2_43dof_dex3_1/astro_p2_43dof_dex3_1.xml): the latest maintained body, collision refinements, fixed hand frames, and `fist` keyframe before consolidation.
@@ -84,8 +89,8 @@ it remains provenance material rather than a third maintained variant.
 
 ## Candidate verification
 
-The integrated model is [astro_p2/astro_p2.xml](../../astro_p2/astro_p2.xml).
-The [hand source record](../../astro_p2/provenance/rubber_hands.json) records
+The G1 trial model is retained in Git at commit `899a43f`.
+The [historical hand source record](../../astro_p2/provenance/rejected_g1_rubber_hands.json) records
 source hashes, tensors, collision transformation, explicit mount assumptions,
 counts, and validation. Exact downloaded source bytes and notices are retained
 under [rubber_hand_sources/](../../astro_p2/provenance/rubber_hand_sources/).

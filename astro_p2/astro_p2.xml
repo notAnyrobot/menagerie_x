@@ -1,5 +1,5 @@
 <mujoco model="astro_p2">
-  <!-- Astro P2 with fixed head and Unitree G1 rubber hands. Visuals: group 1; collisions: group 3. See provenance/rubber_hands.json for source and mount assumptions. -->
+  <!-- Astro P2 with its original native rubber hands. Visuals: group 1; collisions: group 3. See provenance/rubber_hands.json. -->
   <compiler angle="radian" inertiafromgeom="false" fusestatic="false" discardvisual="false" meshdir="assets"/>
   <asset>
     <mesh name="pelvis" content_type="model/stl" file="pelvis.stl"/>
@@ -37,8 +37,8 @@
     <mesh name="imu_2_link" content_type="model/stl" file="imu_2_link.stl"/>
     <mesh name="imu_1_link" content_type="model/stl" file="imu_1_link.stl"/>
     <mesh name="lidar_link" content_type="model/stl" file="lidar_link.stl"/>
-    <mesh name="left_rubber_hand" content_type="model/stl" file="left_rubber_hand.stl"/>
-    <mesh name="right_rubber_hand" content_type="model/stl" file="right_rubber_hand.stl"/>
+    <mesh name="left_hand_link" content_type="model/stl" file="left_hand_link.stl"/>
+    <mesh name="right_hand_link" content_type="model/stl" file="right_hand_link.stl"/>
   </asset>
   <worldbody>
     <body name="pelvis">
@@ -323,12 +323,13 @@
                             <geom name="left_wrist_yaw_link_cylinder_collision_1" size=".029 .021" pos=".047 0 0"
                               quat="0.707107 0 0.707107 0" type="cylinder" rgba="0.1 0.65 0.95 0.65" group="3"/>
                             <body name="left_hand_link" pos="0.067502 0 0">
-                              <inertial pos="0.05361310808 -0.00295905240 0.00215413091" mass="0.170"
-                                fullinertia="0.00010099485234748 0.00028135871571621 0.00021894770413514 0.00003618590790516 -0.00000074301518642 0.00000330189743286"/>
-                              <geom name="left_rubber_hand_visual" type="mesh" mesh="left_rubber_hand" contype="0"
-                                conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1"/>
-                              <geom name="left_rubber_hand_collision" type="capsule" size="0.05"
-                                fromto="0.0085 -0.003 0 0.0585 -0.003 0" group="3" rgba="0.1 0.65 0.95 0.65"/>
+                              <inertial pos="0.04386117 -0.00063382 0.00406861" mass="0.13951244"
+                                fullinertia="0.00010494 0.00031826 0.00027661 2.28E-06 -6.4E-06 1.009E-05"/>
+                              <geom name="left_rubber_hand_visual" type="mesh" mesh="left_hand_link" contype="0"
+                                conaffinity="0" group="1" density="0" rgba="0.75294 0.75294 0.75294 1"/>
+                              <geom name="left_rubber_hand_collision" type="capsule" size="0.027"
+                                fromto="0.002498 0 8.881784197e-18 0.082498 0 -8.881784197e-18" group="3"
+                                rgba="0.1 0.65 0.95 0.65"/>
                             </body>
                           </body>
                         </body>
@@ -407,12 +408,13 @@
                             <geom name="right_wrist_yaw_link_cylinder_collision_1" size=".029 .021" pos=".047 0 0"
                               quat="0.707107 0 0.707107 0" type="cylinder" rgba="0.1 0.65 0.95 0.65" group="3"/>
                             <body name="right_hand_link" pos="0.0675 0 0">
-                              <inertial pos="0.05361310808 0.00295905240 0.00215413091" mass="0.170"
-                                fullinertia="0.00010099485234748 0.00028135871571621 0.00021894770413514 -0.00003618590790516 -0.00000074301518642 -0.00000330189743286"/>
-                              <geom name="right_rubber_hand_visual" type="mesh" mesh="right_rubber_hand" contype="0"
-                                conaffinity="0" group="1" density="0" rgba="0.7 0.7 0.7 1"/>
-                              <geom name="right_rubber_hand_collision" type="capsule" size="0.05"
-                                fromto="0.0085 0.003 0 0.0585 0.003 0" group="3" rgba="0.1 0.65 0.95 0.65"/>
+                              <inertial pos="0.04385203 0.00062977 0.00406365" mass="0.13947198"
+                                fullinertia="0.00010488 0.00031818 0.00027655 -2.26E-06 -6.41E-06 -1.009E-05"/>
+                              <geom name="right_rubber_hand_visual" type="mesh" mesh="right_hand_link" contype="0"
+                                conaffinity="0" group="1" density="0" rgba="0.75294 0.75294 0.75294 1"/>
+                              <geom name="right_rubber_hand_collision" type="capsule" size="0.027"
+                                fromto="0.0025 0 8.881784197e-18 0.0825 0 -8.881784197e-18" group="3"
+                                rgba="0.1 0.65 0.95 0.65"/>
                             </body>
                           </body>
                         </body>

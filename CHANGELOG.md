@@ -2,6 +2,10 @@
 
 ## 2026-10-30
 
+- Restore Astro's original rubber-hand meshes, fixed transforms, masses, and
+  inertias; replace the G1 trial's collision capsules with the original Astro
+  envelopes. Keep the refined 29-DoF body and Dex3-1 variant unchanged.
+
 - Prune Astro P2 to one family with a 29-DoF body and two hand configurations:
   fixed G1 rubber hands or 14-DoF Dex3-1 hands (43 total). Retire the three
   30-DoF P2 choices and consolidate the former separate Astro variant folders.

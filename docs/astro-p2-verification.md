@@ -1,5 +1,10 @@
 # Astro P2 consolidation verification
 
+Historical receipt for the initial G1 hand trial. The later
+[native Astro hand restoration](astro-native-hand-restoration.md) supersedes
+its rubber-hand source and mass results. Family consolidation and Dex results
+remain applicable.
+
 Baseline: `fcbb3f222359df8b275fee1bc79d47721efdd2ec`.
 Branch: `codex/astro-p2-variants`.
 Scope: [Astro P2 variants](design/astro-p2-variants.md).

@@ -76,7 +76,7 @@ class ModelTests(unittest.TestCase):
                 # Only canonical runtime XML and assets: no legacy manifest,
                 # nested MJCF snapshots, other families, or application package.
                 shutil.copytree(ROOT / family / "assets", bundle / "assets")
-                # Two preserved HHTools XMLs retain the original relative mesh alias.
+                # Some retained descriptions use a family-local relative mesh alias.
                 if (ROOT / family / "meshes").is_symlink():
                     (bundle / "meshes").symlink_to("assets", target_is_directory=True)
                 paths = {entry[k] for entry in entries if entry["family"] == family
@@ -159,16 +159,22 @@ class AstroP2VariantTests(unittest.TestCase):
             for attribute in ("type", "size", "pos", "quat", "friction", "contype", "conaffinity"):
                 np.testing.assert_array_equal(getattr(geom, attribute), getattr(other, attribute))
 
-    def test_rubber_meshes_and_hand_mass_match_sources(self):
+    def test_native_rubber_meshes_and_inertias_match_astro_sources(self):
         record = json.loads((ROOT / "astro_p2/provenance/rubber_hands.json").read_text())
         xml = ET.parse(ROOT / "astro_p2/astro_p2.xml")
-        vendor = ROOT / "astro_p2/provenance/rubber_hand_sources/unitree_g1_29dof.urdf"
+        vendor = ROOT / "astro_p2" / record["source_urdf_local"]
         self.assertEqual(hashlib.sha256(vendor.read_bytes()).hexdigest(), record["source_urdf_sha256"])
+        vendor_xml = ET.parse(vendor)
         for side, source in record["hands"].items():
             path = ROOT / "astro_p2" / source["mesh"]
             self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), source["mesh_sha256"])
-            g1_mesh = ROOT / "unitree_g1/assets" / f"{side}_rubber_hand.stl"
-            self.assertEqual(path.read_bytes(), g1_mesh.read_bytes())
+            original = vendor_xml.find(f"link[@name='{side}_hand_link']")
+            original_inertial = original.find("inertial")
+            self.assertEqual(source["mass_kg"], float(original_inertial.find("mass").get("value")))
+            self.assertEqual(source["inertia_hand_frame_kg_m2"],
+                             {k: float(v) for k, v in original_inertial.find("inertia").attrib.items()})
+            original_mesh = Path(original.find("visual/geometry/mesh").get("filename")).name
+            self.assertEqual(path.name, original_mesh)
             hand = self.rubber.body(f"{side}_hand_link")
             self.assertAlmostEqual(float(hand.mass[0]), source["mass_kg"], places=12)
             np.testing.assert_allclose(hand.ipos, source["com_hand_frame_m"], rtol=0, atol=1e-12)
@@ -183,5 +189,5 @@ class AstroP2VariantTests(unittest.TestCase):
             self.assertEqual(float(capsule.get("size")), source["collision_radius_m"])
             np.testing.assert_allclose(np.fromstring(capsule.get("fromto"), sep=" "),
                                        source["collision_fromto_hand_frame_m"], rtol=0, atol=1e-12)
-        self.assertAlmostEqual(float(self.rubber.body_mass.sum()), 40.64356917, places=9)
+        self.assertAlmostEqual(float(self.rubber.body_mass.sum()), 40.58255359, places=9)
         self.assertAlmostEqual(float(self.dex.body_mass.sum()), 41.69666115, places=9)

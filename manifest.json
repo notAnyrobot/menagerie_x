@@ -107,7 +107,7 @@
       "default_edition": "rubber_hands",
       "default_scene": "flat_floor",
       "status": "current",
-      "notes": "Fixed-head 29-DoF Astro P2 body, with Unitree G1 rubber hands or Dex3-1 hands. Native MJCF is maintained; URDF compatibility is deferred.",
+      "notes": "Fixed-head 29-DoF Astro P2 body, with native Astro rubber hands or Dex3-1 hands. Native MJCF is maintained; URDF compatibility is deferred.",
       "spawn": {
         "scene_frame": "robot_spawn",
         "xyz": [
@@ -125,10 +125,10 @@
         "rubber_hands": {
           "base_mode": "free",
           "dof": 29,
-          "label": "29 body DoF with G1 rubber hands",
+          "label": "29 body DoF with native Astro rubber hands",
           "mjcf": "astro_p2.xml",
           "urdf": null,
-          "notes": "Fixed hands; actual G1 rubber meshes and standalone hand inertias at sample Astro mounts."
+          "notes": "Original Astro rubber-hand meshes, inertias, mounts, and collision capsules on the refined fixed-head body."
         },
         "dex3_1": {
           "base_mode": "free",

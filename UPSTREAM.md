@@ -25,13 +25,13 @@ with each family; see [LICENSING.md](LICENSING.md).
   models are retained in `LEGACY_MODEL_MAP` and receive native checks until
   later retirement; they are excluded from the active gallery.
 - Astro P2 is one family with two native model/scene pairs, like upstream G1:
-  a fixed-head 29-joint body with G1 rubber hands, and the same refined body with
+  a fixed-head 29-joint body with native Astro rubber hands, and the same refined body with
   14 additional Dex3-1 finger joints. The old three 30-DoF P2 choices are retired.
-- The rubber model reuses actual G1 hand meshes and separate vendor hand
-  inertias. It retains Astro wrist dynamics and explicitly documents the sample
-  attachment assumption. The G1 wrist's composite inertia is not transplanted.
-  Source hashes and custody are recorded in the
-  [hand investigation](docs/research/astro-g1-rubber-hand-adoption.md).
+- The rubber model restores the original Astro hand meshes, fixed-joint frames,
+  hand masses/inertias, and capsule collision envelopes. The G1 hand trial was
+  rejected for fit; its source evidence is retained separately. The refined
+  Astro body and Dex3-1 variant remain unchanged. See the
+  [restoration record](docs/astro-native-hand-restoration.md).
 - Family-root XML is canonical and directly maintained, with actual local
   assets. No generator overwrites native edits. Astro conversion/refinement
   originals and records are preserved byte-for-byte under `astro_p2/provenance/`;
