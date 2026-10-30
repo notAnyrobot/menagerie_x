@@ -1,6 +1,6 @@
-<mujoco model="astro_p2 simplified collisions scene">
+<mujoco model="astro_p2 optimized arm collisions scene">
   <!-- SPDX-License-Identifier: BSD-3-Clause -->
-  <!-- Contact selection adapted from pinned MuJoCo Menagerie G1; see LICENSE.Menagerie. -->
+  <!-- Arm contact selection follows the Menagerie approach; see LICENSE.Menagerie. -->
   <include file="astro_p2_simplified.xml"/>
 
   <visual>
@@ -21,89 +21,155 @@
     <geom name="menagerie_floor" pos="0 0 -0.75" size="0 0 0.05" type="plane" material="menagerie_ground"/>
   </worldbody>
   <contact>
-    <!-- left foot - floor -->
-    <pair name="left_foot1_floor" geom1="left_foot1_collision" geom2="menagerie_floor" solref="0.008 1" friction="1 1"
+    <!-- Retained non-arm geoms keep automatic contacts. Enumerate only optimized arm interactions. -->
+    <!-- Arm-floor contact parameters inherit the same defaults as the original Astro geoms. -->
+    <pair name="left_shoulder_housing_floor" geom1="left_shoulder_housing_collision" geom2="menagerie_floor"
       condim="3"/>
-    <pair name="left_foot2_floor" geom1="left_foot2_collision" geom2="menagerie_floor" solref="0.008 1" friction="1 1"
+    <pair name="left_upper_arm_floor" geom1="left_upper_arm_collision" geom2="menagerie_floor" condim="3"/>
+    <pair name="left_forearm_floor" geom1="left_forearm_collision" geom2="menagerie_floor" condim="3"/>
+    <pair name="left_wrist_roll_floor" geom1="left_wrist_roll_collision" geom2="menagerie_floor" condim="3"/>
+    <pair name="left_wrist_pitch_floor" geom1="left_wrist_pitch_collision" geom2="menagerie_floor" condim="3"/>
+    <pair name="left_wrist_hand_floor" geom1="left_wrist_hand_collision" geom2="menagerie_floor" condim="3"/>
+    <pair name="right_shoulder_housing_floor" geom1="right_shoulder_housing_collision" geom2="menagerie_floor"
       condim="3"/>
-    <pair name="left_foot3_floor" geom1="left_foot3_collision" geom2="menagerie_floor" solref="0.008 1" friction="1 1"
-      condim="3"/>
-    <!-- right foot - floor -->
-    <pair name="right_foot1_floor" geom1="right_foot1_collision" geom2="menagerie_floor" solref="0.008 1" friction="1 1"
-      condim="3"/>
-    <pair name="right_foot2_floor" geom1="right_foot2_collision" geom2="menagerie_floor" solref="0.008 1" friction="1 1"
-      condim="3"/>
-    <pair name="right_foot3_floor" geom1="right_foot3_collision" geom2="menagerie_floor" solref="0.008 1" friction="1 1"
-      condim="3"/>
-    <!-- foot - foot -->
-    <pair name="left_foot_right_foot" geom1="left_foot_box_collision" geom2="right_foot_box_collision" condim="1"/>
-    <!-- foot - shin -->
-    <pair name="left_foot_right_shin" geom1="left_foot_box_collision" geom2="right_shin_collision" condim="1"/>
-    <pair name="right_foot_left_shin" geom1="right_foot_box_collision" geom2="left_shin_collision" condim="1"/>
-    <!-- foot - linkage brace -->
-    <pair name="left_foot_right_linkage_brace" geom1="left_foot_box_collision" geom2="right_linkage_brace_collision"
+    <pair name="right_upper_arm_floor" geom1="right_upper_arm_collision" geom2="menagerie_floor" condim="3"/>
+    <pair name="right_forearm_floor" geom1="right_forearm_collision" geom2="menagerie_floor" condim="3"/>
+    <pair name="right_wrist_roll_floor" geom1="right_wrist_roll_collision" geom2="menagerie_floor" condim="3"/>
+    <pair name="right_wrist_pitch_floor" geom1="right_wrist_pitch_collision" geom2="menagerie_floor" condim="3"/>
+    <pair name="right_wrist_hand_floor" geom1="right_wrist_hand_collision" geom2="menagerie_floor" condim="3"/>
+    <!-- Upper-body contacts use the three retained main torso capsules and head. -->
+    <pair name="left_shoulder_housing_upper_body_1" geom1="left_shoulder_housing_collision"
+      geom2="waist_roll_link_1_capsule_collision" condim="1"/>
+    <pair name="left_shoulder_housing_upper_body_2" geom1="left_shoulder_housing_collision"
+      geom2="waist_roll_link_2_capsule_collision" condim="1"/>
+    <pair name="left_shoulder_housing_upper_body_3" geom1="left_shoulder_housing_collision"
+      geom2="waist_roll_link_3_capsule_collision" condim="1"/>
+    <pair name="left_shoulder_housing_upper_body_4" geom1="left_shoulder_housing_collision"
+      geom2="head_link_sphere_collision_1" condim="1"/>
+    <pair name="left_upper_arm_upper_body_1" geom1="left_upper_arm_collision"
+      geom2="waist_roll_link_1_capsule_collision" condim="1"/>
+    <pair name="left_upper_arm_upper_body_2" geom1="left_upper_arm_collision"
+      geom2="waist_roll_link_2_capsule_collision" condim="1"/>
+    <pair name="left_upper_arm_upper_body_3" geom1="left_upper_arm_collision"
+      geom2="waist_roll_link_3_capsule_collision" condim="1"/>
+    <pair name="left_upper_arm_upper_body_4" geom1="left_upper_arm_collision" geom2="head_link_sphere_collision_1"
       condim="1"/>
-    <pair name="right_foot_left_linkage_brace" geom1="right_foot_box_collision" geom2="left_linkage_brace_collision"
+    <pair name="left_forearm_upper_body_1" geom1="left_forearm_collision" geom2="waist_roll_link_1_capsule_collision"
       condim="1"/>
-    <!-- hands - hips -->
-    <pair name="left_hand_left_hip" geom1="left_hand_collision" geom2="left_hip_collision" condim="1"/>
-    <pair name="right_hand_right_hip" geom1="right_hand_collision" geom2="right_hip_collision" condim="1"/>
-    <!-- hands - thigh -->
-    <pair name="left_hand_left_thigh" geom1="left_hand_collision" geom2="left_thigh_collision" condim="1"/>
-    <pair name="right_hand_right_thigh" geom1="right_hand_collision" geom2="right_thigh_collision" condim="1"/>
-    <!-- shins - shins -->
-    <pair name="left_shin_right_shin" geom1="left_shin_collision" geom2="right_shin_collision" condim="1"/>
-    <!-- torso - shoulders -->
-    <pair name="torso_left_shoulder" geom1="torso_collision" geom2="left_shoulder_yaw_collision" condim="1"/>
-    <pair name="torso_right_shoulder" geom1="torso_collision" geom2="right_shoulder_yaw_collision" condim="1"/>
-    <!-- torso - elbows -->
-    <pair name="torso_left_elbow" geom1="torso_collision" geom2="left_elbow_yaw_collision" condim="1"/>
-    <pair name="torso_right_elbow" geom1="torso_collision" geom2="right_elbow_yaw_collision" condim="1"/>
-    <!-- torso - wrist -->
-    <pair name="torso_left_wrist" geom1="torso_collision" geom2="left_wrist_collision" condim="1"/>
-    <pair name="torso_right_wrist" geom1="torso_collision" geom2="right_wrist_collision" condim="1"/>
-    <!-- torso - hands -->
-    <pair name="torso_left_hand" geom1="torso_collision" geom2="left_hand_collision" condim="1"/>
-    <pair name="torso_right_hand" geom1="torso_collision" geom2="right_hand_collision" condim="1"/>
-    <!-- hands - floor -->
-    <pair name="left_hand_floor" geom1="left_hand_collision" geom2="menagerie_floor" condim="3"/>
-    <pair name="right_hand_floor" geom1="right_hand_collision" geom2="menagerie_floor" condim="3"/>
-    <!-- shoulder - floor -->
-    <pair name="left_shoulder_floor" geom1="left_shoulder_yaw_collision" geom2="menagerie_floor" condim="3"/>
-    <pair name="right_shoulder_floor" geom1="right_shoulder_yaw_collision" geom2="menagerie_floor" condim="3"/>
-    <!-- elbow - floor -->
-    <pair name="left_elbow_floor" geom1="left_elbow_yaw_collision" geom2="menagerie_floor" condim="3"/>
-    <pair name="right_elbow_floor" geom1="right_elbow_yaw_collision" geom2="menagerie_floor" condim="3"/>
-    <!-- wrist - floor -->
-    <pair name="left_wrist_floor" geom1="left_wrist_collision" geom2="menagerie_floor" condim="3"/>
-    <pair name="right_wrist_floor" geom1="right_wrist_collision" geom2="menagerie_floor" condim="3"/>
-    <!-- hips - floor -->
-    <pair name="left_hip_floor" geom1="left_hip_collision" geom2="menagerie_floor" condim="3"/>
-    <pair name="right_hip_floor" geom1="right_hip_collision" geom2="menagerie_floor" condim="3"/>
-    <!-- thigh - floor -->
-    <pair name="left_thigh_floor" geom1="left_thigh_collision" geom2="menagerie_floor" condim="3"/>
-    <pair name="right_thigh_floor" geom1="right_thigh_collision" geom2="menagerie_floor" condim="3"/>
-    <!-- shins - floor -->
-    <pair name="left_shin_floor" geom1="left_shin_collision" geom2="menagerie_floor" condim="3"/>
-    <pair name="right_shin_floor" geom1="right_shin_collision" geom2="menagerie_floor" condim="3"/>
-    <!-- pelvis - floor -->
-    <pair name="pelvis_floor" geom1="pelvis_collision" geom2="menagerie_floor" condim="3"/>
-    <!-- torso - floor -->
-    <pair name="torso_floor" geom1="torso_collision" geom2="menagerie_floor" condim="3"/>
-    <!-- head - floor -->
-    <pair name="head_floor" geom1="head_collision" geom2="menagerie_floor" condim="3"/>
-    <!-- thigh - thigh -->
-    <pair name="left_thigh_right_thigh" geom1="left_thigh_collision" geom2="right_thigh_collision" condim="1"/>
-    <!-- shin - thigh -->
-    <pair name="left_shin_right_thigh" geom1="left_shin_collision" geom2="right_thigh_collision" condim="1"/>
-    <pair name="right_shin_left_thigh" geom1="right_shin_collision" geom2="left_thigh_collision" condim="1"/>
-    <!-- hip - shin -->
-    <pair name="left_shin_right_hip" geom1="left_shin_collision" geom2="right_hip_collision" condim="1"/>
-    <pair name="right_shin_left_hip" geom1="right_shin_collision" geom2="left_hip_collision" condim="1"/>
-    <!-- hip - thigh -->
-    <pair name="left_hip_right_thigh" geom1="left_hip_collision" geom2="right_thigh_collision" condim="1"/>
-    <pair name="right_hip_left_thigh" geom1="right_hip_collision" geom2="left_thigh_collision" condim="1"/>
-    <!-- hand - hand -->
-    <pair name="left_hand_right_hand" geom1="left_hand_collision" geom2="right_hand_collision" condim="1"/>
+    <pair name="left_forearm_upper_body_2" geom1="left_forearm_collision" geom2="waist_roll_link_2_capsule_collision"
+      condim="1"/>
+    <pair name="left_forearm_upper_body_3" geom1="left_forearm_collision" geom2="waist_roll_link_3_capsule_collision"
+      condim="1"/>
+    <pair name="left_forearm_upper_body_4" geom1="left_forearm_collision" geom2="head_link_sphere_collision_1"
+      condim="1"/>
+    <pair name="left_wrist_roll_upper_body_1" geom1="left_wrist_roll_collision"
+      geom2="waist_roll_link_1_capsule_collision" condim="1"/>
+    <pair name="left_wrist_roll_upper_body_2" geom1="left_wrist_roll_collision"
+      geom2="waist_roll_link_2_capsule_collision" condim="1"/>
+    <pair name="left_wrist_roll_upper_body_3" geom1="left_wrist_roll_collision"
+      geom2="waist_roll_link_3_capsule_collision" condim="1"/>
+    <pair name="left_wrist_roll_upper_body_4" geom1="left_wrist_roll_collision" geom2="head_link_sphere_collision_1"
+      condim="1"/>
+    <pair name="left_wrist_pitch_upper_body_1" geom1="left_wrist_pitch_collision"
+      geom2="waist_roll_link_1_capsule_collision" condim="1"/>
+    <pair name="left_wrist_pitch_upper_body_2" geom1="left_wrist_pitch_collision"
+      geom2="waist_roll_link_2_capsule_collision" condim="1"/>
+    <pair name="left_wrist_pitch_upper_body_3" geom1="left_wrist_pitch_collision"
+      geom2="waist_roll_link_3_capsule_collision" condim="1"/>
+    <pair name="left_wrist_pitch_upper_body_4" geom1="left_wrist_pitch_collision" geom2="head_link_sphere_collision_1"
+      condim="1"/>
+    <pair name="left_wrist_hand_upper_body_1" geom1="left_wrist_hand_collision"
+      geom2="waist_roll_link_1_capsule_collision" condim="1"/>
+    <pair name="left_wrist_hand_upper_body_2" geom1="left_wrist_hand_collision"
+      geom2="waist_roll_link_2_capsule_collision" condim="1"/>
+    <pair name="left_wrist_hand_upper_body_3" geom1="left_wrist_hand_collision"
+      geom2="waist_roll_link_3_capsule_collision" condim="1"/>
+    <pair name="left_wrist_hand_upper_body_4" geom1="left_wrist_hand_collision" geom2="head_link_sphere_collision_1"
+      condim="1"/>
+    <pair name="right_shoulder_housing_upper_body_1" geom1="right_shoulder_housing_collision"
+      geom2="waist_roll_link_1_capsule_collision" condim="1"/>
+    <pair name="right_shoulder_housing_upper_body_2" geom1="right_shoulder_housing_collision"
+      geom2="waist_roll_link_2_capsule_collision" condim="1"/>
+    <pair name="right_shoulder_housing_upper_body_3" geom1="right_shoulder_housing_collision"
+      geom2="waist_roll_link_3_capsule_collision" condim="1"/>
+    <pair name="right_shoulder_housing_upper_body_4" geom1="right_shoulder_housing_collision"
+      geom2="head_link_sphere_collision_1" condim="1"/>
+    <pair name="right_upper_arm_upper_body_1" geom1="right_upper_arm_collision"
+      geom2="waist_roll_link_1_capsule_collision" condim="1"/>
+    <pair name="right_upper_arm_upper_body_2" geom1="right_upper_arm_collision"
+      geom2="waist_roll_link_2_capsule_collision" condim="1"/>
+    <pair name="right_upper_arm_upper_body_3" geom1="right_upper_arm_collision"
+      geom2="waist_roll_link_3_capsule_collision" condim="1"/>
+    <pair name="right_upper_arm_upper_body_4" geom1="right_upper_arm_collision" geom2="head_link_sphere_collision_1"
+      condim="1"/>
+    <pair name="right_forearm_upper_body_1" geom1="right_forearm_collision" geom2="waist_roll_link_1_capsule_collision"
+      condim="1"/>
+    <pair name="right_forearm_upper_body_2" geom1="right_forearm_collision" geom2="waist_roll_link_2_capsule_collision"
+      condim="1"/>
+    <pair name="right_forearm_upper_body_3" geom1="right_forearm_collision" geom2="waist_roll_link_3_capsule_collision"
+      condim="1"/>
+    <pair name="right_forearm_upper_body_4" geom1="right_forearm_collision" geom2="head_link_sphere_collision_1"
+      condim="1"/>
+    <pair name="right_wrist_roll_upper_body_1" geom1="right_wrist_roll_collision"
+      geom2="waist_roll_link_1_capsule_collision" condim="1"/>
+    <pair name="right_wrist_roll_upper_body_2" geom1="right_wrist_roll_collision"
+      geom2="waist_roll_link_2_capsule_collision" condim="1"/>
+    <pair name="right_wrist_roll_upper_body_3" geom1="right_wrist_roll_collision"
+      geom2="waist_roll_link_3_capsule_collision" condim="1"/>
+    <pair name="right_wrist_roll_upper_body_4" geom1="right_wrist_roll_collision" geom2="head_link_sphere_collision_1"
+      condim="1"/>
+    <pair name="right_wrist_pitch_upper_body_1" geom1="right_wrist_pitch_collision"
+      geom2="waist_roll_link_1_capsule_collision" condim="1"/>
+    <pair name="right_wrist_pitch_upper_body_2" geom1="right_wrist_pitch_collision"
+      geom2="waist_roll_link_2_capsule_collision" condim="1"/>
+    <pair name="right_wrist_pitch_upper_body_3" geom1="right_wrist_pitch_collision"
+      geom2="waist_roll_link_3_capsule_collision" condim="1"/>
+    <pair name="right_wrist_pitch_upper_body_4" geom1="right_wrist_pitch_collision" geom2="head_link_sphere_collision_1"
+      condim="1"/>
+    <pair name="right_wrist_hand_upper_body_1" geom1="right_wrist_hand_collision"
+      geom2="waist_roll_link_1_capsule_collision" condim="1"/>
+    <pair name="right_wrist_hand_upper_body_2" geom1="right_wrist_hand_collision"
+      geom2="waist_roll_link_2_capsule_collision" condim="1"/>
+    <pair name="right_wrist_hand_upper_body_3" geom1="right_wrist_hand_collision"
+      geom2="waist_roll_link_3_capsule_collision" condim="1"/>
+    <pair name="right_wrist_hand_upper_body_4" geom1="right_wrist_hand_collision" geom2="head_link_sphere_collision_1"
+      condim="1"/>
+    <!-- Distal arm contacts with the retained ipsilateral hip shells and pelvis. -->
+    <pair name="left_forearm_hip_1" geom1="left_forearm_collision" geom2="left_hip_roll_link_1_capsule_collision"
+      condim="1"/>
+    <pair name="left_forearm_hip_2" geom1="left_forearm_collision" geom2="left_hip_roll_link_cylinder_collision_1"
+      condim="1"/>
+    <pair name="left_wrist_hand_hip_1" geom1="left_wrist_hand_collision" geom2="left_hip_roll_link_1_capsule_collision"
+      condim="1"/>
+    <pair name="left_wrist_hand_hip_2" geom1="left_wrist_hand_collision" geom2="left_hip_roll_link_cylinder_collision_1"
+      condim="1"/>
+    <pair name="left_wrist_hand_pelvis_1" geom1="left_wrist_hand_collision" geom2="pelvis_cylinder_collision_1"
+      condim="1"/>
+    <pair name="left_wrist_hand_pelvis_2" geom1="left_wrist_hand_collision" geom2="pelvis_1_capsule_collision"
+      condim="1"/>
+    <pair name="left_wrist_hand_pelvis_3" geom1="left_wrist_hand_collision" geom2="pelvis_upper_shell_collision"
+      condim="1"/>
+    <pair name="right_forearm_hip_1" geom1="right_forearm_collision" geom2="right_hip_roll_link_1_capsule_collision"
+      condim="1"/>
+    <pair name="right_forearm_hip_2" geom1="right_forearm_collision" geom2="right_hip_roll_link_cylinder_collision_1"
+      condim="1"/>
+    <pair name="right_wrist_hand_hip_1" geom1="right_wrist_hand_collision"
+      geom2="right_hip_roll_link_1_capsule_collision" condim="1"/>
+    <pair name="right_wrist_hand_hip_2" geom1="right_wrist_hand_collision"
+      geom2="right_hip_roll_link_cylinder_collision_1" condim="1"/>
+    <pair name="right_wrist_hand_pelvis_1" geom1="right_wrist_hand_collision" geom2="pelvis_cylinder_collision_1"
+      condim="1"/>
+    <pair name="right_wrist_hand_pelvis_2" geom1="right_wrist_hand_collision" geom2="pelvis_1_capsule_collision"
+      condim="1"/>
+    <pair name="right_wrist_hand_pelvis_3" geom1="right_wrist_hand_collision" geom2="pelvis_upper_shell_collision"
+      condim="1"/>
+    <!-- Opposite distal arms; no adjacent or rigidly attached same-arm pairs are added. -->
+    <pair name="left_forearm_right_forearm" geom1="left_forearm_collision" geom2="right_forearm_collision" condim="1"/>
+    <pair name="left_forearm_right_wrist_hand" geom1="left_forearm_collision" geom2="right_wrist_hand_collision"
+      condim="1"/>
+    <pair name="left_wrist_hand_right_forearm" geom1="left_wrist_hand_collision" geom2="right_forearm_collision"
+      condim="1"/>
+    <pair name="left_wrist_hand_right_wrist_hand" geom1="left_wrist_hand_collision" geom2="right_wrist_hand_collision"
+      condim="1"/>
   </contact>
 </mujoco>

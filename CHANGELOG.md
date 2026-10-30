@@ -2,6 +2,11 @@
 
 ## 2026-10-30
 
+- Revise the Astro collision alternative after visual review: restore all
+  original non-arm colliders and their contact parameters, and optimize only
+  arm/hand shapes. Preserve independent wrist articulation and the detailed
+  feet; replace the earlier whole-body 27-shape target with an arm-focused scope.
+
 - Add a separate simplified Astro P2 configuration with 27 collision primitives
   and an explicit scene contact list. Preserve the existing Astro variants,
   meshes, rigid-body/joint properties and unactuated controls. MJX runtime stays

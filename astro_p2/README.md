@@ -10,7 +10,7 @@ Model history: [CHANGELOG.md](CHANGELOG.md).
 ## Overview
 
 This family contains one fixed-head Astro P2 body with two hand configurations
-and an additional simplified-collision variant of the default model, following
+and an additional arm-optimized collision variant of the default model, following
 the sibling-model and scene pattern used by Unitree G1. All variants share the
 latest refined **29-DoF body**. The default Astro P2 model has 29
 DoFs; the articulated Unitree Dex3-1 alternative adds 14 finger DoFs for
@@ -20,14 +20,14 @@ its Dex3-1 visual meshes use silver coloring to match the Astro body.
 <p float="left">
   <img src="astro_p2.png" alt="Astro P2" width="400">
   <img src="astro_p2_with_hands.png" alt="Astro P2 with hands" width="400">
-  <img src="astro_p2_simplified.png" alt="Astro P2 with simplified collisions" width="400">
+  <img src="astro_p2_simplified.png" alt="Astro P2 with optimized arm collisions" width="400">
 </p>
 
 | Model | Body DoFs | Hand DoFs | Scene |
 | --- | --- | --- | --- |
 | [astro_p2.xml](astro_p2.xml) — Astro P2 | 29 | 0 | [scene.xml](scene.xml) |
 | [astro_p2_with_hands.xml](astro_p2_with_hands.xml) — Astro P2 with hands | 29 | 14 | [scene_with_hands.xml](scene_with_hands.xml) |
-| [astro_p2_simplified.xml](astro_p2_simplified.xml) — Astro P2 with simplified collisions | 29 | 0 | [scene_simplified.xml](scene_simplified.xml) |
+| [astro_p2_simplified.xml](astro_p2_simplified.xml) — Astro P2 with optimized arm collisions | 29 | 0 | [scene_simplified.xml](scene_simplified.xml) |
 
 DoF counts exclude the floating base. Previews show native reference
 initialization without simulation stepping, with collision overlays hidden.
@@ -47,10 +47,10 @@ initialization without simulation stepping, with collision overlays hidden.
    and native `fist` keyframe. The renamed model retains its physical definition.
 5. Preserved original conversion reports, URDFs, source XML, and licensing
    evidence under [provenance/](provenance/). Retired the former 30-DoF P2 choices.
-6. Added a separate default-hand collision approximation inspired by Menagerie's
-   G1 MJX contact design. Retained Astro's body, visuals, mass/inertias, joints,
-   passive dynamics and coordinate datum; adapted primitive dimensions to Astro.
-   Neither existing variant was replaced or retuned.
+6. Added a separate default-hand collision alternative inspired by Menagerie's
+   explicit contact selection. After visual review, retained all original
+   non-arm colliders and narrowed optimization to the arms and hands. Neither
+   existing variant was replaced or retuned.
 
 ## Model notes
 
@@ -67,38 +67,54 @@ hand inertias, transforms, and capsule conversion are recorded in
 [provenance/rubber_hands.json](provenance/rubber_hands.json). See the
 [model restoration record](../docs/astro-native-hand-restoration.md).
 
-## Simplified collision configuration
+## Optimized arm collision configuration
 
-**Astro P2 with simplified collisions** reduces the default model's 60 collision
-geoms to **27 primitives: 23 capsules, two spheres and two boxes**, while retaining
-all 37 visual mesh geoms and the same fixed-head 29-joint body. It uses Astro's
-original fixed hands; no simplified articulated-hand version is introduced.
-Astro-specific collider dimensions and source hashes are recorded in
+**Astro P2 with optimized arm collisions** preserves every original non-arm
+collider: pelvis, hips, legs, detailed feet, torso/neck and head. Only the arm
+and hand collision envelope is reduced, from **20 to 12 shapes** (six per arm).
+The complete model has **52 colliders: 40 unchanged body shapes plus 12 arm
+capsules**. All 37 visual mesh geoms and the
+fixed-head 29-joint body remain unchanged. This variant uses Astro's original
+fixed hands; no optimized articulated-hand version is introduced.
+Collider dimensions, attachments and source hashes are recorded in
 [provenance/simplified_collisions.json](provenance/simplified_collisions.json).
-The simplified model retains the default model's mass of **40.58255359 kg**,
+The model retains the default mass of **40.58255359 kg**,
 zero actuators, 0.002 s timestep and Euler integrator. No G1 controller, gains,
 solver retuning or standing keyframe is copied.
 
 Open **[scene_simplified.xml](scene_simplified.xml)** for the complete setup.
-The robot XML disables automatic contacts and has no explicit pairs. The scene
-supplies **49 selected pairs**: 26 frictionless self-contact pairs (`condim=1`)
-and 23 floor-contact pairs (`condim=3`). Each foot uses three capsules for floor
-contact and one box for selected self-contact. The six foot-floor pairs use
-friction `1 1` and `solref="0.008 1"`. The scene retains Astro's floor at
-`z=-0.75`. New environments must declare their own intended pairs; adding a
-floor alone does not enable contacts for this robot.
+The contact policy is hybrid: original non-arm shapes retain their automatic
+contacts and contact parameters; optimized arm shapes have zero masks and use
+explicit scene pairs. Arm floor contacts are frictional (`condim=3`); selected
+arm/body and opposite-arm contacts are frictionless (`condim=1`). No explicit
+pairs override the preserved lower-body interactions. The original floor at
+`z=-0.75` and reference pose are unchanged. New environments must select their
+intended arm interactions; non-arm automatic contacts continue to work.
+
+The scene contains **78 arm pairs**: 12 arm-floor and 66 selected self-contact
+pairs. Each arm has shoulder-housing, upper-arm, forearm, wrist-roll,
+wrist-pitch and wrist/hand capsules. Wrist roll and pitch keep separate moving
+frames; only the rigid wrist-yaw housing and fixed hand share their final proxy.
+The upper-arm shaft is symmetric about shoulder yaw, so its collinear source
+shapes can share a proxy without changing their yaw-dependent envelope.
 
 <p float="left">
-  <img src="astro_p2_simplified_colliders.png" alt="Astro P2 simplified collision primitives" width="400">
+  <img src="astro_p2_simplified_colliders.png" alt="Astro P2 original body colliders and optimized arm primitives" width="400">
 </p>
 
-This is a manually designed, coarser collision envelope. It deliberately omits
-the detailed model's small housing/handle features and detailed foot envelope;
-its selected pairs do not reproduce every possible self/environment interaction.
-It is not a measured mesh-coverage fit, calibrated contact model, performance
-benchmark or standing controller. Previews show the unchanged reference pose
-without simulation stepping; the image above displays collision groups 3 and 4.
+This is a manually designed arm-envelope approximation. Independent wrist and
+elbow motions retain appropriate proxies; the fixed hand may share a proxy with
+its wrist-yaw housing. Selected arm pairs do not reproduce every possible
+interaction of the detailed model. No performance improvement, hardware
+calibration or standing controller is claimed. Previews show the unchanged
+reference pose without simulation stepping; the image above displays collision
+group 3, including the unchanged detailed feet and torso.
 Viewer group visibility does not alter collision selection.
+
+Some merged arm capsules are broader than the source shaft segments to retain
+the old joint-housing collision envelope. The source hand collision envelope
+itself does not contain every point of its detailed visual mesh. These are
+collision approximations rather than a new hand geometry or calibration.
 
 The XML uses the G1 MJX **approach**, but native MuJoCo is the verification
 target. MJX/JAX/Warp execution and performance remain deferred.

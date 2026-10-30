@@ -1,6 +1,6 @@
 <mujoco model="astro_p2_simplified">
   <!-- SPDX-License-Identifier: Apache-2.0 -->
-  <!-- Astro P2 simplified collisions. Visuals: group 1; collisions: groups 3 and 4. Use scene_simplified.xml for explicit contacts. -->
+  <!-- Astro P2. Visuals: group 1; collisions: group 3. See provenance/rubber_hands.json. -->
   <compiler angle="radian" inertiafromgeom="false" fusestatic="false" discardvisual="false" meshdir="assets"/>
   <asset>
     <mesh name="pelvis" content_type="model/stl" file="pelvis.stl"/>
@@ -48,8 +48,12 @@
       <joint name="floating_base" type="free"/>
       <geom name="pelvis_visual" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="1 1 1 0.35"
         mesh="pelvis"/>
-      <geom name="pelvis_collision" type="sphere" size="0.08" pos="0 0 0.025" group="3" contype="0" conaffinity="0"
-        density="0" rgba="0.1 0.65 0.95 0.65"/>
+      <geom name="pelvis_cylinder_collision_1" size="0.065 0.065" pos="0 0 0.008" quat="0.707107 0.707107 0 0"
+        type="cylinder" rgba="0.1 0.65 0.95 0.65" group="3"/>
+      <geom name="pelvis_1_capsule_collision" size="0.07" type="capsule" rgba="0.1 0.65 0.95 0.65"
+        fromto="0 0 0.015 0 0 0.045" group="3"/>
+      <geom name="pelvis_upper_shell_collision" size="0.057 0.014" pos="0 0 0.086" type="cylinder"
+        rgba="0.1 0.65 0.95 0.65" group="3"/>
       <body name="left_hip_pitch_link" pos="0 0.067 0">
         <inertial pos="0.00540303 0.05847929 -0.00957408" mass="1.53370799"
           fullinertia="0.00235149 0.00171825 0.00176598 5.76e-06 -1.69e-05 1.136e-05"/>
@@ -62,24 +66,26 @@
           <joint name="left_hip_roll_joint" pos="0 0 0" axis="1 0 0" range="-0.26 2.79" actuatorfrcrange="-130 130"/>
           <geom name="left_hip_roll_link_visual" type="mesh" contype="0" conaffinity="0" group="1" density="0"
             rgba="0.64706 0.61961 0.58824 1" mesh="left_hip_roll_link"/>
-          <geom name="left_hip_collision" type="capsule" size="0.055" fromto="0 0 0 0 0 -0.075" group="3" contype="0"
-            conaffinity="0" density="0" rgba="0.1 0.65 0.95 0.65"/>
+          <geom name="left_hip_roll_link_1_capsule_collision" size="0.053" type="capsule" rgba="0.1 0.65 0.95 0.65"
+            fromto="0 0 -0.18 0 0 0" group="3"/>
+          <geom name="left_hip_roll_link_cylinder_collision_1" size="0.053 0.055" quat="0.707107 0 0.707107 0"
+            type="cylinder" rgba="0.1 0.65 0.95 0.65" group="3"/>
           <body name="left_hip_yaw_link" pos="0 0 -0.137">
             <inertial pos="-0.00794518 0.0034944 -0.11652293" mass="2.2082559"
               fullinertia="0.00891377 0.00969794 0.00308237 6.61e-05 -0.00088298 0.0003027"/>
             <joint name="left_hip_yaw_joint" pos="0 0 0" axis="0 0 1" range="-1.57 3.67" actuatorfrcrange="-130 130"/>
             <geom name="left_hip_yaw_link_visual" type="mesh" contype="0" conaffinity="0" group="1" density="0"
               rgba="1 1 1 1" mesh="left_hip_yaw_link"/>
-            <geom name="left_thigh_collision" type="capsule" size="0.053" fromto="0 0 -0.005 -0.016 0 -0.13" group="3"
-              contype="0" conaffinity="0" density="0" rgba="0.1 0.65 0.95 0.65"/>
             <body name="left_knee_link" pos="-0.016 0 -0.153">
               <inertial pos="0.0169866 0.00065948 -0.12137855" mass="2.46888842"
                 fullinertia="0.01623141 0.01582703 0.00301964 2.467e-05 0.00031356 -0.00019476"/>
               <joint name="left_knee_joint" pos="0 0 0" axis="0 1 0" range="-0.09 2.44" actuatorfrcrange="-130 130"/>
               <geom name="left_knee_link_visual" type="mesh" contype="0" conaffinity="0" group="1" density="0"
                 rgba="0.69804 0.69804 0.69804 1" mesh="left_knee_link"/>
-              <geom name="left_shin_collision" type="capsule" size="0.053" fromto="0.015 0 0 0.015 0 -0.23" group="3"
-                contype="0" conaffinity="0" density="0" rgba="0.1 0.65 0.95 0.65"/>
+              <geom name="left_knee_link_1_capsule_collision" size="0.053" type="capsule" rgba="0.1 0.65 0.95 0.65"
+                fromto="0.015 0 -0.23 0.015 0 0" group="3"/>
+              <geom name="left_knee_link_cylinder_collision_1" size="0.053 0.05" quat="0.707107 0.707107 0 0"
+                type="cylinder" rgba="0.1 0.65 0.95 0.65" group="3"/>
               <body name="left_ankle_pitch_link" pos="0.016 0 -0.283">
                 <inertial pos="2.311e-05 0.00039883 -0.00517577" mass="0.13481185"
                   fullinertia="2.294e-05 1.743e-05 1.761e-05 0 7e-08 -2.8e-07"/>
@@ -87,8 +93,6 @@
                   actuatorfrcrange="-60 60"/>
                 <geom name="left_ankle_pitch_link_visual" type="mesh" contype="0" conaffinity="0" group="1" density="0"
                   rgba="0.69804 0.69804 0.69804 1" mesh="left_ankle_pitch_link"/>
-                <geom name="left_linkage_brace_collision" type="capsule" size="0.03" fromto="0 0 0.015 0 0 -0.025"
-                  group="3" contype="0" conaffinity="0" density="0" rgba="0.1 0.65 0.95 0.65"/>
                 <body name="left_ankle_roll_link" pos="0 0 -0.011">
                   <inertial pos="0.01206626 -8.752e-05 -0.02615266" mass="0.63962768"
                     fullinertia="0.00064881 0.00244119 0.00263395 -7.09e-06 0.00015881 3.7e-07"/>
@@ -97,16 +101,35 @@
                   <geom name="left_ankle_roll_link_visual" type="mesh" contype="0" conaffinity="0" group="1" density="0"
                     rgba="0.69804 0.69804 0.69804 1" mesh="left_ankle_roll_link"/>
                   <body name="left_foot_link">
-                    <geom name="left_foot1_collision" type="capsule" size="0.012"
-                      fromto="-0.045 0.034 -0.039 0.1 0.034 -0.039" group="3" contype="0" conaffinity="0" density="0"
+                    <geom name="left_foot_1_capsule_collision" size="0.012" type="capsule"
+                      fromto="0.03 0 -0.0390000000002 0.11 0 -0.0389999999998" group="3" rgba="0.1 0.65 0.95 0.65"/>
+                    <geom name="left_foot_2_capsule_collision" size="0.012" type="capsule"
+                      fromto="0.035 -0.018 -0.0390000000002 0.105 -0.018 -0.0389999999998" group="3"
                       rgba="0.1 0.65 0.95 0.65"/>
-                    <geom name="left_foot2_collision" type="capsule" size="0.012" fromto="-0.058 0 -0.039 0.11 0 -0.039"
-                      group="3" contype="0" conaffinity="0" density="0" rgba="0.1 0.65 0.95 0.65"/>
-                    <geom name="left_foot3_collision" type="capsule" size="0.012"
-                      fromto="-0.045 -0.034 -0.039 0.1 -0.034 -0.039" group="3" contype="0" conaffinity="0" density="0"
+                    <geom name="left_foot_3_capsule_collision" size="0.012" type="capsule"
+                      fromto="0.0525 -0.034 -0.0390000000001 0.0875 -0.034 -0.0389999999999" group="3"
                       rgba="0.1 0.65 0.95 0.65"/>
-                    <geom name="left_foot_box_collision" type="box" size="0.0975 0.047 0.022" pos="0.0245 0 -0.029"
-                      group="4" contype="0" conaffinity="0" density="0" rgba="0.1 0.65 0.95 0.65"/>
+                    <geom name="left_foot_4_capsule_collision" size="0.012" type="capsule"
+                      fromto="0.035 0.018 -0.0390000000002 0.105 0.018 -0.0389999999998" group="3"
+                      rgba="0.1 0.65 0.95 0.65"/>
+                    <geom name="left_foot_5_capsule_collision" size="0.012" type="capsule"
+                      fromto="0.0525 0.034 -0.0390000000001 0.0875 0.034 -0.0389999999999" group="3"
+                      rgba="0.1 0.65 0.95 0.65"/>
+                    <geom name="left_foot_6_capsule_collision" size="0.012" type="capsule"
+                      fromto="-0.024 0.03 -0.0389999999998 -0.024 -0.03 -0.0390000000002" group="3"
+                      rgba="0.1 0.65 0.95 0.65"/>
+                    <geom name="left_foot_7_capsule_collision" size="0.012" type="capsule"
+                      fromto="-0.042 0.0325 -0.0389999999998 -0.042 -0.0325 -0.0390000000002" group="3"
+                      rgba="0.1 0.65 0.95 0.65"/>
+                    <geom name="left_foot_8_capsule_collision" size="0.012" type="capsule"
+                      fromto="-0.058 0.02 -0.0389999999999 -0.058 -0.02 -0.0390000000001" group="3"
+                      rgba="0.1 0.65 0.95 0.65"/>
+                    <geom name="left_foot_side_toe" size="0.047 0.014" pos="0.074 0 -0.021" type="cylinder" group="3"
+                      rgba="0.1 0.65 0.95 0.65"/>
+                    <geom name="left_foot_side_heel" size="0.041 0.014" pos="-0.032 0 -0.021" type="cylinder" group="3"
+                      rgba="0.1 0.65 0.95 0.65"/>
+                    <geom name="left_foot_side_bridge" size="0.053 0.038 0.014" pos="0.021 0 -0.021" type="box"
+                      group="3" rgba="0.1 0.65 0.95 0.65"/>
                   </body>
                 </body>
               </body>
@@ -126,24 +149,26 @@
           <joint name="right_hip_roll_joint" pos="0 0 0" axis="1 0 0" range="-2.79 0.26" actuatorfrcrange="-130 130"/>
           <geom name="right_hip_roll_link_visual" type="mesh" contype="0" conaffinity="0" group="1" density="0"
             rgba="0.64706 0.61961 0.58824 1" mesh="right_hip_roll_link"/>
-          <geom name="right_hip_collision" type="capsule" size="0.055" fromto="0 0 0 0 0 -0.075" group="3" contype="0"
-            conaffinity="0" density="0" rgba="0.1 0.65 0.95 0.65"/>
+          <geom name="right_hip_roll_link_1_capsule_collision" size="0.053" type="capsule" rgba="0.1 0.65 0.95 0.65"
+            fromto="0 0 -0.18 0 0 0" group="3"/>
+          <geom name="right_hip_roll_link_cylinder_collision_1" size="0.053 0.055" quat="0.707107 0 0.707107 0"
+            type="cylinder" rgba="0.1 0.65 0.95 0.65" group="3"/>
           <body name="right_hip_yaw_link" pos="0 0 -0.137001">
             <inertial pos="-0.00797836 0.00366573 -0.11653371" mass="2.2082559"
               fullinertia="0.00891322 0.00970537 0.00308492 5.559e-05 -0.00088716 0.00025978"/>
             <joint name="right_hip_yaw_joint" pos="0 0 0" axis="0 0 1" range="-3.67 1.57" actuatorfrcrange="-130 130"/>
             <geom name="right_hip_yaw_link_visual" type="mesh" contype="0" conaffinity="0" group="1" density="0"
               rgba="1 1 1 1" mesh="right_hip_yaw_link"/>
-            <geom name="right_thigh_collision" type="capsule" size="0.053" fromto="0 0 -0.005 -0.016 0 -0.13" group="3"
-              contype="0" conaffinity="0" density="0" rgba="0.1 0.65 0.95 0.65"/>
             <body name="right_knee_link" pos="-0.016 0 -0.153">
               <inertial pos="0.01698659 0.00065948 -0.12137855" mass="2.46888834"
                 fullinertia="0.01623141 0.01582703 0.00301964 2.467e-05 0.00031356 -0.00019476"/>
               <joint name="right_knee_joint" pos="0 0 0" axis="0 1 0" range="-0.09 2.44" actuatorfrcrange="-130 130"/>
               <geom name="right_knee_link_visual" type="mesh" contype="0" conaffinity="0" group="1" density="0"
                 rgba="0.69804 0.69804 0.69804 1" mesh="right_knee_link"/>
-              <geom name="right_shin_collision" type="capsule" size="0.053" fromto="0.015 0 0 0.015 0 -0.23" group="3"
-                contype="0" conaffinity="0" density="0" rgba="0.1 0.65 0.95 0.65"/>
+              <geom name="right_knee_link_1_capsule_collision" size="0.053" type="capsule" rgba="0.1 0.65 0.95 0.65"
+                fromto="0.015 0 -0.23 0.015 0 0" group="3"/>
+              <geom name="right_knee_link_cylinder_collision_1" size="0.053 0.05" quat="0.707107 -0.707107 0 0"
+                type="cylinder" rgba="0.1 0.65 0.95 0.65" group="3"/>
               <body name="right_ankle_pitch_link" pos="0.016 0 -0.283">
                 <inertial pos="2.311e-05 0.00039883 -0.00517577" mass="0.13481185"
                   fullinertia="2.294e-05 1.743e-05 1.761e-05 0 7e-08 -2.8e-07"/>
@@ -151,8 +176,6 @@
                   actuatorfrcrange="-60 60"/>
                 <geom name="right_ankle_pitch_link_visual" type="mesh" contype="0" conaffinity="0" group="1" density="0"
                   rgba="0.69804 0.69804 0.69804 1" mesh="right_ankle_pitch_link"/>
-                <geom name="right_linkage_brace_collision" type="capsule" size="0.03" fromto="0 0 0.015 0 0 -0.025"
-                  group="3" contype="0" conaffinity="0" density="0" rgba="0.1 0.65 0.95 0.65"/>
                 <body name="right_ankle_roll_link" pos="0 0 -0.011">
                   <inertial pos="0.01206626 -8.752e-05 -0.02615266" mass="0.63962768"
                     fullinertia="0.00064881 0.00244119 0.00263395 -7.09e-06 0.00015881 3.7e-07"/>
@@ -161,17 +184,35 @@
                   <geom name="right_ankle_roll_link_visual" type="mesh" contype="0" conaffinity="0" group="1"
                     density="0" rgba="0.69804 0.69804 0.69804 1" mesh="right_ankle_roll_link"/>
                   <body name="right_foot_link">
-                    <geom name="right_foot1_collision" type="capsule" size="0.012"
-                      fromto="-0.045 0.034 -0.039 0.1 0.034 -0.039" group="3" contype="0" conaffinity="0" density="0"
+                    <geom name="right_foot_1_capsule_collision" size="0.012" type="capsule"
+                      fromto="0.03 0 -0.0390000000002 0.11 0 -0.0389999999998" group="3" rgba="0.1 0.65 0.95 0.65"/>
+                    <geom name="right_foot_2_capsule_collision" size="0.012" type="capsule"
+                      fromto="0.035 0.018 -0.0390000000002 0.105 0.018 -0.0389999999998" group="3"
                       rgba="0.1 0.65 0.95 0.65"/>
-                    <geom name="right_foot2_collision" type="capsule" size="0.012"
-                      fromto="-0.058 0 -0.039 0.11 0 -0.039" group="3" contype="0" conaffinity="0" density="0"
+                    <geom name="right_foot_3_capsule_collision" size="0.012" type="capsule"
+                      fromto="0.0525 0.034 -0.0390000000001 0.0875 0.034 -0.0389999999999" group="3"
                       rgba="0.1 0.65 0.95 0.65"/>
-                    <geom name="right_foot3_collision" type="capsule" size="0.012"
-                      fromto="-0.045 -0.034 -0.039 0.1 -0.034 -0.039" group="3" contype="0" conaffinity="0" density="0"
+                    <geom name="right_foot_4_capsule_collision" size="0.012" type="capsule"
+                      fromto="0.035 -0.018 -0.0390000000002 0.105 -0.018 -0.0389999999998" group="3"
                       rgba="0.1 0.65 0.95 0.65"/>
-                    <geom name="right_foot_box_collision" type="box" size="0.0975 0.047 0.022" pos="0.0245 0 -0.029"
-                      group="4" contype="0" conaffinity="0" density="0" rgba="0.1 0.65 0.95 0.65"/>
+                    <geom name="right_foot_5_capsule_collision" size="0.012" type="capsule"
+                      fromto="0.0525 -0.034 -0.0390000000001 0.0875 -0.034 -0.0389999999999" group="3"
+                      rgba="0.1 0.65 0.95 0.65"/>
+                    <geom name="right_foot_6_capsule_collision" size="0.012" type="capsule"
+                      fromto="-0.024 -0.03 -0.0389999999998 -0.024 0.03 -0.0390000000002" group="3"
+                      rgba="0.1 0.65 0.95 0.65"/>
+                    <geom name="right_foot_7_capsule_collision" size="0.012" type="capsule"
+                      fromto="-0.042 -0.0325 -0.0389999999998 -0.042 0.0325 -0.0390000000002" group="3"
+                      rgba="0.1 0.65 0.95 0.65"/>
+                    <geom name="right_foot_8_capsule_collision" size="0.012" type="capsule"
+                      fromto="-0.058 -0.02 -0.0389999999999 -0.058 0.02 -0.0390000000001" group="3"
+                      rgba="0.1 0.65 0.95 0.65"/>
+                    <geom name="right_foot_side_toe" size="0.047 0.014" pos="0.074 0 -0.021" type="cylinder" group="3"
+                      rgba="0.1 0.65 0.95 0.65"/>
+                    <geom name="right_foot_side_heel" size="0.041 0.014" pos="-0.032 0 -0.021" type="cylinder" group="3"
+                      rgba="0.1 0.65 0.95 0.65"/>
+                    <geom name="right_foot_side_bridge" size="0.053 0.038 0.014" pos="0.021 0 -0.021" type="box"
+                      group="3" rgba="0.1 0.65 0.95 0.65"/>
                   </body>
                 </body>
               </body>
@@ -196,8 +237,18 @@
             <joint name="waist_roll_joint" pos="0 0 0" axis="1 0 0" range="-0.28 0.28" actuatorfrcrange="-50 50"/>
             <geom name="waist_roll_link_visual" type="mesh" contype="0" conaffinity="0" group="1" density="0"
               rgba="0.89804 0.91765 0.92941 1" mesh="waist_roll_link"/>
-            <geom name="torso_collision" type="capsule" size="0.12" fromto="0 0 0.07 0 0 0.24" group="3" contype="0"
-              conaffinity="0" density="0" rgba="0.1 0.65 0.95 0.65"/>
+            <geom name="waist_roll_link_1_capsule_collision" size="0.09" type="capsule" rgba="0.1 0.65 0.95 0.65"
+              fromto="0 0.0445 0.25 0 -0.0445 0.25" group="3"/>
+            <geom name="waist_roll_link_2_capsule_collision" size="0.093" type="capsule" rgba="0.1 0.65 0.95 0.65"
+              fromto=".002 .018 .16 .002 -.018 .16" group="3"/>
+            <geom name="waist_roll_link_3_capsule_collision" size="0.09" type="capsule" rgba="0.1 0.65 0.95 0.65"
+              fromto="0 0.01 0.0700000000001 0 -0.01 0.0699999999999" group="3"/>
+            <geom name="waist_roll_link_4_capsule_collision" size="0.0075" type="capsule" rgba="0.1 0.65 0.95 0.65"
+              fromto="-0.116 0.0375 0.337 -0.116 -0.0375 0.337" group="3"/>
+            <geom name="neck_handle_left_support_capsule" size="0.0075" type="capsule" rgba="0.1 0.65 0.95 0.65"
+              fromto="-0.106 0.051 0.337 -0.071 0.051 0.337" group="3"/>
+            <geom name="neck_handle_right_support_capsule" size="0.0075" type="capsule" rgba="0.1 0.65 0.95 0.65"
+              fromto="-0.106 -0.051 0.337 -0.071 -0.051 0.337" group="3"/>
             <body name="torso_link" pos="0 0 0.25801">
               <inertial pos="-0.00428673 0.00051118 -0.0676557" mass="7.77655346"
                 fullinertia="0.07289316 0.06025812 0.0473616 0.00015614 0.00234163 0.00032217"/>
@@ -217,8 +268,10 @@
                     actuatorfrcrange="-30 30"/>
                   <geom name="left_shoulder_roll_link_visual" type="mesh" contype="0" conaffinity="0" group="1"
                     density="0" rgba="0.79216 0.81961 0.93333 1" mesh="left_shoulder_roll_link"/>
-                  <geom name="left_shoulder_yaw_collision" type="capsule" size="0.039" fromto="0 0 0 0 0 -0.17"
-                    group="3" contype="0" conaffinity="0" density="0" rgba="0.1 0.65 0.95 0.65"/>
+                  <geom name="left_shoulder_housing_collision" type="capsule" size=".039" fromto="-0.015 0 0 0.015 0 0"
+                    contype="0" conaffinity="0" group="3" rgba="0.1 0.65 0.95 0.65"/>
+                  <geom name="left_upper_arm_collision" type="capsule" size=".037" fromto="0 0 0 0 0 -0.174" contype="0"
+                    conaffinity="0" group="3" rgba="0.1 0.65 0.95 0.65"/>
                   <body name="left_shoulder_yaw_link" pos="0 0 -0.114">
                     <inertial pos="-2.087e-05 0.00440036 -0.07801697" mass="0.77178697"
                       fullinertia="0.00100471 0.00095112 0.00051847 -3.85e-06 5.3e-06 4.05e-05"/>
@@ -233,8 +286,8 @@
                         actuatorfrcrange="-30 30"/>
                       <geom name="left_elbow_link_visual" type="mesh" contype="0" conaffinity="0" group="1" density="0"
                         rgba="0.79216 0.81961 0.93333 1" mesh="left_elbow_link"/>
-                      <geom name="left_elbow_yaw_collision" type="capsule" size="0.039" fromto="0 0 0 0.1 0 0" group="3"
-                        contype="0" conaffinity="0" density="0" rgba="0.1 0.65 0.95 0.65"/>
+                      <geom name="left_forearm_collision" type="capsule" size=".054" fromto="0 0 0 0.075 0 0"
+                        contype="0" conaffinity="0" group="3" rgba="0.1 0.65 0.95 0.65"/>
                       <body name="left_wrist_roll_link" pos="0.114 0 0">
                         <inertial pos="0.02236437 -0.0017382 1.87e-06" mass="0.15772072"
                           fullinertia="0.0001724 0.0001213 0.0001973 -4.24e-06 0 -1e-08"/>
@@ -242,6 +295,8 @@
                           actuatorfrcrange="-30 30"/>
                         <geom name="left_wrist_roll_link_visual" type="mesh" contype="0" conaffinity="0" group="1"
                           density="0" rgba="0.79216 0.81961 0.93333 1" mesh="left_wrist_roll_link"/>
+                        <geom name="left_wrist_roll_collision" type="capsule" size=".034" fromto="0.006 0 0 0.027 0 0"
+                          contype="0" conaffinity="0" group="3" rgba="0.1 0.65 0.95 0.65"/>
                         <body name="left_wrist_pitch_link" pos="0.047 0 0">
                           <inertial pos="0.02246818 0.00317842 0.00316732" mass="0.71257671"
                             fullinertia="0.00035764 0.00069296 0.00069262 4.732e-05 -4.621e-05 7.64e-06"/>
@@ -249,8 +304,8 @@
                             actuatorfrcrange="-10 10"/>
                           <geom name="left_wrist_pitch_link_visual" type="mesh" contype="0" conaffinity="0" group="1"
                             density="0" rgba="0.62745 0.62745 0.62745 1" mesh="left_wrist_pitch_link"/>
-                          <geom name="left_wrist_collision" type="capsule" size="0.034" fromto="-0.02 0 0 0.09 0 0"
-                            group="3" contype="0" conaffinity="0" density="0" rgba="0.1 0.65 0.95 0.65"/>
+                          <geom name="left_wrist_pitch_collision" type="capsule" size=".045" fromto="0 0 0 0.044 0 0"
+                            contype="0" conaffinity="0" group="3" rgba="0.1 0.65 0.95 0.65"/>
                           <body name="left_wrist_yaw_link" pos="0.044998 0 0">
                             <inertial pos="0.03046398 5.69e-06 -0.00037971" mass="0.18734799"
                               fullinertia="0.00018749 0.00025305 0.00016328 0 1.4e-07 -1e-08"/>
@@ -258,14 +313,13 @@
                               actuatorfrcrange="-10 10"/>
                             <geom name="left_wrist_yaw_link_visual" type="mesh" contype="0" conaffinity="0" group="1"
                               density="0" rgba="0.69804 0.69804 0.69804 1" mesh="left_wrist_yaw_link"/>
+                            <geom name="left_wrist_hand_collision" type="capsule" size=".03" fromto="0.032 0 0 0.15 0 0"
+                              contype="0" conaffinity="0" group="3" rgba="0.1 0.65 0.95 0.65"/>
                             <body name="left_hand_link" pos="0.067502 0 0">
                               <inertial pos="0.04386117 -0.00063382 0.00406861" mass="0.13951244"
                                 fullinertia="0.00010494 0.00031826 0.00027661 2.28E-06 -6.4E-06 1.009E-05"/>
                               <geom name="left_rubber_hand_visual" type="mesh" mesh="left_hand_link" contype="0"
                                 conaffinity="0" group="1" density="0" rgba="0.75294 0.75294 0.75294 1"/>
-                              <geom name="left_hand_collision" type="capsule" size="0.027"
-                                fromto="0.002498 0 0 0.082498 0 0" group="3" contype="0" conaffinity="0" density="0"
-                                rgba="0.1 0.65 0.95 0.65"/>
                             </body>
                           </body>
                         </body>
@@ -288,8 +342,10 @@
                     actuatorfrcrange="-30 30"/>
                   <geom name="right_shoulder_roll_link_visual" type="mesh" contype="0" conaffinity="0" group="1"
                     density="0" rgba="0.79216 0.81961 0.93333 1" mesh="right_shoulder_roll_link"/>
-                  <geom name="right_shoulder_yaw_collision" type="capsule" size="0.039" fromto="0 0 0 0 0 -0.17"
-                    group="3" contype="0" conaffinity="0" density="0" rgba="0.1 0.65 0.95 0.65"/>
+                  <geom name="right_shoulder_housing_collision" type="capsule" size=".039" fromto="-0.015 0 0 0.015 0 0"
+                    contype="0" conaffinity="0" group="3" rgba="0.1 0.65 0.95 0.65"/>
+                  <geom name="right_upper_arm_collision" type="capsule" size=".037" fromto="0 0 0 0 0 -0.174"
+                    contype="0" conaffinity="0" group="3" rgba="0.1 0.65 0.95 0.65"/>
                   <body name="right_shoulder_yaw_link" pos="0 0 -0.114">
                     <inertial pos="-2.373e-05 -0.0043998 -0.07825482" mass="0.77170227"
                       fullinertia="0.0010088 0.0009552 0.00051833 3.8e-06 3.61e-06 -3.563e-05"/>
@@ -304,8 +360,8 @@
                         actuatorfrcrange="-30 30"/>
                       <geom name="right_elbow_link_visual" type="mesh" contype="0" conaffinity="0" group="1" density="0"
                         rgba="0.79216 0.81961 0.93333 1" mesh="right_elbow_link"/>
-                      <geom name="right_elbow_yaw_collision" type="capsule" size="0.039" fromto="0 0 0 0.1 0 0"
-                        group="3" contype="0" conaffinity="0" density="0" rgba="0.1 0.65 0.95 0.65"/>
+                      <geom name="right_forearm_collision" type="capsule" size=".054" fromto="0 0 0 0.075 0 0"
+                        contype="0" conaffinity="0" group="3" rgba="0.1 0.65 0.95 0.65"/>
                       <body name="right_wrist_roll_link" pos="0.114 0 0">
                         <inertial pos="0.02236437 0.0017382 -1.87e-06" mass="0.15772072"
                           fullinertia="0.0001724 0.0001213 0.0001973 4.24e-06 0 -1e-08"/>
@@ -313,6 +369,8 @@
                           actuatorfrcrange="-30 30"/>
                         <geom name="right_wrist_roll_link_visual" type="mesh" contype="0" conaffinity="0" group="1"
                           density="0" rgba="0.79216 0.81961 0.93333 1" mesh="right_wrist_roll_link"/>
+                        <geom name="right_wrist_roll_collision" type="capsule" size=".034" fromto="0.006 0 0 0.027 0 0"
+                          contype="0" conaffinity="0" group="3" rgba="0.1 0.65 0.95 0.65"/>
                         <body name="right_wrist_pitch_link" pos="0.047 0 0">
                           <inertial pos="0.0224677 -0.00317464 0.0031669" mass="0.71258211"
                             fullinertia="0.00035765 0.00069298 0.00069265 -4.731e-05 -4.621e-05 -7.63e-06"/>
@@ -320,8 +378,8 @@
                             actuatorfrcrange="-10 10"/>
                           <geom name="right_wrist_pitch_link_visual" type="mesh" contype="0" conaffinity="0" group="1"
                             density="0" rgba="0.62745 0.62745 0.62745 1" mesh="right_wrist_pitch_link"/>
-                          <geom name="right_wrist_collision" type="capsule" size="0.034" fromto="-0.02 0 0 0.09 0 0"
-                            group="3" contype="0" conaffinity="0" density="0" rgba="0.1 0.65 0.95 0.65"/>
+                          <geom name="right_wrist_pitch_collision" type="capsule" size=".045" fromto="0 0 0 0.044 0 0"
+                            contype="0" conaffinity="0" group="3" rgba="0.1 0.65 0.95 0.65"/>
                           <body name="right_wrist_yaw_link" pos="0.044998 0 0">
                             <inertial pos="0.03046236 5.69e-06 -0.00037971" mass="0.18734799"
                               fullinertia="0.00018749 0.00025305 0.00016328 0 1.4e-07 -1e-08"/>
@@ -329,14 +387,14 @@
                               actuatorfrcrange="-10 10"/>
                             <geom name="right_wrist_yaw_link_visual" type="mesh" contype="0" conaffinity="0" group="1"
                               density="0" rgba="0.79216 0.81961 0.93333 1" mesh="right_wrist_yaw_link"/>
+                            <geom name="right_wrist_hand_collision" type="capsule" size=".03"
+                              fromto="0.032 0 0 0.15 0 0" contype="0" conaffinity="0" group="3"
+                              rgba="0.1 0.65 0.95 0.65"/>
                             <body name="right_hand_link" pos="0.0675 0 0">
                               <inertial pos="0.04385203 0.00062977 0.00406365" mass="0.13947198"
                                 fullinertia="0.00010488 0.00031818 0.00027655 -2.26E-06 -6.41E-06 -1.009E-05"/>
                               <geom name="right_rubber_hand_visual" type="mesh" mesh="right_hand_link" contype="0"
                                 conaffinity="0" group="1" density="0" rgba="0.75294 0.75294 0.75294 1"/>
-                              <geom name="right_hand_collision" type="capsule" size="0.027"
-                                fromto="0.0025 0 0 0.0825 0 0" group="3" contype="0" conaffinity="0" density="0"
-                                rgba="0.1 0.65 0.95 0.65"/>
                             </body>
                           </body>
                         </body>
@@ -350,8 +408,8 @@
                   fullinertia="0.00130094 0.00138256 0.00126232 -5.3e-07 2.291e-05 -1.62e-06"/>
                 <geom name="head_link_visual" type="mesh" contype="0" conaffinity="0" group="1" density="0"
                   rgba="1 1 1 0.35" mesh="head_link"/>
-                <geom name="head_collision" type="sphere" size="0.075" pos="0 0 0.083" group="3" contype="0"
-                  conaffinity="0" density="0" rgba="0.1 0.65 0.95 0.65"/>
+                <geom name="head_link_sphere_collision_1" size="0.075" pos="0 0 0.083" rgba="0.1 0.65 0.95 0.65"
+                  group="3"/>
               </body>
               <body name="lidar_link" pos="0.058698 0.01529 0.01838" quat="0.499998 -0.5 -0.500002 0.5">
                 <inertial pos="-0.01521037 -0.01521037 -0.00697515" mass="0.17"

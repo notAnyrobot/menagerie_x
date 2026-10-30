@@ -1,479 +1,217 @@
 {
   "model": "astro_p2_simplified.xml",
   "source_model": "astro_p2.xml",
-  "source_revision": "20ad78c0c1c661f9200094b51395f7c85e9861e2",
+  "source_revision": "1fcf365c105b10776db158a0f68d0245c2057296",
   "source_sha256": "cd8a85a833547164314e57559c948b35960ded43cf945ad9d630ab3d7f5e3d33",
   "license": "Apache-2.0",
+  "scope": "Arms and fixed hands only. All 40 non-arm collision geoms retain exact source attributes/body attachments and automatic contact masks; pelvis, legs, feet, torso, neck and head are unchanged.",
+  "supersedes": "The prior whole-body 27-collider experiment; this revision preserves the lower body and simplifies only arms/hands.",
   "collision_count_before": 60,
-  "collision_count_after": 27,
-  "approach_reference": {
-    "repository": "https://github.com/google-deepmind/mujoco_menagerie",
-    "revision": "f3b6013629c7b94f8ee93fd977b161fa8350f9bc",
-    "path": "unitree_g1/g1_mjx.xml",
-    "use": "Compact primitive roles and explicit-contact approach; dimensions authored in Astro frames."
-  },
+  "collision_count_after": 52,
+  "non_arm_colliders_preserved": 40,
+  "arm_colliders_before": 20,
+  "arm_colliders_after": 12,
+  "per_arm_colliders": 6,
+  "contact_policy": "Original non-arm automatic contacts preserved. Optimized arm masks are zero and scene_simplified.xml declares selected arm contact pairs.",
   "preserved": [
-    "All 37 source visual meshes, placements, and colors",
-    "Complete body tree, inertias, joint definitions, and passive parameters",
-    "29 body joints, free base, zero actuators, default initial state and numerical options",
-    "Original Astro hand material and every existing source/asset file"
+    "All body/inertial/joint/passive/numerical properties and all 37 visual meshes/colors",
+    "Complete source non-arm collider definitions, including names, shapes, transforms, RGBA, groups and masks",
+    "Original default/articulated model files, source evidence, assets and previews"
   ],
-  "contact_policy": "All robot masks zero; scene_simplified.xml supplies explicit pairs.",
   "limitations": [
-    "Approximate collision envelope; small details and some interactions of the detailed model are omitted.",
-    "No hardware fitting, controller tuning, MJX runtime compatibility or performance claim."
+    "No measured runtime speedup, exhaustive visual-mesh containment or hardware contact calibration is claimed.",
+    "Merged forearm/pitch proxies are conservative relative to the source collision envelopes and can contact earlier than the old narrower shaft segments.",
+    "The wrist/hand proxy preserves and contains the original collision envelope; the original collision envelope does not cover every point of the detailed native-hand visual mesh.",
+    "No MJX runtime, PD/controller, URDF or Workbench support is introduced."
   ],
-  "colliders": [
+  "arm_colliders": [
     {
-      "body": "pelvis",
-      "name": "pelvis_collision",
-      "type": "sphere",
-      "size": [
-        0.08
-      ],
-      "group": 3,
-      "pos": [
-        0,
-        0,
-        0.025
-      ]
-    },
-    {
-      "body": "waist_roll_link",
-      "name": "torso_collision",
+      "body": "left_shoulder_roll_link",
+      "name": "left_shoulder_housing_collision",
       "type": "capsule",
-      "size": [
-        0.12
-      ],
-      "group": 3,
+      "radius": 0.039,
       "fromto": [
-        0,
-        0,
-        0.07,
-        0,
-        0,
-        0.24
-      ]
-    },
-    {
-      "body": "head_link",
-      "name": "head_collision",
-      "type": "sphere",
-      "size": [
-        0.075
-      ],
-      "group": 3,
-      "pos": [
-        0,
-        0,
-        0.083
-      ]
-    },
-    {
-      "body": "left_hip_roll_link",
-      "name": "left_hip_collision",
-      "type": "capsule",
-      "size": [
-        0.055
-      ],
-      "group": 3,
-      "fromto": [
-        0,
-        0,
-        0,
-        0,
-        0,
-        -0.075
-      ]
-    },
-    {
-      "body": "left_hip_yaw_link",
-      "name": "left_thigh_collision",
-      "type": "capsule",
-      "size": [
-        0.053
-      ],
-      "group": 3,
-      "fromto": [
-        0,
-        0,
-        -0.005,
-        -0.016,
-        0,
-        -0.13
-      ]
-    },
-    {
-      "body": "left_knee_link",
-      "name": "left_shin_collision",
-      "type": "capsule",
-      "size": [
-        0.053
-      ],
-      "group": 3,
-      "fromto": [
+        -0.015,
+        0.0,
+        0.0,
         0.015,
-        0,
-        0,
-        0.015,
-        0,
-        -0.23
-      ]
-    },
-    {
-      "body": "left_ankle_pitch_link",
-      "name": "left_linkage_brace_collision",
-      "type": "capsule",
-      "size": [
-        0.03
+        0.0,
+        0.0
       ],
-      "group": 3,
-      "fromto": [
-        0,
-        0,
-        0.015,
-        0,
-        0,
-        -0.025
-      ]
-    },
-    {
-      "body": "left_foot_link",
-      "name": "left_foot1_collision",
-      "type": "capsule",
-      "size": [
-        0.012
-      ],
-      "group": 3,
-      "fromto": [
-        -0.045,
-        0.034,
-        -0.039,
-        0.1,
-        0.034,
-        -0.039
-      ]
-    },
-    {
-      "body": "left_foot_link",
-      "name": "left_foot2_collision",
-      "type": "capsule",
-      "size": [
-        0.012
-      ],
-      "group": 3,
-      "fromto": [
-        -0.058,
-        0,
-        -0.039,
-        0.11,
-        0,
-        -0.039
-      ]
-    },
-    {
-      "body": "left_foot_link",
-      "name": "left_foot3_collision",
-      "type": "capsule",
-      "size": [
-        0.012
-      ],
-      "group": 3,
-      "fromto": [
-        -0.045,
-        -0.034,
-        -0.039,
-        0.1,
-        -0.034,
-        -0.039
-      ]
-    },
-    {
-      "body": "left_foot_link",
-      "name": "left_foot_box_collision",
-      "type": "box",
-      "size": [
-        0.0975,
-        0.047,
-        0.022
-      ],
-      "group": 4,
-      "pos": [
-        0.0245,
-        0,
-        -0.029
-      ]
+      "rationale": "Preserves original transverse shoulder housing; no inflated radius beside torso."
     },
     {
       "body": "left_shoulder_roll_link",
-      "name": "left_shoulder_yaw_collision",
+      "name": "left_upper_arm_collision",
       "type": "capsule",
-      "size": [
-        0.039
-      ],
-      "group": 3,
+      "radius": 0.037,
       "fromto": [
-        0,
-        0,
-        0,
-        0,
-        0,
-        -0.17
-      ]
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -0.174
+      ],
+      "rationale": "Merges collinear original shoulder shaft and yaw-axis-invariant upper-arm shaft; source radius .035 becomes .037 for distal segment."
     },
     {
       "body": "left_elbow_link",
-      "name": "left_elbow_yaw_collision",
+      "name": "left_forearm_collision",
       "type": "capsule",
-      "size": [
-        0.039
-      ],
-      "group": 3,
+      "radius": 0.054,
       "fromto": [
-        0,
-        0,
-        0,
-        0.1,
-        0,
-        0
-      ]
+        0.0,
+        0.0,
+        0.0,
+        0.075,
+        0.0,
+        0.0
+      ],
+      "rationale": "One capsule contains the original elbow transverse capsule and forearm capsule; broadens the shaft around its joint housing."
+    },
+    {
+      "body": "left_wrist_roll_link",
+      "name": "left_wrist_roll_collision",
+      "type": "capsule",
+      "radius": 0.034,
+      "fromto": [
+        0.006,
+        0.0,
+        0.0,
+        0.027,
+        0.0,
+        0.0
+      ],
+      "rationale": "Preserves original wrist-roll shell on its own moving joint frame."
     },
     {
       "body": "left_wrist_pitch_link",
-      "name": "left_wrist_collision",
+      "name": "left_wrist_pitch_collision",
       "type": "capsule",
-      "size": [
-        0.034
-      ],
-      "group": 3,
+      "radius": 0.045,
       "fromto": [
-        -0.02,
-        0,
-        0,
-        0.09,
-        0,
-        0
-      ]
+        0.0,
+        0.0,
+        0.0,
+        0.044,
+        0.0,
+        0.0
+      ],
+      "rationale": "One capsule contains both original wrist-pitch capsules, in the same wrist-pitch frame."
     },
     {
-      "body": "left_hand_link",
-      "name": "left_hand_collision",
+      "body": "left_wrist_yaw_link",
+      "name": "left_wrist_hand_collision",
       "type": "capsule",
-      "size": [
-        0.027
-      ],
-      "group": 3,
+      "radius": 0.03,
       "fromto": [
-        0.0024980000000000002,
-        0,
-        0,
-        0.08249799999999999,
-        0,
-        0
-      ]
-    },
-    {
-      "body": "right_hip_roll_link",
-      "name": "right_hip_collision",
-      "type": "capsule",
-      "size": [
-        0.055
+        0.032,
+        0.0,
+        0.0,
+        0.15,
+        0.0,
+        0.0
       ],
-      "group": 3,
-      "fromto": [
-        0,
-        0,
-        0,
-        0,
-        0,
-        -0.075
-      ]
-    },
-    {
-      "body": "right_hip_yaw_link",
-      "name": "right_thigh_collision",
-      "type": "capsule",
-      "size": [
-        0.053
-      ],
-      "group": 3,
-      "fromto": [
-        0,
-        0,
-        -0.005,
-        -0.016,
-        0,
-        -0.13
-      ]
-    },
-    {
-      "body": "right_knee_link",
-      "name": "right_shin_collision",
-      "type": "capsule",
-      "size": [
-        0.053
-      ],
-      "group": 3,
-      "fromto": [
-        0.015,
-        0,
-        0,
-        0.015,
-        0,
-        -0.23
-      ]
-    },
-    {
-      "body": "right_ankle_pitch_link",
-      "name": "right_linkage_brace_collision",
-      "type": "capsule",
-      "size": [
-        0.03
-      ],
-      "group": 3,
-      "fromto": [
-        0,
-        0,
-        0.015,
-        0,
-        0,
-        -0.025
-      ]
-    },
-    {
-      "body": "right_foot_link",
-      "name": "right_foot1_collision",
-      "type": "capsule",
-      "size": [
-        0.012
-      ],
-      "group": 3,
-      "fromto": [
-        -0.045,
-        0.034,
-        -0.039,
-        0.1,
-        0.034,
-        -0.039
-      ]
-    },
-    {
-      "body": "right_foot_link",
-      "name": "right_foot2_collision",
-      "type": "capsule",
-      "size": [
-        0.012
-      ],
-      "group": 3,
-      "fromto": [
-        -0.058,
-        0,
-        -0.039,
-        0.11,
-        0,
-        -0.039
-      ]
-    },
-    {
-      "body": "right_foot_link",
-      "name": "right_foot3_collision",
-      "type": "capsule",
-      "size": [
-        0.012
-      ],
-      "group": 3,
-      "fromto": [
-        -0.045,
-        -0.034,
-        -0.039,
-        0.1,
-        -0.034,
-        -0.039
-      ]
-    },
-    {
-      "body": "right_foot_link",
-      "name": "right_foot_box_collision",
-      "type": "box",
-      "size": [
-        0.0975,
-        0.047,
-        0.022
-      ],
-      "group": 4,
-      "pos": [
-        0.0245,
-        0,
-        -0.029
-      ]
+      "rationale": "Contains original yaw housing and fixed native-hand collision envelope; does not span an independently moving joint."
     },
     {
       "body": "right_shoulder_roll_link",
-      "name": "right_shoulder_yaw_collision",
+      "name": "right_shoulder_housing_collision",
       "type": "capsule",
-      "size": [
-        0.039
-      ],
-      "group": 3,
+      "radius": 0.039,
       "fromto": [
-        0,
-        0,
-        0,
-        0,
-        0,
-        -0.17
-      ]
+        -0.015,
+        0.0,
+        0.0,
+        0.015,
+        0.0,
+        0.0
+      ],
+      "rationale": "Preserves original transverse shoulder housing; no inflated radius beside torso."
+    },
+    {
+      "body": "right_shoulder_roll_link",
+      "name": "right_upper_arm_collision",
+      "type": "capsule",
+      "radius": 0.037,
+      "fromto": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -0.174
+      ],
+      "rationale": "Merges collinear original shoulder shaft and yaw-axis-invariant upper-arm shaft; source radius .035 becomes .037 for distal segment."
     },
     {
       "body": "right_elbow_link",
-      "name": "right_elbow_yaw_collision",
+      "name": "right_forearm_collision",
       "type": "capsule",
-      "size": [
-        0.039
-      ],
-      "group": 3,
+      "radius": 0.054,
       "fromto": [
-        0,
-        0,
-        0,
-        0.1,
-        0,
-        0
-      ]
+        0.0,
+        0.0,
+        0.0,
+        0.075,
+        0.0,
+        0.0
+      ],
+      "rationale": "One capsule contains the original elbow transverse capsule and forearm capsule; broadens the shaft around its joint housing."
+    },
+    {
+      "body": "right_wrist_roll_link",
+      "name": "right_wrist_roll_collision",
+      "type": "capsule",
+      "radius": 0.034,
+      "fromto": [
+        0.006,
+        0.0,
+        0.0,
+        0.027,
+        0.0,
+        0.0
+      ],
+      "rationale": "Preserves original wrist-roll shell on its own moving joint frame."
     },
     {
       "body": "right_wrist_pitch_link",
-      "name": "right_wrist_collision",
+      "name": "right_wrist_pitch_collision",
       "type": "capsule",
-      "size": [
-        0.034
-      ],
-      "group": 3,
+      "radius": 0.045,
       "fromto": [
-        -0.02,
-        0,
-        0,
-        0.09,
-        0,
-        0
-      ]
+        0.0,
+        0.0,
+        0.0,
+        0.044,
+        0.0,
+        0.0
+      ],
+      "rationale": "One capsule contains both original wrist-pitch capsules, in the same wrist-pitch frame."
     },
     {
-      "body": "right_hand_link",
-      "name": "right_hand_collision",
+      "body": "right_wrist_yaw_link",
+      "name": "right_wrist_hand_collision",
       "type": "capsule",
-      "size": [
-        0.027
-      ],
-      "group": 3,
+      "radius": 0.03,
       "fromto": [
-        0.0025000000000000022,
-        0,
-        0,
-        0.08249999999999999,
-        0,
-        0
-      ]
+        0.032,
+        0.0,
+        0.0,
+        0.15,
+        0.0,
+        0.0
+      ],
+      "rationale": "Contains original yaw housing and fixed native-hand collision envelope; does not span an independently moving joint."
     }
-  ]
+  ],
+  "verification": {
+    "source_non_arm_geoms_equal": 40,
+    "source_visual_geoms_equal": 37,
+    "articulation_probes": 12,
+    "probe_scope": "Reference; independent shoulder-yaw, elbow and all wrist joint lower/upper limits; combined extreme pose on both arms. All old arm collision envelopes remain contained by new proxies within 1e-8 m tolerance.",
+    "shoulder_yaw_merge": "The retained source upper-arm capsule is collinear with the shoulder-yaw axis and invariant to that rotation, allowing attachment of the combined shaft to shoulder-roll without a moving-axis error.",
+    "wrist_hand_merge": "Yaw housing and native hand share a fixed transform; the combined proxy attaches to wrist-yaw, never across independently moving wrist-pitch/yaw joints."
+  }
 }

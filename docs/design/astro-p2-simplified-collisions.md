@@ -7,7 +7,37 @@ preserve existing variants, keep MJX runtime deferred, delegate implementation.
 Baseline: `20ad78c` on `codex/astro-silver-hands-g1-primitives`.
 Implementation branch: `codex/astro-p2-simplified-collisions`.
 
-## Scope and ownership
+## Accepted revision: preserve the body, optimize arms only
+
+The maintainer rejected the whole-body 27-primitive result and marked both arms
+and hands in the original detailed-model screenshot. The current scope
+supersedes the whole-body shape target and all-zero mask policy below:
+
+- Revise the existing `astro_p2_simplified.xml` / `scene_simplified.xml` pair;
+  label it **Astro P2 with optimized arm collisions**. Do not add another model.
+- Restore all original non-arm colliders from `astro_p2.xml`, including pelvis,
+  hips, legs, feet, torso/neck and head. Preserve their exact dimensions,
+  attachments, names, groups, colors and contact parameters/masks.
+- Simplify only the collision geoms below the left/right shoulder subtrees.
+  Reduce redundant housing shapes while respecting independent elbow/wrist
+  joints. A fixed hand and its wrist-yaw housing may share one proxy because
+  their relative transform is fixed; independently rotating links must retain
+  appropriate separate proxies.
+- Preserve all existing variants and every body/joint/inertial/visual/option
+  property. No actuators, controller tuning or MJX runtime work is introduced.
+- Use a hybrid contact policy: original non-arm collisions remain automatic;
+  optimized arm masks are zero and the scene explicitly selects their floor,
+  torso/body and opposite-arm interactions. Do not override the preserved
+  lower-body contact parameters with explicit pairs.
+- Keep the original floor and reference pose. Compare lower-body contact sets
+  and parameters against the default model, and check bent elbow/wrist poses.
+  Refresh previews and add guards for exact non-arm preservation.
+- Fewer total shapes is useful, but there is no required 27-shape target.
+  Geometry and articulation take precedence over minimizing the count.
+
+Revision branch: `codex/astro-arm-collisions`, baseline `1fcf365`.
+
+## Original scope and ownership (superseded where noted above)
 
 - Add `astro_p2/astro_p2_simplified.xml` and `scene_simplified.xml` as a third
   native Astro configuration. Label it **Astro P2 with simplified collisions**.

@@ -2,6 +2,11 @@
 
 ## 2026-10-30
 
+- Narrow the collision alternative to arms and hands. Restore the default
+  pelvis, legs, feet, torso/neck and head colliders and their automatic contact
+  behavior. Use explicit scene pairs only for optimized arms; preserve the
+  detailed variants and all body/joint/visual definitions.
+
 - Add Astro P2 with simplified collisions as a separate native model/scene:
   27 Astro-sized primitives and 49 selected contact pairs. Preserve the existing
   default/articulated variants, physical body and visual meshes; keep native
