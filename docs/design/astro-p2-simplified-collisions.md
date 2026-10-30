@@ -37,6 +37,31 @@ supersedes the whole-body shape target and all-zero mask policy below:
 
 Revision branch: `codex/astro-arm-collisions`, baseline `1fcf365`.
 
+## Accepted wrist and hand refinement
+
+The next maintainer review identifies the small wrist-roll collider between
+the forearm and wrist-pitch capsules as redundant, and requests a hand envelope
+closer to the rounded G1 hand collider. Current implementation scope:
+
+- Refine the same arm-optimized variant; preserve all 40 non-arm colliders,
+  all shoulder/upper-arm shapes, existing variants, visuals and body properties.
+- Remove the small wrist-roll proxy once its coverage is retained by the
+  neighboring envelopes across wrist articulation. A small forearm endpoint
+  adjustment is allowed; preserve separate independently moving pitch/hand
+  frames rather than welding them together.
+- Replace the long thin wrist/hand capsule with a shorter-axis, rounder proxy
+  inspired by the G1 box-feet hand collider, fitted to Astro's native hand.
+  Do not import G1 hand meshes or mechanically reuse its dimensions.
+- Remove scene pairs for deleted geoms while preserving all other pair
+  parameters and the original non-arm automatic contact behavior.
+- Check reference, bent and wrist-limit poses, native loading/stepping, source
+  preservation and archive closure. Render a wrist/hand close-up for review.
+- The old requirement to contain the previous long hand capsule is superseded
+  by the new shape fit; record any approximation honestly. Native hand mesh,
+  mass/inertia, wrist joints and MJX deferral remain unchanged.
+
+Revision branch: `codex/astro-wrist-hand-refinement`, baseline `10fcf7e`.
+
 ## Original scope and ownership (superseded where noted above)
 
 - Add `astro_p2/astro_p2_simplified.xml` and `scene_simplified.xml` as a third

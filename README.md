@@ -136,8 +136,8 @@ finger joints (43 total). The additional arm-optimized model retains the default
 model's fixed hands, visuals and all non-arm colliders, including the original
 feet and torso. Only the arm/hand collision envelope is simplified, with its
 interactions explicitly selected in the scene. Other body contacts retain the
-original automatic policy. Arms use 12 shapes instead of 20; the full model has
-52 colliders. The existing detailed variants remain
+original automatic policy. Arms use 10 shapes instead of 20; the full model has
+50 colliders. The existing detailed variants remain
 available. See the [collision-only preview](astro_p2/astro_p2_simplified_colliders.png).
 The previous 30-DoF primitive, mesh, and intermediate
 P2 descriptions are retired; their history remains in Git. The formerly

@@ -16,6 +16,8 @@ visuals. G1 also includes Menagerie's 27-primitive configuration and its complet
 The revised Astro alternative preserves every original non-arm collider and
 its contact policy. Only arms/hands are optimized and use explicit scene pairs;
 Astro's unactuated dynamics, source frames and existing variants are retained.
+The current wrist refinement removes redundant wrist-roll proxies and uses
+rounder native-hand-fitted capsules; 40 body plus 10 arm colliders remain.
 There is no regeneration step. `make all` is the native acceptance gate.
 Workbench, URDF compatibility, and MJX remain deferred. See
 [UPSTREAM.md](UPSTREAM.md) for preservation and ownership details.

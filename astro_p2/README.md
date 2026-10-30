@@ -71,8 +71,8 @@ hand inertias, transforms, and capsule conversion are recorded in
 
 **Astro P2 with optimized arm collisions** preserves every original non-arm
 collider: pelvis, hips, legs, detailed feet, torso/neck and head. Only the arm
-and hand collision envelope is reduced, from **20 to 12 shapes** (six per arm).
-The complete model has **52 colliders: 40 unchanged body shapes plus 12 arm
+and hand collision envelope is reduced, from **20 to 10 shapes** (five per arm).
+The complete model has **50 colliders: 40 unchanged body shapes plus 10 arm
 capsules**. All 37 visual mesh geoms and the
 fixed-head 29-joint body remain unchanged. This variant uses Astro's original
 fixed hands; no optimized articulated-hand version is introduced.
@@ -91,10 +91,12 @@ pairs override the preserved lower-body interactions. The original floor at
 `z=-0.75` and reference pose are unchanged. New environments must select their
 intended arm interactions; non-arm automatic contacts continue to work.
 
-The scene contains **78 arm pairs**: 12 arm-floor and 66 selected self-contact
-pairs. Each arm has shoulder-housing, upper-arm, forearm, wrist-roll,
-wrist-pitch and wrist/hand capsules. Wrist roll and pitch keep separate moving
-frames; only the rigid wrist-yaw housing and fixed hand share their final proxy.
+The scene contains **68 arm pairs**: 10 arm-floor and 58 selected self-contact
+pairs. Each arm has shoulder-housing, upper-arm, forearm, wrist-pitch and
+wrist/hand capsules. The small standalone wrist-roll collider is removed;
+neighboring envelopes cover its shell through wrist bending. All wrist joints
+are retained; the pitch and hand proxies follow their independent frames.
+The rigid wrist-yaw housing and fixed hand share the final proxy.
 The upper-arm shaft is symmetric about shoulder yaw, so its collinear source
 shapes can share a proxy without changing their yaw-dependent envelope.
 
@@ -112,9 +114,26 @@ group 3, including the unchanged detailed feet and torso.
 Viewer group visibility does not alter collision selection.
 
 Some merged arm capsules are broader than the source shaft segments to retain
-the old joint-housing collision envelope. The source hand collision envelope
-itself does not contain every point of its detailed visual mesh. These are
-collision approximations rather than a new hand geometry or calibration.
+the old joint-housing collision envelope. The hand is now fitted to Astro's
+native visual mesh with a rounder, thicker capsule inspired by G1's hand
+envelope. Its centerline is shorter than the earlier thin proxy, but its overall
+extent grows to cover fingers and thumb that the earlier proxy missed.
+These are collision approximations rather than new hand geometry or calibration.
+
+The current hand capsule has radius 0.06 m and a 0.10 m centerline, with small
+mirrored lateral offsets fitted to Astro's native hand. All native hand mesh
+vertices are inside it; the previous thin proxy covered only about 54–55%.
+The forearm endpoint extends by 15 mm so the removed wrist-roll shell stays
+covered by the forearm/pitch union, including at wrist bending limits.
+
+<p float="left">
+  <img src="astro_p2_wrist_hand_colliders.png" alt="Astro wrist and rounded hand collider overlaid on native meshes" width="500">
+</p>
+
+The larger hand envelope can contact the body earlier in folded-arm poses.
+For example, elbows at 1.2 radians produce selected hand/hip contacts that the
+previous thin proxy missed. This is a consequence of the revised envelope;
+there is no controller or hardware-contact calibration implied.
 
 The XML uses the G1 MJX **approach**, but native MuJoCo is the verification
 target. MJX/JAX/Warp execution and performance remain deferred.

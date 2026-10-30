@@ -2,6 +2,11 @@
 
 ## 2026-10-30
 
+- Remove the two standalone wrist-roll collision proxies after checking
+  neighboring coverage through wrist motion. Fit rounder hand capsules to
+  Astro's own mesh using G1 as a shape reference; preserve wrist joints and
+  non-arm colliders. The alternative now has 50 colliders and 68 explicit pairs.
+
 - Narrow the collision alternative to arms and hands. Restore the default
   pelvis, legs, feet, torso/neck and head colliders and their automatic contact
   behavior. Use explicit scene pairs only for optimized arms; preserve the

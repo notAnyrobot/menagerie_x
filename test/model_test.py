@@ -230,10 +230,12 @@ class AstroP2ArmCollisionTests(unittest.TestCase):
     def test_arm_proxies_follow_joint_frames_and_selected_contacts_work(self):
         scene = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/scene_simplified.xml"))
         for side in ("left", "right"):
-            for role, body in (("forearm", "elbow"), ("wrist_roll", "wrist_roll"),
-                               ("wrist_pitch", "wrist_pitch"), ("wrist_hand", "wrist_yaw")):
+            for role, body in (("forearm", "elbow"), ("wrist_pitch", "wrist_pitch"),
+                               ("wrist_hand", "wrist_yaw")):
                 geom = scene.geom(f"{side}_{role}_collision")
                 self.assertEqual(scene.body(int(geom.bodyid[0])).name, f"{side}_{body}_link")
+            self.assertEqual(mujoco.mj_name2id(scene, mujoco.mjtObj.mjOBJ_GEOM,
+                                              f"{side}_wrist_roll_collision"), -1)
         data = mujoco.MjData(scene)
         for angle in (-1.1, 1.1):
             mujoco.mj_resetData(scene, data)
@@ -254,23 +256,75 @@ class AstroP2ArmCollisionTests(unittest.TestCase):
         self.assertTrue(any({c.geom1, c.geom2} == selected and c.dim == 1 for c in data.contact))
         self.assertFalse(np.any(data.warning.number))
 
+    def test_removed_wrist_roll_shell_is_covered_through_pitch_motion(self):
+        base = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/astro_p2.xml"))
+        revised = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/astro_p2_simplified.xml"))
+        old_data, new_data = mujoco.MjData(base), mujoco.MjData(revised)
+        theta, height = np.meshgrid(np.linspace(0, 2 * np.pi, 24, endpoint=False),
+                                    np.linspace(-1, 1, 13))
+        radial = np.sqrt(1 - height.ravel() ** 2)
+        directions = np.column_stack((radial * np.cos(theta.ravel()),
+                                      radial * np.sin(theta.ravel()), height.ravel()))
+        for angle in (-1.31, 0, 1.31):
+            for side in ("left", "right"):
+                old_data.qpos[base.joint(f"{side}_wrist_pitch_joint").qposadr[0]] = angle
+            new_data.qpos[:] = old_data.qpos
+            mujoco.mj_forward(base, old_data)
+            mujoco.mj_forward(revised, new_data)
+            for side in ("left", "right"):
+                old = base.geom(f"{side}_wrist_roll_shell_capsule_collision")
+                axis = old_data.geom_xmat[old.id].reshape(3, 3)[:, 2]
+                centers = old_data.geom_xpos[old.id] + np.linspace(-old.size[1], old.size[1], 7)[:, None] * axis
+                points = (centers[:, None, :] + old.size[0] * directions[None, :, :]).reshape(-1, 3)
+                distances = []
+                for role in ("forearm", "wrist_pitch"):
+                    geom = revised.geom(f"{side}_{role}_collision")
+                    axis = new_data.geom_xmat[geom.id].reshape(3, 3)[:, 2]
+                    start = new_data.geom_xpos[geom.id] - geom.size[1] * axis
+                    segment = 2 * geom.size[1] * axis
+                    position = np.clip((points - start) @ segment / np.dot(segment, segment), 0, 1)
+                    distances.append(np.linalg.norm(points - start - position[:, None] * segment, axis=1)
+                                     - geom.size[0])
+                self.assertLessEqual(float(np.minimum(*distances).max()), 1e-9)
+
+    def test_round_hand_proxy_contains_native_hand_mesh(self):
+        model = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/astro_p2_simplified.xml"))
+        data = mujoco.MjData(model)
+        mujoco.mj_forward(model, data)
+        for side in ("left", "right"):
+            visual = model.geom(f"{side}_rubber_hand_visual")
+            mesh = int(visual.dataid[0])
+            start = model.mesh_vertadr[mesh]
+            vertices = model.mesh_vert[start:start + model.mesh_vertnum[mesh]]
+            points = vertices @ data.geom_xmat[visual.id].reshape(3, 3).T + data.geom_xpos[visual.id]
+            proxy = model.geom(f"{side}_wrist_hand_collision")
+            axis = data.geom_xmat[proxy.id].reshape(3, 3)[:, 2]
+            start = data.geom_xpos[proxy.id] - proxy.size[1] * axis
+            segment = 2 * proxy.size[1] * axis
+            position = np.clip((points - start) @ segment / np.dot(segment, segment), 0, 1)
+            distance = np.linalg.norm(points - start - position[:, None] * segment, axis=1)
+            self.assertLessEqual(float(distance.max()), proxy.size[0] + 1e-7)
+            # Rounder than the previous radius-.03, half-length-.059 shaft.
+            self.assertGreater(proxy.size[0], 0.03)
+            self.assertLess(proxy.size[1], 0.059)
+
     def test_arm_geometry_and_hybrid_contact_policy(self):
         robot = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/astro_p2_simplified.xml"))
         scene = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/scene_simplified.xml"))
         retained = set(self._non_arm_colliders(ROOT / "astro_p2/astro_p2.xml"))
         arms = {robot.geom(i).name for i in range(robot.ngeom)
                 if robot.geom_group[i] == 3 and robot.geom(i).name not in retained}
-        self.assertEqual(len(arms), 12)
-        self.assertEqual(int((robot.geom_group == 3).sum()), 52)
+        self.assertEqual(len(arms), 10)
+        self.assertEqual(int((robot.geom_group == 3).sum()), 50)
         for name in arms:
             self.assertEqual(robot.geom(name).contype[0], 0)
             self.assertEqual(robot.geom(name).conaffinity[0], 0)
         self.assertEqual(robot.npair, 0)
-        self.assertEqual(scene.npair, 78)
+        self.assertEqual(scene.npair, 68)
         floor = scene.geom("menagerie_floor").id
         np.testing.assert_array_equal(scene.geom_pos[floor], [0, 0, -0.75])
         floor_pairs = (scene.pair_geom1 == floor) | (scene.pair_geom2 == floor)
-        self.assertEqual(int(floor_pairs.sum()), 12)
+        self.assertEqual(int(floor_pairs.sum()), 10)
         self.assertTrue(np.all(scene.pair_dim[floor_pairs] == 3))
         self.assertTrue(np.all(scene.pair_dim[~floor_pairs] == 1))
         pairs = {frozenset((scene.geom(int(a)).name, scene.geom(int(b)).name))

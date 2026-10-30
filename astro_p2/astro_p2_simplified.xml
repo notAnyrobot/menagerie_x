@@ -286,8 +286,8 @@
                         actuatorfrcrange="-30 30"/>
                       <geom name="left_elbow_link_visual" type="mesh" contype="0" conaffinity="0" group="1" density="0"
                         rgba="0.79216 0.81961 0.93333 1" mesh="left_elbow_link"/>
-                      <geom name="left_forearm_collision" type="capsule" size=".054" fromto="0 0 0 0.075 0 0"
-                        contype="0" conaffinity="0" group="3" rgba="0.1 0.65 0.95 0.65"/>
+                      <geom name="left_forearm_collision" type="capsule" size=".054" fromto="0 0 0 0.09 0 0" contype="0"
+                        conaffinity="0" group="3" rgba="0.1 0.65 0.95 0.65"/>
                       <body name="left_wrist_roll_link" pos="0.114 0 0">
                         <inertial pos="0.02236437 -0.0017382 1.87e-06" mass="0.15772072"
                           fullinertia="0.0001724 0.0001213 0.0001973 -4.24e-06 0 -1e-08"/>
@@ -295,8 +295,6 @@
                           actuatorfrcrange="-30 30"/>
                         <geom name="left_wrist_roll_link_visual" type="mesh" contype="0" conaffinity="0" group="1"
                           density="0" rgba="0.79216 0.81961 0.93333 1" mesh="left_wrist_roll_link"/>
-                        <geom name="left_wrist_roll_collision" type="capsule" size=".034" fromto="0.006 0 0 0.027 0 0"
-                          contype="0" conaffinity="0" group="3" rgba="0.1 0.65 0.95 0.65"/>
                         <body name="left_wrist_pitch_link" pos="0.047 0 0">
                           <inertial pos="0.02246818 0.00317842 0.00316732" mass="0.71257671"
                             fullinertia="0.00035764 0.00069296 0.00069262 4.732e-05 -4.621e-05 7.64e-06"/>
@@ -313,8 +311,9 @@
                               actuatorfrcrange="-10 10"/>
                             <geom name="left_wrist_yaw_link_visual" type="mesh" contype="0" conaffinity="0" group="1"
                               density="0" rgba="0.69804 0.69804 0.69804 1" mesh="left_wrist_yaw_link"/>
-                            <geom name="left_wrist_hand_collision" type="capsule" size=".03" fromto="0.032 0 0 0.15 0 0"
-                              contype="0" conaffinity="0" group="3" rgba="0.1 0.65 0.95 0.65"/>
+                            <geom name="left_wrist_hand_collision" type="capsule" size=".06"
+                              fromto=".065 -.004 .014 .165 -.004 .014" contype="0" conaffinity="0" group="3"
+                              rgba="0.1 0.65 0.95 0.65"/>
                             <body name="left_hand_link" pos="0.067502 0 0">
                               <inertial pos="0.04386117 -0.00063382 0.00406861" mass="0.13951244"
                                 fullinertia="0.00010494 0.00031826 0.00027661 2.28E-06 -6.4E-06 1.009E-05"/>
@@ -360,7 +359,7 @@
                         actuatorfrcrange="-30 30"/>
                       <geom name="right_elbow_link_visual" type="mesh" contype="0" conaffinity="0" group="1" density="0"
                         rgba="0.79216 0.81961 0.93333 1" mesh="right_elbow_link"/>
-                      <geom name="right_forearm_collision" type="capsule" size=".054" fromto="0 0 0 0.075 0 0"
+                      <geom name="right_forearm_collision" type="capsule" size=".054" fromto="0 0 0 0.09 0 0"
                         contype="0" conaffinity="0" group="3" rgba="0.1 0.65 0.95 0.65"/>
                       <body name="right_wrist_roll_link" pos="0.114 0 0">
                         <inertial pos="0.02236437 0.0017382 -1.87e-06" mass="0.15772072"
@@ -369,8 +368,6 @@
                           actuatorfrcrange="-30 30"/>
                         <geom name="right_wrist_roll_link_visual" type="mesh" contype="0" conaffinity="0" group="1"
                           density="0" rgba="0.79216 0.81961 0.93333 1" mesh="right_wrist_roll_link"/>
-                        <geom name="right_wrist_roll_collision" type="capsule" size=".034" fromto="0.006 0 0 0.027 0 0"
-                          contype="0" conaffinity="0" group="3" rgba="0.1 0.65 0.95 0.65"/>
                         <body name="right_wrist_pitch_link" pos="0.047 0 0">
                           <inertial pos="0.0224677 -0.00317464 0.0031669" mass="0.71258211"
                             fullinertia="0.00035765 0.00069298 0.00069265 -4.731e-05 -4.621e-05 -7.63e-06"/>
@@ -387,8 +384,8 @@
                               actuatorfrcrange="-10 10"/>
                             <geom name="right_wrist_yaw_link_visual" type="mesh" contype="0" conaffinity="0" group="1"
                               density="0" rgba="0.79216 0.81961 0.93333 1" mesh="right_wrist_yaw_link"/>
-                            <geom name="right_wrist_hand_collision" type="capsule" size=".03"
-                              fromto="0.032 0 0 0.15 0 0" contype="0" conaffinity="0" group="3"
+                            <geom name="right_wrist_hand_collision" type="capsule" size=".06"
+                              fromto=".065 .004 .014 .165 .004 .014" contype="0" conaffinity="0" group="3"
                               rgba="0.1 0.65 0.95 0.65"/>
                             <body name="right_hand_link" pos="0.0675 0 0">
                               <inertial pos="0.04385203 0.00062977 0.00406365" mass="0.13947198"

@@ -27,14 +27,12 @@
       condim="3"/>
     <pair name="left_upper_arm_floor" geom1="left_upper_arm_collision" geom2="menagerie_floor" condim="3"/>
     <pair name="left_forearm_floor" geom1="left_forearm_collision" geom2="menagerie_floor" condim="3"/>
-    <pair name="left_wrist_roll_floor" geom1="left_wrist_roll_collision" geom2="menagerie_floor" condim="3"/>
     <pair name="left_wrist_pitch_floor" geom1="left_wrist_pitch_collision" geom2="menagerie_floor" condim="3"/>
     <pair name="left_wrist_hand_floor" geom1="left_wrist_hand_collision" geom2="menagerie_floor" condim="3"/>
     <pair name="right_shoulder_housing_floor" geom1="right_shoulder_housing_collision" geom2="menagerie_floor"
       condim="3"/>
     <pair name="right_upper_arm_floor" geom1="right_upper_arm_collision" geom2="menagerie_floor" condim="3"/>
     <pair name="right_forearm_floor" geom1="right_forearm_collision" geom2="menagerie_floor" condim="3"/>
-    <pair name="right_wrist_roll_floor" geom1="right_wrist_roll_collision" geom2="menagerie_floor" condim="3"/>
     <pair name="right_wrist_pitch_floor" geom1="right_wrist_pitch_collision" geom2="menagerie_floor" condim="3"/>
     <pair name="right_wrist_hand_floor" geom1="right_wrist_hand_collision" geom2="menagerie_floor" condim="3"/>
     <!-- Upper-body contacts use the three retained main torso capsules and head. -->
@@ -61,14 +59,6 @@
     <pair name="left_forearm_upper_body_3" geom1="left_forearm_collision" geom2="waist_roll_link_3_capsule_collision"
       condim="1"/>
     <pair name="left_forearm_upper_body_4" geom1="left_forearm_collision" geom2="head_link_sphere_collision_1"
-      condim="1"/>
-    <pair name="left_wrist_roll_upper_body_1" geom1="left_wrist_roll_collision"
-      geom2="waist_roll_link_1_capsule_collision" condim="1"/>
-    <pair name="left_wrist_roll_upper_body_2" geom1="left_wrist_roll_collision"
-      geom2="waist_roll_link_2_capsule_collision" condim="1"/>
-    <pair name="left_wrist_roll_upper_body_3" geom1="left_wrist_roll_collision"
-      geom2="waist_roll_link_3_capsule_collision" condim="1"/>
-    <pair name="left_wrist_roll_upper_body_4" geom1="left_wrist_roll_collision" geom2="head_link_sphere_collision_1"
       condim="1"/>
     <pair name="left_wrist_pitch_upper_body_1" geom1="left_wrist_pitch_collision"
       geom2="waist_roll_link_1_capsule_collision" condim="1"/>
@@ -109,14 +99,6 @@
     <pair name="right_forearm_upper_body_3" geom1="right_forearm_collision" geom2="waist_roll_link_3_capsule_collision"
       condim="1"/>
     <pair name="right_forearm_upper_body_4" geom1="right_forearm_collision" geom2="head_link_sphere_collision_1"
-      condim="1"/>
-    <pair name="right_wrist_roll_upper_body_1" geom1="right_wrist_roll_collision"
-      geom2="waist_roll_link_1_capsule_collision" condim="1"/>
-    <pair name="right_wrist_roll_upper_body_2" geom1="right_wrist_roll_collision"
-      geom2="waist_roll_link_2_capsule_collision" condim="1"/>
-    <pair name="right_wrist_roll_upper_body_3" geom1="right_wrist_roll_collision"
-      geom2="waist_roll_link_3_capsule_collision" condim="1"/>
-    <pair name="right_wrist_roll_upper_body_4" geom1="right_wrist_roll_collision" geom2="head_link_sphere_collision_1"
       condim="1"/>
     <pair name="right_wrist_pitch_upper_body_1" geom1="right_wrist_pitch_collision"
       geom2="waist_roll_link_1_capsule_collision" condim="1"/>

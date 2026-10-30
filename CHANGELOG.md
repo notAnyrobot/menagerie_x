@@ -2,6 +2,10 @@
 
 ## 2026-10-30
 
+- Refine the arm-optimized Astro wrists and hands: remove the redundant small
+  wrist-roll proxies and fit rounder hand envelopes to the native Astro mesh,
+  using G1's hand shape as a reference. Keep original non-arm colliders intact.
+
 - Revise the Astro collision alternative after visual review: restore all
   original non-arm colliders and their contact parameters, and optimize only
   arm/hand shapes. Preserve independent wrist articulation and the detailed
