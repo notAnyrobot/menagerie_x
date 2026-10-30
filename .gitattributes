@@ -1,0 +1,3 @@
+# Preserve the exact official Unitree source bytes and its recorded SHA-256.
+# This vendor snapshot retains upstream CRLF/source whitespace intentionally.
+astro_p2/provenance/rubber_hand_sources/unitree_g1_29dof.urdf -text -whitespace
