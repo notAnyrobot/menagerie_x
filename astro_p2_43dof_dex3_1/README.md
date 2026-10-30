@@ -116,8 +116,15 @@ The latest MJCF provides a `fist` keyframe and `fist-pose.json` for matching han
 
 | Edition | Internal DOF | Descriptions |
 | --- | --- | --- |
-| `43dof_primitive_collision` | 43 | [URDF](astro_p2_43dof_dex3_1.urdf) · [source MJCF](astro_p2_43dof_dex3_1.xml) · [model](astro_p2_43dof_dex3_1.xml) / [scene](scene.xml) |
+| `43dof_primitive_collision` | 43 | [URDF](astro_p2_43dof_dex3_1.urdf) · [model](astro_p2_43dof_dex3_1.xml) / [scene](scene.xml) |
 
-Mesh files live in `assets/`; `meshes/` is a relative compatibility link. Legacy source paths remain authoritative for the CLI, Workbench, and provenance hashes. Flat MJCF entry points and `scene*.xml` are maintained by `scripts/sync-menagerie.py`; scenes include the model and add presentation lighting and one ground plane. Where a source uses a zero-height robot datum, the floor is lowered by the catalog standing height so the original robot pose is preserved.
+The family-root model and scene XML are canonical and maintained directly.
+Scenes include a sibling robot model and add presentation lighting and one
+ground plane. Robot frames and physical descriptions are unchanged; the floor
+is lowered where needed to preserve the original zero-height robot datum.
+Meshes live in `assets/`, with the retained relative `meshes -> assets` alias.
+Nested `mjcf/` imports, where present, are preserved source snapshots.
+Workbench, URDF compatibility, and MJX are deferred; legacy application edits
+may target those snapshots and do not update the canonical native XML.
 
 See [LICENSING.md](LICENSING.md) for asset-specific terms and unresolved provenance.

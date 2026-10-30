@@ -2,6 +2,15 @@
 
 ## 2026-10-30
 
+- Complete the simplified native refactor: root model/scene XML is canonical,
+  with an explicit upstream-style catalog and no mirror generator.
+- Include the existing Astro 29 MJCF and its new scene in the 11-model native
+  inventory; preserve the legacy manifest and every existing asset unchanged.
+- Gate CI on native layout, load/step, keyframe reset, and standalone family
+  checks. Workbench, URDF compatibility, and MJX remain deferred.
+
+### Earlier scaffold work
+
 - Adopt a pruned MuJoCo Menagerie scaffold while preserving Menagerie X's CLI
   and local browser Workbench.
 - Move the original seven families and shared scene/terrain descriptions to

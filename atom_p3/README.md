@@ -6,9 +6,16 @@ Atom P3 imported MJCF-only description.
 
 | Edition | Internal DOF | Descriptions |
 | --- | --- | --- |
-| `27dof` | 27 | [source MJCF](mjcf/atom_p3_27dof.xml) · [model](atom_p3_27dof.xml) / [scene](scene.xml) |
+| `27dof` | 27 | [source snapshot](mjcf/atom_p3_27dof.xml) · [model](atom_p3_27dof.xml) / [scene](scene.xml) |
 
-Mesh files live in `assets/`; `meshes/` is a relative compatibility link. Legacy source paths remain authoritative for the CLI, Workbench, and provenance hashes. Flat MJCF entry points and `scene*.xml` are maintained by `scripts/sync-menagerie.py`; scenes include the model and add presentation lighting and one ground plane. Where a source uses a zero-height robot datum, the floor is lowered by the catalog standing height so the original robot pose is preserved.
+The family-root model and scene XML are canonical and maintained directly.
+Scenes include a sibling robot model and add presentation lighting and one
+ground plane. Robot frames and physical descriptions are unchanged; the floor
+is lowered where needed to preserve the original zero-height robot datum.
+Meshes live in `assets/`, with the retained relative `meshes -> assets` alias.
+Nested `mjcf/` imports, where present, are preserved source snapshots.
+Workbench, URDF compatibility, and MJX are deferred; legacy application edits
+may target those snapshots and do not update the canonical native XML.
 
 This MJCF has no actuators (`nu=0`). Loading and short simulation checks do not establish a usable controller.
 

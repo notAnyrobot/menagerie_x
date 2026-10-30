@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Local Menagerie entry points, derived from the existing edition manifest.
+"""Curated native entry points, following MuJoCo Menagerie's root catalog.
 
-Adapted from MuJoCo Menagerie's catalog.py. No second robot registry is kept.
-URDF-only editions remain in manifest.json and have no simulated scene here.
+Keys are <family>/<model XML stem>. Runtime setup lives in the XML files;
+the legacy application's manifest.json is independent of this native catalog.
 """
 
 import enum
-import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -29,31 +28,26 @@ class ModelType(int, enum.Enum):
     HUMANOID = 7
 
 
-def model_entries(root=ROOT):
-    """Yield each declared MJCF's source, top-level model, and scene paths."""
-    root = Path(root)
-    manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
-    for family, raw in sorted(manifest["variants"].items()):
-        for edition, description in raw["editions"].items():
-            source = description.get("mjcf")
-            if not source:
-                continue
-            scene = "scene.xml" if edition == raw["default_edition"] else f"scene_{edition}.xml"
-            model_name = Path(source).name
-            if model_name == "scene.xml" or model_name.startswith("scene_"):
-                model_name = f"model_{model_name}"
-            yield {
-                "family": family,
-                "edition": edition,
-                "source": root / family / source,
-                "model": root / family / model_name,
-                "scene": root / family / scene,
-                "spawn_z": float(raw.get("spawn", {}).get("xyz", [0, 0, 0])[2]),
-            }
+MODEL_MAP = {
+    "astro_p1/astro_p1_30dof": ModelType.HUMANOID,
+    "astro_p1/astro_p1_27dof": ModelType.HUMANOID,
+    "astro_p2/astro_p2_30dof_primitive_collision": ModelType.HUMANOID,
+    "astro_p2/astro_p2_30dof_mesh_collision": ModelType.HUMANOID,
+    "astro_p2/astro_p2_30dof_primitive_collision_halfway": ModelType.HUMANOID,
+    "astro_p2_29dof/astro_p2_29dof": ModelType.HUMANOID,
+    "astro_p2_43dof_dex3_1/astro_p2_43dof_dex3_1": ModelType.HUMANOID,
+    "atom_p3/atom_p3_27dof": ModelType.HUMANOID,
+    "soma23/soma23_free_base": ModelType.HUMANOID,
+    "unitree_g1/unitree_g1_29dof_with_hand_rev_1_0": ModelType.HUMANOID,
+    "unitree_g1/unitree_g1_29dof_box_feet": ModelType.HUMANOID,
+}
 
-
-MODEL_MAP = {f"{entry['family']}/{entry['model'].stem}": ModelType.HUMANOID for entry in model_entries()}
-PREVIEW_OVERRIDES = {f"{entry['family']}/{entry['model'].stem}": str(entry["scene"].relative_to(ROOT)) for entry in model_entries()}
+PREVIEW_OVERRIDES = {
+    "astro_p1/astro_p1_27dof": "astro_p1/scene_27dof.xml",
+    "astro_p2/astro_p2_30dof_mesh_collision": "astro_p2/scene_30dof_mesh_collision.xml",
+    "astro_p2/astro_p2_30dof_primitive_collision_halfway": "astro_p2/scene_30dof_primitive_collision_halfway.xml",
+    "unitree_g1/unitree_g1_29dof_box_feet": "unitree_g1/scene_29dof_box_feet.xml",
+}
 
 
 def preview_path(robot, robot_maker):
@@ -62,3 +56,15 @@ def preview_path(robot, robot_maker):
 
 def display_name(robot):
     return robot.split("/")[-1].replace("_", " ")
+
+
+def model_entries(root=ROOT):
+    """Yield the declared native models and scenes, without scanning local drafts."""
+    root = Path(root)
+    for robot in MODEL_MAP:
+        family = robot.split("/")[0]
+        yield {
+            "family": family,
+            "model": root / f"{robot}.xml",
+            "scene": root / preview_path(robot, family),
+        }

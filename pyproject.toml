@@ -1,7 +1,7 @@
 [project]
 name = "menagerie_x"
 version = "0.1.0"
-description = "Multi-robot description asset catalog and browser workbench"
+description = "Curated native MuJoCo robot models and scenes"
 requires-python = ">=3.12"
 dependencies = [
     "mujoco==3.11.0",
@@ -32,12 +32,11 @@ only-include = [
     "src/menagerie_x", "manifest.json",
     "astro_p1", "astro_p2", "astro_p2_29dof", "astro_p2_43dof_dex3_1",
     "atom_p3", "soma23", "unitree_g1", "robots", "scenes", "terrains",
-    "tests", "docs", "LICENSES", "README.md", "CONTEXT.md",
-    "CONTRIBUTING.md", "CHANGELOG.md", "UPSTREAM.md", "LICENSING.md",
+    "test", "tests", "docs", "LICENSES", "README.md", "CONTEXT.md",
+    "CONTRIBUTING.md", "GLOSSARY.md", "CHANGELOG.md", "UPSTREAM.md", "LICENSING.md",
     "catalog.py", "format_xml.py", "hatch_build.py", "Makefile", "pyproject.toml", "uv.lock",
     "scripts/build-astro-dex3-variant.py", "scripts/build-astro-mjcf.py",
     "scripts/render-astro-dex3-preview.py", "scripts/validate-astro-dex3-variant.py",
-    "scripts/sync-menagerie.py",
 ]
 # Local floating-model conversion experiments are not curated catalog assets.
 exclude = ["**/*.floating_mjcf.xml"]

@@ -1,6 +1,5 @@
 from catalog_fixture import copy_catalog
 import pathlib
-import runpy
 import shutil
 import tempfile
 import unittest
@@ -22,7 +21,6 @@ from menagerie_x.assets import (
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 ASSETS = ROOT
-GENERATED_FILES = runpy.run_path(str(ROOT / "scripts/sync-menagerie.py"))["generated_files"]
 
 
 class MjcfEditionWorkspaceTests(unittest.TestCase):
@@ -95,73 +93,3 @@ class MjcfEditionWorkspaceTests(unittest.TestCase):
         self.assertIn("scene_review", {record["id"] for record in list_mjcf_editions(variant, self.assets)})
         delete_mjcf_edition("astro_p2", "scenery", self.assets)
         self.assertEqual(validate_assets(self.assets), [])
-
-    def test_imports_generate_native_scenes_with_resolvable_meshes(self):
-        import mujoco
-
-        sources = (
-            ("native_mjcf", import_mjcf_variant, ASSETS / "astro_p2/mjcf/astro_p2_30dof_primitive_collision.xml"),
-            ("native_urdf", import_urdf_variant, ASSETS / "astro_p1/urdf/astro_p1_30dof.urdf"),
-        )
-        for name, importer, source in sources:
-            with self.subTest(format=source.suffix):
-                importer(name, source, self.assets)
-                robot = self.assets / name
-                self.assertEqual((robot / "meshes").resolve(), robot / "assets")
-                for path, content in GENERATED_FILES(self.assets):
-                    if path.parent == robot:
-                        path.write_text(content, encoding="utf-8")
-                native = mujoco.MjModel.from_xml_path(str(robot / "scene.xml"))
-                original = mujoco.MjModel.from_xml_path(str(get_variant(name, self.assets).mjcf))
-                self.assertEqual((native.nq, native.nv, native.nmesh), (original.nq, original.nv, original.nmesh))
-                self.assertGreater(native.nmesh, 0)
-
-    def test_scene_named_source_generates_a_separate_robot_and_scene(self):
-        import mujoco
-
-        renamed = rename_mjcf_edition("astro_p2", "astro_p2_30dof_primitive_collision", "scene", self.assets)
-        source = pathlib.Path(renamed["output_path"])
-        authored = source.read_bytes()
-        for path, content in GENERATED_FILES(self.assets):
-            path.write_text(content, encoding="utf-8")
-
-        robot = self.assets / "astro_p2"
-        self.assertTrue((robot / "model_scene.xml").is_file())
-        self.assertEqual(source.read_bytes(), authored)
-        self.assertGreater(mujoco.MjModel.from_xml_path(str(robot / "scene.xml")).nq, 0)
-
-    def test_sync_rejects_source_collisions_before_writing_any_files(self):
-        import json
-
-        robot = self.assets / "astro_p2_43dof_dex3_1"
-        source = robot / "scene.xml"
-        source.write_bytes(get_variant("astro_p2_43dof_dex3_1", self.assets).mjcf.read_bytes())
-        authored = source.read_bytes()
-        manifest_path = self.assets / "manifest.json"
-        manifest = json.loads(manifest_path.read_text())
-        manifest["variants"][robot.name]["editions"]["43dof_primitive_collision"]["mjcf"] = source.name
-        manifest_path.write_text(json.dumps(manifest))
-        with self.assertRaisesRegex(ValueError, "overwrite an authoritative source"):
-            for path, content in GENERATED_FILES(self.assets):
-                path.write_text(content, encoding="utf-8")
-        self.assertEqual(source.read_bytes(), authored)
-
-    def test_sync_rejects_duplicate_model_outputs_before_writing_any_files(self):
-        import json
-        import xml.etree.ElementTree as ET
-
-        robot = self.assets / "astro_p2"
-        default = get_variant("astro_p2", self.assets).mjcf
-        alternate = robot / "mjcf/review" / default.name
-        alternate.parent.mkdir()
-        alternate_model = ET.fromstring(default.read_bytes())
-        alternate_model.set("model", "review")
-        alternate.write_bytes(ET.tostring(alternate_model))
-        manifest_path = self.assets / "manifest.json"
-        manifest = json.loads(manifest_path.read_text())
-        manifest["variants"][robot.name]["editions"]["30dof_mesh_collision"]["mjcf"] = str(alternate.relative_to(robot))
-        manifest_path.write_text(json.dumps(manifest))
-        with self.assertRaisesRegex(ValueError, "paths collide"):
-            for path, content in GENERATED_FILES(self.assets):
-                path.write_text(content, encoding="utf-8")
-        self.assertEqual(default.read_bytes(), (ASSETS / "astro_p2/mjcf" / default.name).read_bytes())

@@ -1,13 +1,11 @@
-# Menagerie X domain glossary
+# Menagerie X context
 
-## Robot variant
+The domain glossary is maintained in [GLOSSARY.md](GLOSSARY.md).
+Accepted design decisions and their implementation status are recorded in
+[the per-robot decision log](docs/design/per-robot-design-decisions.md).
 
-A distinct robot asset family stored in one top-level directory, excluding scene and terrain data. Examples include `astro_p1`, `astro_p2`, and `unitree_g1`.
-
-## Description format
-
-The serialization used by a robot description: URDF or MJCF. A variant may offer either format or both.
-
-## Robot edition
-
-A named robot-description configuration within a variant, such as `30dof_primitive_collision`. An edition can provide URDF, MJCF, or both.
+Canonical native robot/scene XML lives at each family root; root `catalog.py`
+curates 11 native models and scenes independently of legacy `manifest.json`.
+There is no regeneration step. `make all` is the native acceptance gate.
+Workbench, URDF compatibility, and MJX remain deferred. See
+[UPSTREAM.md](UPSTREAM.md) for preservation and ownership details.

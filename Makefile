@@ -1,30 +1,28 @@
 # Development workflow adapted from MuJoCo Menagerie; see UPSTREAM.md.
-.PHONY: help install sync check test web-test all
-MUJOCO_GL ?= egl
+.PHONY: help install check test legacy-test web-test all
 WEB := src/menagerie_x/workbench/web
 
 help:
-	@echo "make install  Install Python development and Workbench dependencies"
-	@echo "make sync     Refresh native model and scene entrypoints"
-	@echo "make check    Check generated native entrypoints"
-	@echo "make test     Run Python and native scene regression checks"
-	@echo "make web-test Run Workbench JavaScript tests"
-	@echo "make all      Run all verification"
+	@echo "make install     Install native Python development dependencies"
+	@echo "make check       Check native family layout and XML style"
+	@echo "make test        Load, step, and copy native models and scenes"
+	@echo "make all         Run native acceptance checks (also run in CI)"
+	@echo "make legacy-test Run deferred CLI/Workbench/URDF Python tests"
+	@echo "make web-test    Run deferred Workbench JavaScript tests"
 
 install:
-	uv sync --extra dev
-	npm ci --prefix $(WEB)
-
-sync:
-	uv run --extra dev python scripts/sync-menagerie.py
+	uv sync --locked --extra dev
 
 check:
-	uv run --extra dev python scripts/sync-menagerie.py --check
+	uv run --locked --extra dev python -m unittest discover -s test -p '*_dir_test.py'
 
 test:
-	MUJOCO_GL=$(MUJOCO_GL) uv run --extra dev python -m unittest discover -s tests
+	uv run --locked --extra dev python -m unittest discover -s test -p 'model_test.py'
+
+legacy-test:
+	uv run --locked --extra dev python -m unittest discover -s tests
 
 web-test:
 	node --test $(WEB)/*.test.js
 
-all: check test web-test
+all: check test

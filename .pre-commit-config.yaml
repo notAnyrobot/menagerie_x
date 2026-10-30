@@ -1,10 +1,10 @@
-# Adapted from MuJoCo Menagerie's local XML/generated-file checks.
+# Native asset checks only; imported source snapshots are preserved.
 repos:
   - repo: local
     hooks:
-      - id: native-entrypoints
-        name: Check native model and scene entrypoints
-        entry: uv run --extra dev python scripts/sync-menagerie.py --check
+      - id: native-model-layout
+        name: Check native model layout and XML style
+        entry: make check
         language: system
         pass_filenames: false
-        files: '(^manifest\.json$|\.xml$|^catalog\.py$|^scripts/sync-menagerie\.py$)'
+        files: '(\.xml$|^catalog\.py$|^format_xml\.py$|^test/)'

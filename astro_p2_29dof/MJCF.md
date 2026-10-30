@@ -1,6 +1,7 @@
 # Astro P2 29 DOF — MJCF edition
 
-`astro_p2_29dof.xml` is generated from the sibling canonical URDF. All mesh paths
+`astro_p2_29dof.xml` was originally converted from the sibling URDF and is now
+a directly maintained native model. All mesh paths
 are relative to this bundle; keep `meshes/` beside the XML.
 
 - 29 hinge joints and one floating base (`nq=36`, `nv=35`).
@@ -14,9 +15,10 @@ are relative to this bundle; keep `meshes/` beside the XML.
   inference is disabled: the fixed foot collision frames add no mass beyond the
   ankle-roll inertias. A raw MuJoCo URDF import would otherwise infer extra mass.
 - No ground plane, actuators, control gains or initial standing-height offset is
-  added. The root starts at the URDF origin; place it appropriately in a scene.
+  added to the robot. The root starts at the URDF origin; `scene.xml` supplies
+  a floor at `z=-0.75` while retaining that datum.
 
-Regenerate from the repository root:
+**Historical conversion command (overwrites the maintained MJCF):**
 
 ```sh
 .venv/bin/python scripts/build-astro-mjcf.py
