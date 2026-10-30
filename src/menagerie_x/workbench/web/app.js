@@ -632,6 +632,7 @@ function updateSimulationControls(message = null) {
   if (message) simulationState.textContent = message;
   else if (isUrdfMode()) simulationState.textContent = "URDF inspection mode: physics, contacts, pushing, recording, and collision editing require MJCF.";
   updateSceneRecordingControl();
+  updateDisplayControls();
 }
 
 function recordingDurationLabel(milliseconds) {

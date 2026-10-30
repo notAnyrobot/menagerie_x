@@ -10,3 +10,8 @@
   manifest, preserving 12 logical editions and original source files/hashes.
 - Add family documentation, licensing/provenance records, upstream attribution,
   generated-file checks, scene smoke tests, and shared development/CI commands.
+- Fix reviewed import and edition workflows: preserve scene-prefixed model
+  names, give new families portable mesh paths, and prevent native output
+  collisions or overwrites of authoritative sources.
+- Refresh collision-editing and contact controls when browser models finish
+  loading, and cover the import/rename/default/sync flows with regression tests.

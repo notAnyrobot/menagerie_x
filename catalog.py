@@ -39,11 +39,14 @@ def model_entries(root=ROOT):
             if not source:
                 continue
             scene = "scene.xml" if edition == raw["default_edition"] else f"scene_{edition}.xml"
+            model_name = Path(source).name
+            if model_name == "scene.xml" or model_name.startswith("scene_"):
+                model_name = f"model_{model_name}"
             yield {
                 "family": family,
                 "edition": edition,
                 "source": root / family / source,
-                "model": root / family / Path(source).name,
+                "model": root / family / model_name,
                 "scene": root / family / scene,
                 "spawn_z": float(raw.get("spawn", {}).get("xyz", [0, 0, 0])[2]),
             }

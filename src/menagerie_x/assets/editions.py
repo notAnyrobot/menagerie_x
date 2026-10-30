@@ -133,17 +133,26 @@ def list_mjcf_editions(variant: Variant, root: Path | None = None) -> list[dict[
     manifest = load_manifest(get_asset_paths(root).root)
     manifest_entry = manifest.get("variants", {}).get(variant.name, {})
     raw_editions = manifest_entry.get("editions", {}) if isinstance(manifest_entry, dict) else {}
+    robot_dir = get_asset_paths(root).robot_dir(variant.name)
     canonical_descriptions = {
-        (get_asset_paths(root).robot_dir(variant.name) / raw["mjcf"]).resolve()
+        (robot_dir / raw["mjcf"]).resolve()
         for raw in raw_editions.values()
+        if isinstance(raw, dict) and isinstance(raw.get("mjcf"), str)
+    }
+    presentation_scenes = {
+        (robot_dir / (
+            "scene.xml" if identifier == manifest_entry.get("default_edition") else f"scene_{identifier}.xml"
+        )).resolve()
+        for identifier, raw in raw_editions.items()
         if isinstance(raw, dict) and isinstance(raw.get("mjcf"), str)
     }
     records: list[dict[str, Any]] = []
     if not directory.is_dir():
         return records
     for path in sorted(directory.glob("*.xml"), key=lambda item: item.name.casefold()):
-        # Standalone presentation scenes are not editable robot descriptions.
-        if path.name.startswith("scene"):
+        # Exclude generated family-root scenes, while keeping valid robot
+        # revision names such as scenery or scene_review selectable.
+        if path.resolve() in presentation_scenes and path.resolve() not in canonical_descriptions:
             continue
         if path.resolve() in canonical_descriptions and path.resolve() != default:
             continue
@@ -272,6 +281,12 @@ def import_mjcf_edition(variant_name: str, source: Path, edition_id: str, root: 
     return {"variant": variant.name, "edition_id": identifier, "output_path": str(destination.resolve()), **checked}
 
 
+def _create_mesh_workspace(robot_dir: Path) -> None:
+    """Keep imported families portable for native and legacy descriptions."""
+    (robot_dir / "assets").mkdir()
+    (robot_dir / "meshes").symlink_to("assets", target_is_directory=True)
+
+
 def import_mjcf_variant(variant_id: str, source: Path, root: Path | None = None) -> dict[str, Any]:
     """Create a self-contained MJCF-only variant from a user-selected file.
 
@@ -295,7 +310,7 @@ def import_mjcf_variant(variant_id: str, source: Path, root: Path | None = None)
         raise MjcfEditionError(f"variant workspace already exists: {variant_id}")
     try:
         (robot_dir / "mjcf").mkdir(parents=True)
-        (robot_dir / "meshes").mkdir()
+        _create_mesh_workspace(robot_dir)
         # Build a temporary Variant-shaped view so import validation shares the
         # exact same mesh and path rules as existing workspaces.
         from . import Variant
@@ -341,7 +356,7 @@ def import_urdf_variant(variant_id: str, source: Path, root: Path | None = None)
         urdf_dir = robot_dir / "urdf"
         mesh_dir = robot_dir / "meshes"
         urdf_dir.mkdir(parents=True)
-        mesh_dir.mkdir()
+        _create_mesh_workspace(robot_dir)
         edition_id = "default"
         target_urdf = urdf_dir / f"{variant_id}_{edition_id}.urdf"
         _atomic_write(target_urdf, source.read_bytes())

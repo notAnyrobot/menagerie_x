@@ -16,8 +16,8 @@ from catalog import model_entries
 from format_xml import format_xml
 
 
-def generated_files(root=ROOT):
-    for entry in model_entries(root):
+def _render_entrypoints(entries):
+    for entry in entries:
         source, model = entry["source"], entry["model"]
         parser = ET.XMLParser(target=ET.TreeBuilder(insert_comments=True))
         robot = ET.fromstring(source.read_bytes(), parser=parser)
@@ -64,12 +64,32 @@ def generated_files(root=ROOT):
         yield entry["scene"], format_xml(scene)
 
 
+def generated_files(root=ROOT):
+    """Validate the entire output plan before yielding anything writable."""
+    entries = list(model_entries(root))
+    sources = {entry["source"].resolve() for entry in entries}
+    outputs = {}
+    for path, content in _render_entrypoints(entries):
+        resolved = path.resolve()
+        if resolved in sources:
+            raise ValueError(f"generated entrypoint would overwrite an authoritative source: {path}")
+        if resolved in outputs and outputs[resolved][1] != content:
+            raise ValueError(f"generated model and scene paths collide: {path}")
+        outputs[resolved] = (path, content)
+    yield from outputs.values()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
+    try:
+        outputs = list(generated_files())
+    except ValueError as exc:
+        print(f"Cannot sync native entrypoints: {exc}", file=sys.stderr)
+        return 1
     drift = []
-    for path, content in generated_files():
+    for path, content in outputs:
         if path.is_file() and path.read_text(encoding="utf-8") == content:
             continue
         if args.check:

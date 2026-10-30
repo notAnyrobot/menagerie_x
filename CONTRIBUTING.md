@@ -40,4 +40,8 @@ lists. URDF-only editions require no placeholder MJCF or scene.
 New generated XML uses the upstream formatter: two-space indentation,
 double-quoted attributes, `<foo/>` empty elements, and 120-column wrapping.
 Legacy/source model formatting remains unchanged to preserve provenance hashes.
+Sources named `scene.xml` or `scene_<name>.xml` receive a `model_` prefix in
+their flat robot entrypoint. Synchronization validates the full output plan
+before writing and rejects paths that would overwrite authoritative sources
+or give different generated files the same destination.
 See [UPSTREAM.md](UPSTREAM.md) for the pinned template and compatibility choices.
