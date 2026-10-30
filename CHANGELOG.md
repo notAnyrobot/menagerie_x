@@ -2,6 +2,10 @@
 
 ## 2026-10-30
 
+- Shrink the alternative Astro hand collider to the compact G1 palm reference.
+  Leave extended fingers/thumb outside; retire the full-hand containment target.
+  Keep wrist cleanup, non-arm colliders and contact selection unchanged.
+
 - Refine the arm-optimized Astro wrists and hands: remove the redundant small
   wrist-roll proxies and fit rounder hand envelopes to the native Astro mesh,
   using G1's hand shape as a reference. Keep original non-arm colliders intact.

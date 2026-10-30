@@ -4,8 +4,8 @@
   "source_revision": "10fcf7edccd61611679601274064f034887baca6",
   "source_sha256": "cd8a85a833547164314e57559c948b35960ded43cf945ad9d630ab3d7f5e3d33",
   "license": "Apache-2.0",
-  "scope": "Arms and fixed hands only. All 40 non-arm collision geoms retain exact source definitions and contact masks. This refinement removes redundant wrist-roll proxies and fits rounded hand capsules to native Astro meshes.",
-  "supersedes": "The prior whole-body 27-collider experiment and six-proxy-per-arm revision; current geometry keeps all non-arm colliders and uses five proxies per arm.",
+  "scope": "Arms and fixed palms only. All 40 non-arm collision geoms retain exact source definitions and contact masks. Redundant wrist-roll proxies remain removed; compact palm capsules now exactly use G1 box-feet hand geometry in Astro wrist-yaw frames.",
+  "supersedes": "The prior whole-body 27-collider experiment, six-proxy-per-arm revision and oversized full-hand mesh envelope; current geometry keeps all non-arm colliders and uses five proxies per arm.",
   "collision_count_before": 60,
   "collision_count_after": 50,
   "non_arm_colliders_preserved": 40,
@@ -21,7 +21,7 @@
   "limitations": [
     "No measured runtime speedup or hardware contact calibration is claimed.",
     "Merged forearm/pitch proxies retain the source collision envelope and can contact earlier than narrower source shaft segments.",
-    "The rounded hand proxy conservatively encloses native mesh vertices; its circular cross-section adds empty volume beside the palm. Mesh-vertex coverage is not a surface-area metric.",
+    "Palm contact approximation only: extended fingers and thumb can lie outside the compact capsule and do not receive separate colliders. Full native-hand mesh containment is intentionally not a goal.",
     "No MJX runtime, PD/controller, URDF or Workbench support is introduced."
   ],
   "arm_colliders": [
@@ -89,16 +89,16 @@
       "body": "left_wrist_yaw_link",
       "name": "left_wrist_hand_collision",
       "type": "capsule",
-      "radius": 0.06,
+      "radius": 0.05,
       "fromto": [
-        0.065,
-        -0.004,
-        0.014,
-        0.165,
-        -0.004,
-        0.014
+        0.05,
+        0,
+        0,
+        0.1,
+        0,
+        0
       ],
-      "rationale": "G1-inspired rounded capsule fitted to Astro native-hand mesh bounds, with mirrored lateral offset and upward palm offset. Wrist-yaw attachment preserves the rigid hand frame."
+      "rationale": "Exactly adopts G1 box-feet hand capsule radius and endpoints, without offsets, in Astro wrist-yaw frame. Compact palm contact approximation intentionally omits extended digits."
     },
     {
       "body": "right_shoulder_roll_link",
@@ -164,29 +164,47 @@
       "body": "right_wrist_yaw_link",
       "name": "right_wrist_hand_collision",
       "type": "capsule",
-      "radius": 0.06,
+      "radius": 0.05,
       "fromto": [
-        0.065,
-        0.004,
-        0.014,
-        0.165,
-        0.004,
-        0.014
+        0.05,
+        0,
+        0,
+        0.1,
+        0,
+        0
       ],
-      "rationale": "G1-inspired rounded capsule fitted to Astro native-hand mesh bounds, with mirrored lateral offset and upward palm offset. Wrist-yaw attachment preserves the rigid hand frame."
+      "rationale": "Exactly adopts G1 box-feet hand capsule radius and endpoints, without offsets, in Astro wrist-yaw frame. Compact palm contact approximation intentionally omits extended digits."
     }
   ],
   "verification": {
     "source_non_arm_geoms_equal": 40,
     "source_visual_geoms_equal": 37,
     "wrist_roll_union": "Axially symmetric cross-section check against forearm and wrist-pitch proximal sphere; articulated pose checks also performed.",
-    "hand_mesh": "Local-frame native mesh bounds and capsule distances recorded with the verification receipt; all retained hand vertices lie inside the new capsule.",
+    "hand_mesh": "The compact G1 capsule approximates palm contacts; extended native fingers/thumb are intentionally outside. Previous 100% native-hand mesh containment is historical and does not apply.",
     "shoulder_yaw_merge": "Source upper-arm capsule is collinear with shoulder yaw; retained merged shaft remains invariant under that rotation.",
     "wrist_hand_merge": "Fixed hand and yaw housing follow wrist-yaw; wrist-pitch remains an independent proxy.",
-    "articulation_probes": 12,
+    "articulation_probes": 15,
     "removed_wrist_shell_min_union_margin_m": 0.00021810622886805908,
     "worst_sampled_wrist_shell_outside_m": -0.00024113816359236373,
-    "hand_mesh_min_vertex_margin_m": 0.00164880840163599
+    "palm_refinement_xml_scope": "Only size and fromto on left/right_wrist_hand_collision differ from baseline 7a34149a15e8eb4fa5ccfce3e9147e686038e077; all other XML and scene pairs are unchanged.",
+    "palm_native_forward_and_steps": "Reference pose, each wrist joint limit and eight combined wrist extremes: finite forward state and 10 native steps each without warnings. These uncontrolled smoke checks do not establish standing stability.",
+    "palm_contact_probe": "Selected left palm-to-torso explicit pair generates a condim=1 contact; reference and wrist-limit poses have no initial contacts.",
+    "palm_mesh_characterization_not_fitting_target": {
+      "left": {
+        "vertices": 4611,
+        "inside_fraction": 0.5254825417479939,
+        "maximum_outside_m": 0.0694901228269125,
+        "palm_probe_distance_m": -0.04,
+        "extended_finger_probe_distance_m": 0.060453610171872535
+      },
+      "right": {
+        "vertices": 4914,
+        "inside_fraction": 0.5111925111925112,
+        "maximum_outside_m": 0.06946908941316263,
+        "palm_probe_distance_m": -0.04,
+        "extended_finger_probe_distance_m": 0.060453610171872535
+      }
+    }
   },
   "wrist_hand_refinement": {
     "reference_model": "unitree_g1/unitree_g1_29dof_box_feet.xml",
@@ -202,7 +220,7 @@
         0
       ]
     },
-    "use": "Rounded fixed-hand capsule concept only; Astro dimensions and offsets are measured from its own unchanged visual meshes.",
+    "use": "Exact G1 box-feet hand capsule geometry (radius .05, fromto .05 0 0 .10 0 0) placed in each Astro wrist-yaw frame; no mesh-fit inflation or offsets.",
     "removed_geoms": [
       "left_wrist_roll_collision",
       "right_wrist_roll_collision"
@@ -219,52 +237,69 @@
         0
       ]
     },
-    "new_hand_geometry": {
-      "radius": 0.06,
-      "centerline_x": [
-        0.065,
-        0.165
-      ],
-      "centerline_y": {
-        "left": -0.004,
-        "right": 0.004
+    "tradeoff": "Capsule centerline is 50 mm; total axial extent is 150 mm. Palm-only contact proxy follows the requested G1 shape. Extended fingers/thumb are intentionally not fully covered; all visual meshes are unchanged.",
+    "reference_sha256": "079dd0bbb5c8699148a6c37cbd4420b11ace1c40ed930cad0bc9b4515156fcb4",
+    "palm_refinement_baseline": "7a34149a15e8eb4fa5ccfce3e9147e686038e077",
+    "historical_rejected_full_hand_fit": {
+      "status": "Rejected as too large by user; retained here only as historical measurement, not current geometry or a current containment claim.",
+      "geometry": {
+        "radius": 0.06,
+        "centerline_x": [
+          0.065,
+          0.165
+        ],
+        "centerline_y": {
+          "left": -0.004,
+          "right": 0.004
+        },
+        "centerline_z": 0.014
       },
-      "centerline_z": 0.014
-    },
-    "tradeoff": "Centerline shortens from .118 to .100 m and aspect ratio becomes rounder. Total x extent grows from .178 to .220 m to include Astro actual extended fingers rather than retaining the undersized prior shaft.",
-    "native_hand_mesh_fit": {
-      "left": {
-        "vertices": 4611,
-        "wrist_yaw_bounds_min": [
-          0.05900148029141977,
-          -0.03849354006235395,
-          -0.03911984295449225
-        ],
-        "wrist_yaw_bounds_max": [
-          0.21836294701285053,
-          0.02747881344547609,
-          0.066264340180655
-        ],
-        "old_vertex_coverage_fraction": 0.5495554109737584,
-        "new_vertex_coverage_fraction": 1.0,
-        "new_min_margin_m": 0.0016488084016360038
-      },
-      "right": {
-        "vertices": 4914,
-        "wrist_yaw_bounds_min": [
-          0.05900110330081354,
-          -0.02745378636861498,
-          -0.0391314673609921
-        ],
-        "wrist_yaw_bounds_max": [
-          0.21832851272114068,
-          0.038502309817559366,
-          0.06625246545064237
-        ],
-        "old_vertex_coverage_fraction": 0.5378510378510378,
-        "new_vertex_coverage_fraction": 1.0,
-        "new_min_margin_m": 0.0016925298479089704
+      "native_mesh_measurements": {
+        "left": {
+          "vertices": 4611,
+          "wrist_yaw_bounds_min": [
+            0.05900148029141977,
+            -0.03849354006235395,
+            -0.03911984295449225
+          ],
+          "wrist_yaw_bounds_max": [
+            0.21836294701285053,
+            0.02747881344547609,
+            0.066264340180655
+          ],
+          "old_vertex_coverage_fraction": 0.5495554109737584,
+          "new_vertex_coverage_fraction": 1.0,
+          "new_min_margin_m": 0.0016488084016360038
+        },
+        "right": {
+          "vertices": 4914,
+          "wrist_yaw_bounds_min": [
+            0.05900110330081354,
+            -0.02745378636861498,
+            -0.0391314673609921
+          ],
+          "wrist_yaw_bounds_max": [
+            0.21832851272114068,
+            0.038502309817559366,
+            0.06625246545064237
+          ],
+          "old_vertex_coverage_fraction": 0.5378510378510378,
+          "new_vertex_coverage_fraction": 1.0,
+          "new_min_margin_m": 0.0016925298479089704
+        }
       }
+    },
+    "new_hand_geometry": {
+      "radius": 0.05,
+      "fromto": [
+        0.05,
+        0,
+        0,
+        0.1,
+        0,
+        0
+      ],
+      "frame": "Each side wrist-yaw frame; identical geometry with zero lateral/vertical offsets."
     }
   }
 }

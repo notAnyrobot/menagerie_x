@@ -62,6 +62,24 @@ closer to the rounded G1 hand collider. Current implementation scope:
 
 Revision branch: `codex/astro-wrist-hand-refinement`, baseline `10fcf7e`.
 
+## Accepted palm-only correction
+
+The maintainer rejected the full-hand envelope as too large: matching the G1
+example and covering only the palm is sufficient. This supersedes the preceding
+full-mesh containment goal:
+
+- Use the G1 box-feet hand capsule's compact geometry in Astro's wrist-yaw
+  frame: radius 0.05 m, centerline `(0.05, 0, 0)` to `(0.10, 0, 0)`.
+- Do not enlarge the collider to include extended fingers or thumb. Those
+  regions intentionally remain outside this palm-contact approximation.
+- Change only the two hand geoms and their documentation/provenance/previews.
+  Keep the wrist redundancy cleanup, all other arm/body shapes and all 68
+  contact pairs unchanged. No mesh, physical property or MJX runtime changes.
+- Replace the whole-hand coverage test with palm containment and fingertip
+  exclusion checks. Inspect a native overlay to confirm the smaller shape.
+
+Revision branch: `codex/astro-palm-colliders`, baseline `7a34149`.
+
 ## Original scope and ownership (superseded where noted above)
 
 - Add `astro_p2/astro_p2_simplified.xml` and `scene_simplified.xml` as a third

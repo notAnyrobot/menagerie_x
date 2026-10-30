@@ -1,5 +1,10 @@
 # Astro wrist redundancy and rounded hand refinement
 
+Historical receipt: the full-hand envelope below was rejected as too large.
+The current accepted collider is palm-only, with fingers/thumb intentionally
+outside; see [the palm correction](design/astro-p2-simplified-collisions.md#accepted-palm-only-correction).
+Current checks are recorded in [the compact palm receipt](astro-palm-collision-verification.md).
+
 Implementation: `4716da7`, branch `codex/astro-wrist-hand-refinement`.
 Baseline: `10fcf7edccd61611679601274064f034887baca6`.
 Scope: [accepted wrist/hand refinement](design/astro-p2-simplified-collisions.md#accepted-wrist-and-hand-refinement).

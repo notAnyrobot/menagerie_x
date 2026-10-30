@@ -311,9 +311,8 @@
                               actuatorfrcrange="-10 10"/>
                             <geom name="left_wrist_yaw_link_visual" type="mesh" contype="0" conaffinity="0" group="1"
                               density="0" rgba="0.69804 0.69804 0.69804 1" mesh="left_wrist_yaw_link"/>
-                            <geom name="left_wrist_hand_collision" type="capsule" size=".06"
-                              fromto=".065 -.004 .014 .165 -.004 .014" contype="0" conaffinity="0" group="3"
-                              rgba="0.1 0.65 0.95 0.65"/>
+                            <geom name="left_wrist_hand_collision" type="capsule" size=".05" fromto=".05 0 0 .10 0 0"
+                              contype="0" conaffinity="0" group="3" rgba="0.1 0.65 0.95 0.65"/>
                             <body name="left_hand_link" pos="0.067502 0 0">
                               <inertial pos="0.04386117 -0.00063382 0.00406861" mass="0.13951244"
                                 fullinertia="0.00010494 0.00031826 0.00027661 2.28E-06 -6.4E-06 1.009E-05"/>
@@ -384,9 +383,8 @@
                               actuatorfrcrange="-10 10"/>
                             <geom name="right_wrist_yaw_link_visual" type="mesh" contype="0" conaffinity="0" group="1"
                               density="0" rgba="0.79216 0.81961 0.93333 1" mesh="right_wrist_yaw_link"/>
-                            <geom name="right_wrist_hand_collision" type="capsule" size=".06"
-                              fromto=".065 .004 .014 .165 .004 .014" contype="0" conaffinity="0" group="3"
-                              rgba="0.1 0.65 0.95 0.65"/>
+                            <geom name="right_wrist_hand_collision" type="capsule" size=".05" fromto=".05 0 0 .10 0 0"
+                              contype="0" conaffinity="0" group="3" rgba="0.1 0.65 0.95 0.65"/>
                             <body name="right_hand_link" pos="0.0675 0 0">
                               <inertial pos="0.04385203 0.00062977 0.00406365" mass="0.13947198"
                                 fullinertia="0.00010488 0.00031818 0.00027655 -2.26E-06 -6.41E-06 -1.009E-05"/>

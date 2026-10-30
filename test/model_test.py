@@ -290,11 +290,18 @@ class AstroP2ArmCollisionTests(unittest.TestCase):
                     distances.append(self._capsule_surface_distances(geom, new_data, points))
                 self.assertLessEqual(float(np.minimum(*distances).max()), 1e-9)
 
-    def test_round_hand_proxy_contains_native_hand_mesh(self):
+    def test_compact_palm_proxy_matches_g1_and_leaves_fingers_outside(self):
         model = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/astro_p2_simplified.xml"))
         data = mujoco.MjData(model)
         mujoco.mj_forward(model, data)
+        source = ET.parse(ROOT / "unitree_g1/unitree_g1_29dof_box_feet.xml")
+        robot = ET.parse(ROOT / "astro_p2/astro_p2_simplified.xml")
         for side in ("left", "right"):
+            reference = source.find(f".//geom[@name='{side}_hand_collision']")
+            palm = robot.find(f".//geom[@name='{side}_wrist_hand_collision']")
+            self.assertEqual(float(palm.get("size")), float(reference.get("size")))
+            np.testing.assert_array_equal(np.fromstring(palm.get("fromto"), sep=" "),
+                                          np.fromstring(reference.get("fromto"), sep=" "))
             visual = model.geom(f"{side}_rubber_hand_visual")
             mesh = int(visual.dataid[0])
             start = model.mesh_vertadr[mesh]
@@ -302,10 +309,15 @@ class AstroP2ArmCollisionTests(unittest.TestCase):
             points = vertices @ data.geom_xmat[visual.id].reshape(3, 3).T + data.geom_xpos[visual.id]
             proxy = model.geom(f"{side}_wrist_hand_collision")
             distance = self._capsule_surface_distances(proxy, data, points)
-            self.assertLessEqual(float(distance.max()), 1e-7)
-            # Rounder than the previous radius-.03, half-length-.059 shaft.
-            self.assertGreater(proxy.size[0], 0.03)
-            self.assertLess(proxy.size[1], 0.059)
+            self.assertTrue(np.any(distance < 0))
+            self.assertTrue(np.any(distance > 0.01))
+            # Palm contact is modeled; extended fingertips deliberately are not.
+            body = model.body(f"{side}_wrist_yaw_link").id
+            local = np.array([[0.08, 0, 0.01], [0.21, 0, 0.01]])
+            probes = local @ data.xmat[body].reshape(3, 3).T + data.xpos[body]
+            distances = self._capsule_surface_distances(proxy, data, probes)
+            self.assertLess(distances[0], 0)
+            self.assertGreater(distances[1], 0)
 
     def test_arm_geometry_and_hybrid_contact_policy(self):
         robot = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/astro_p2_simplified.xml"))

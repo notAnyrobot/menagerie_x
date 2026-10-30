@@ -2,6 +2,10 @@
 
 ## 2026-10-30
 
+- Replace the oversized hand envelope with the G1-style palm capsule: radius
+  0.05 m, centerline x=0.05–0.10 m. Fingers/thumb may extend outside. Keep all
+  other geometry, the wrist cleanup and 68 contact pairs unchanged.
+
 - Remove the two standalone wrist-roll collision proxies after checking
   neighboring coverage through wrist motion. Fit rounder hand capsules to
   Astro's own mesh using G1 as a shape reference; preserve wrist joints and

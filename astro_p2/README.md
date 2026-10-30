@@ -114,26 +114,20 @@ group 3, including the unchanged detailed feet and torso.
 Viewer group visibility does not alter collision selection.
 
 Some merged arm capsules are broader than the source shaft segments to retain
-the old joint-housing collision envelope. The hand is now fitted to Astro's
-native visual mesh with a rounder, thicker capsule inspired by G1's hand
-envelope. Its centerline is shorter than the earlier thin proxy, but its overall
-extent grows to cover fingers and thumb that the earlier proxy missed.
-These are collision approximations rather than new hand geometry or calibration.
+the old joint-housing collision envelope. The hand uses a **compact palm-only
+capsule**, matching the G1 box-feet hand reference: radius **0.05 m**, with a
+centerline from `(0.05, 0, 0)` to `(0.10, 0, 0)` in the wrist-yaw frame.
+Its total length is 0.15 m, down from the rejected 0.22 m full-hand envelope.
+**Extended fingers and thumb intentionally remain outside**; whole-hand mesh
+containment is not the goal. Astro's native hand mesh and physical properties
+are unchanged. This is a palm-contact approximation, not hardware calibration.
 
-The current hand capsule has radius 0.06 m and a 0.10 m centerline, with small
-mirrored lateral offsets fitted to Astro's native hand. All native hand mesh
-vertices are inside it; the previous thin proxy covered only about 54–55%.
 The forearm endpoint extends by 15 mm so the removed wrist-roll shell stays
 covered by the forearm/pitch union, including at wrist bending limits.
 
 <p float="left">
-  <img src="astro_p2_wrist_hand_colliders.png" alt="Astro wrist and rounded hand collider overlaid on native meshes" width="500">
+  <img src="astro_p2_wrist_hand_colliders.png" alt="Compact Astro palm collider with fingers outside the envelope" width="500">
 </p>
-
-The larger hand envelope can contact the body earlier in folded-arm poses.
-For example, elbows at 1.2 radians produce selected hand/hip contacts that the
-previous thin proxy missed. This is a consequence of the revised envelope;
-there is no controller or hardware-contact calibration implied.
 
 The XML uses the G1 MJX **approach**, but native MuJoCo is the verification
 target. MJX/JAX/Warp execution and performance remain deferred.
