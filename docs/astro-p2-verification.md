@@ -56,10 +56,53 @@ floating-model experiments are absent. The archive is approximately 65.3 MiB.
 
 ## Independent branch review
 
-Matt's code-review skill reviews the committed branch against the pinned
-baseline on separate Standards and Spec axes before the local merge. Results
-and any corrective changes will be recorded here.
+Two fresh-context agents used Matt's code-review skill against baseline
+`fcbb3f222359df8b275fee1bc79d47721efdd2ec`, reviewing commits `1ec1122` and
+`23a35fc`. Diff command:
+`git diff fcbb3f222359df8b275fee1bc79d47721efdd2ec...HEAD`.
+Standards sources were CONTRIBUTING.md, UPSTREAM.md, README.md, and CONTEXT.md;
+the originating spec was `docs/design/astro-p2-variants.md` and the user's request.
+No actionable findings required code corrections.
+
+## Standards
+
+No actionable Standards findings.
+
+The diff follows CONTRIBUTING.md's family-local runtime layout, direct XML
+ownership, separate scenes, source preservation, and changelog requirements.
+Catalog changes retain legacy P1 verification while separating the active
+collection. License notices and provenance remain present.
+
+No baseline code smells warrant a finding. The duplicated Astro body XML
+follows the documented sibling-model convention in UPSTREAM.md; extracting a
+shared generator would conflict with the repository's direct-maintenance
+approach. Historical provenance paths and the narrow vendor CRLF exception
+are intentional.
+
+Standards: **0 findings**.
+
+## Spec
+
+No actionable Spec findings.
+
+Missing or partial requirements: none found. Astro P1 remains legacy with both
+native entries; all three 30-DoF P2 choices are retired; the consolidated family
+provides the requested 29-body-DoF rubber-hand and 29+14-DoF Dex3-1 variants.
+
+Unrequested behavior or scope creep: none found. Workbench, URDF compatibility,
+and MJX remain deferred. The sample hand attachment is explicitly documented.
+
+Incorrect implementation: none found. Independently checked all 16 native
+model/scene XMLs compile and step without warnings; 40 retained source files
+match baseline bytes; all 501 recorded untracked files remain unchanged;
+rubber-hand mass, COM, and all six inertia components match the retained vendor
+URDF. Dex compiled physical arrays match the baseline; the observed
+size-metadata change corresponds to the renamed model.
+
+Spec: **0 findings**.
 
 Workbench, URDF compatibility, and MJX remain deferred. The sample hand mount
 is explicit; these checks do not certify hardware fit, rubber deformation,
 controller stability, or exhaustive dynamic contact quality.
+
+Review totals: **Standards 0 findings (worst: none); Spec 0 findings (worst: none).**
