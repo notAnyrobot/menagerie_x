@@ -1,19 +1,34 @@
 # Licensing and provenance
 
-The Astro body retains the unresolved redistribution terms of the original
-bundles. This consolidation grants no new rights to those descriptions or
-meshes. Original source records are under `provenance/29dof/` and
-`provenance/dex3_1/`; `provenance/migration.json` maps their retained hashes.
+## Astro P2 — Apache-2.0
 
-The original Astro rubber hands share the unresolved terms of the Astro body;
-source meshes and inertia records were restored from the repository's earlier
-Astro model. [provenance/rubber_hands.json](provenance/rubber_hands.json) records
-the exact source revision and hashes.
+The Astro P2 body model, default model, and Astro-origin meshes and descriptions
+are released under the [Apache License, Version 2.0](LICENSE). This covers the
+Astro body shared by `astro_p2.xml` and `astro_p2_with_hands.xml`, the default
+model's original Astro hand material, and the corresponding Astro-origin
+source descriptions retained under `provenance/`.
 
-Dex3-1 hand material retains BSD-3-Clause terms in
-[LICENSE.Unitree](LICENSE.Unitree). Records of the rejected G1 rubber-hand trial
-remain historical provenance with their original notices; that trial is not the
-maintained rubber model. Unitree terms do not cover the Astro body or native hands.
+## Third-party hand material
 
-See [repository licensing](../LICENSING.md) for adapted tooling and presentation
-scene notices. Sample attachment assumptions do not certify hardware fit.
+Unitree Dex3-1 hand definitions and meshes retain the
+[BSD-3-Clause terms](LICENSE.Unitree). The complete `astro_p2_with_hands.xml`
+combines Apache-2.0 Astro body material with BSD-3-Clause Unitree hand material;
+both notices apply. Unitree hand meshes are the sixteen
+`assets/{left,right}_hand_{palm,thumb_*,index_*,middle_*}_link.STL` files.
+The default model's `assets/{left,right}_hand_link.stl` files are Astro material.
+
+Historical G1 hand-trial sources retain their Unitree and ProtoMotions notices
+under `provenance/rubber_hand_sources/`; they are not part of the default model.
+Presentation scenes retain their separate
+[upstream G1 notice](../LICENSES/MuJoCo-Menagerie-G1.txt).
+
+## Source records
+
+Original conversion reports, URDFs, source XML, and documentation are preserved
+byte-for-byte under `provenance/29dof/` and `provenance/dex3_1/`.
+`provenance/migration.json` records their hashes. Historical licensing notes
+reflect their recording date; this Apache-2.0 grant supplies the current terms
+for Astro P2 material and does not change any third-party terms.
+
+[Repository licensing](../LICENSING.md) identifies the terms for the rest of the
+collection. No whole-repository license is implied by the Astro P2 grant.

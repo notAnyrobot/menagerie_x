@@ -42,13 +42,14 @@ All robot families follow the same native organization. For example:
 ```text
 astro_p2/
 ├── assets/                 # shared Astro and Unitree hand meshes
-├── astro_p2.xml            # 29-DoF body with native Astro rubber hands
+├── astro_p2.xml            # default 29-DoF model
 ├── astro_p2.png            # scene preview
-├── scene.xml               # default rubber-hand scene
+├── scene.xml               # default scene
 ├── astro_p2_with_hands.xml  # same body plus 14 Dex3-1 finger DoFs
 ├── scene_with_hands.xml     # dexterous-hand scene
 ├── README.md
 ├── CHANGELOG.md
+├── LICENSE                 # Apache-2.0 for Astro material
 ├── LICENSING.md
 ├── LICENSE.Unitree
 └── provenance/             # original source/conversion records
@@ -116,8 +117,8 @@ stepping; collision alternatives can share the same visual appearance.
 
 | Preview | Name | DoFs | License |
 | :---: | --- | --- | --- |
-| <a href="astro_p2/scene.xml"><img src="astro_p2/astro_p2.png" alt="Astro P2 with native rubber hands" width="120"></a> | [Astro P2 with native rubber hands](astro_p2/README.md) | 29 | [Unresolved](astro_p2/LICENSING.md) |
-| <a href="astro_p2/scene_with_hands.xml"><img src="astro_p2/astro_p2_with_hands.png" alt="Astro P2 with Dex3-1 hands" width="120"></a> | [Astro P2 with Dex3-1 hands](astro_p2/README.md) | 43 | [BSD-3-Clause hands; body unresolved](astro_p2/LICENSING.md) |
+| <a href="astro_p2/scene.xml"><img src="astro_p2/astro_p2.png" alt="Astro P2" width="120"></a> | [Astro P2](astro_p2/README.md) | 29 | [Apache-2.0](astro_p2/LICENSE) |
+| <a href="astro_p2/scene_with_hands.xml"><img src="astro_p2/astro_p2_with_hands.png" alt="Astro P2 with Dex3-1 hands" width="120"></a> | [Astro P2 with Dex3-1 hands](astro_p2/README.md) | 43 | [Apache-2.0 body; BSD-3-Clause hands](astro_p2/LICENSING.md) |
 | <a href="atom_p3/scene.xml"><img src="atom_p3/atom_p3_27dof.png" alt="Atom P3" width="120"></a> | [Atom P3](atom_p3/README.md) | 27 | [Unresolved](atom_p3/LICENSING.md) |
 | <a href="soma23/scene.xml"><img src="soma23/soma23_free_base.png" alt="SOMA-23" width="120"></a> | [SOMA-23](soma23/README.md) | 66 | [Apache-2.0](soma23/LICENSE.ProtoMotions) |
 | <a href="unitree_g1/scene.xml"><img src="unitree_g1/unitree_g1_29dof_with_hand_rev_1_0.png" alt="Unitree G1 with hands" width="120"></a> | [Unitree G1 with hands](unitree_g1/README.md) | 43 | [BSD-3-Clause](unitree_g1/LICENSE.Unitree) |
@@ -155,9 +156,10 @@ family also has a changelog linked from its README.
 
 Models and assets retain their individual terms. The gallery links the relevant
 license or provenance status for each model; the complete scope is recorded in
-[LICENSING.md](LICENSING.md) and each family's licensing notes. Some Astro and
-Atom bundles have unresolved redistribution terms. No new license is granted
-to those assets by this documentation or layout refactor.
+[LICENSING.md](LICENSING.md) and each family's licensing notes. The Astro P2 body
+and default model use Apache-2.0; Unitree hand material retains BSD-3-Clause
+terms. Legacy Astro P1 and Atom bundles retain their recorded
+unresolved status.
 
 Copied or adapted upstream tooling retains its Apache-2.0 notices and
 [license text](LICENSES/Apache-2.0.txt); presentation scenes retain their

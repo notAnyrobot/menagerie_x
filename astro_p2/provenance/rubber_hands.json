@@ -5,7 +5,7 @@
   "source_urdf": "astro_p2/urdf/astro_p2_30dof_primitive_collision.urdf",
   "source_urdf_local": "provenance/rubber_hand_sources/astro_p2_30dof_primitive_collision.urdf",
   "source_urdf_sha256": "16bbf4d44ad1ba18d09d3bbb258247bc0d0bc172b49f4b739be95af3b41b8ca7",
-  "license": "Astro asset redistribution terms unresolved; see LICENSING.md",
+  "license": "Apache-2.0; see LICENSE and LICENSING.md",
   "body_policy": "Restore only original Astro native hand meshes, explicit hand inertias, visual properties, and hand collision capsules. Preserve refined fixed-head 29-DoF body, all wrist definitions, and Dex3-1 alternative.",
   "collision_source": {
     "method": "Combine the original Astro wrist-local hand cylinder (radius0.027,length0.08) and its two radius0.027 end spheres as one native capsule. Subtract the original fixed hand joint translation to express endpoints in the retained hand frame. The refined wrist housing collision stays unchanged."

@@ -1,5 +1,6 @@
 <mujoco model="astro_p2">
-  <!-- Astro P2 with its original native rubber hands. Visuals: group 1; collisions: group 3. See provenance/rubber_hands.json. -->
+  <!-- SPDX-License-Identifier: Apache-2.0 -->
+  <!-- Astro P2. Visuals: group 1; collisions: group 3. See provenance/rubber_hands.json. -->
   <compiler angle="radian" inertiafromgeom="false" fusestatic="false" discardvisual="false" meshdir="assets"/>
   <asset>
     <mesh name="pelvis" content_type="model/stl" file="pelvis.stl"/>

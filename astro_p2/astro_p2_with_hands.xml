@@ -1,4 +1,5 @@
 <mujoco model="astro_p2_with_hands">
+  <!-- SPDX-License-Identifier: Apache-2.0 AND BSD-3-Clause -->
   <!-- Maintained native model. Original URDF conversion and later refinements are retained under provenance/dex3_1. -->
   <compiler angle="radian" inertiafromgeom="false" fusestatic="false" discardvisual="false" meshdir="assets"/>
   <asset>

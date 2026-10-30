@@ -25,7 +25,7 @@ with each family; see [LICENSING.md](LICENSING.md).
   models are retained in `LEGACY_MODEL_MAP` and receive native checks until
   later retirement; they are excluded from the active gallery.
 - Astro P2 is one family with two native model/scene pairs, like upstream G1:
-  a fixed-head 29-joint body with native Astro rubber hands, and the same refined body with
+  the default fixed-head 29-joint Astro P2, and the same refined body with
   14 additional Dex3-1 finger joints. The old three 30-DoF P2 choices are retired.
 - The rubber model restores the original Astro hand meshes, fixed-joint frames,
   hand masses/inertias, and capsule collision envelopes. The G1 hand trial was
@@ -45,8 +45,9 @@ with each family; see [LICENSING.md](LICENSING.md).
   distinct from upstream Menagerie's G1 tuning/keyframes.
 - No `family.json`, revision/promotion framework, or application adapter is
   introduced. Native MuJoCo loads a copied family without global metadata.
-- Actual license notices and explicit `LICENSING.md` records remain where
-  redistribution terms are unresolved; no license grant is invented.
+- Astro P2 body/default-model material is released under Apache-2.0, as directed
+  by the maintainer. Unitree and ProtoMotions material retains its own notices.
+  Legacy P1 and Atom keep their existing licensing records.
 
 ## Deferred compatibility and omitted upstream machinery
 

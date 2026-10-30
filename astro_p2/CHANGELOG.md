@@ -2,6 +2,10 @@
 
 ## 2026-10-30
 
+- Release Astro P2 body/default-model material under Apache-2.0, retaining
+  BSD-3-Clause terms for Unitree Dex3-1 hands. Label the default model simply
+  Astro P2 in the gallery, family README, and application metadata.
+
 - Restore Astro's original rubber-hand meshes, fixed transforms, masses, and
   inertias; replace the G1 trial's collision capsules with the original Astro
   envelopes. Keep the refined 29-DoF body and Dex3-1 variant unchanged.
