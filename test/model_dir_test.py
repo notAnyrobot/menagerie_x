@@ -54,12 +54,32 @@ class ModelDirectoryTests(unittest.TestCase):
                             self.assertFalse(Path(value).is_absolute(), value)
                             self.assertNotIn("..", Path(value).parts, value)
             scene = ET.parse(entry["scene"]).getroot()
-            self.assertEqual([node.get("file") for node in scene.findall("include")], [entry["model"].name])
+            attachments = scene.findall("worldbody/attach")
+            if attachments:
+                self.assertFalse(scene.findall("include"))
+                assets = scene.findall("asset/model")
+                self.assertEqual([node.get("file") for node in assets], [entry["model"].name])
+                self.assertEqual([dict(node.attrib) for node in attachments],
+                                 [{"model": assets[0].get("name"), "prefix": ""}])
+            else:
+                self.assertEqual([node.get("file") for node in scene.findall("include")], [entry["model"].name])
 
     def test_maintained_xml_style(self):
+        paths = set()
         for entry in model_entries():
-            for kind in ("model", "scene"):
-                path = entry[kind]
-                with self.subTest(path=str(path.relative_to(ROOT))):
-                    text = path.read_text(encoding="utf-8")
-                    self.assertEqual(text, format_xml(text))
+            pending = [entry["model"], entry["scene"]]
+            while pending:
+                path = pending.pop()
+                if path in paths:
+                    continue
+                paths.add(path)
+                xml = ET.parse(path).getroot()
+                for include in [*xml.iter("include"), *xml.findall("asset/model")]:
+                    dependency = Path(include.get("file"))
+                    self.assertFalse(dependency.is_absolute())
+                    self.assertNotIn("..", dependency.parts)
+                    pending.append(ROOT / entry["family"] / dependency)
+        for path in paths:
+            with self.subTest(path=str(path.relative_to(ROOT))):
+                text = path.read_text(encoding="utf-8")
+                self.assertEqual(text, format_xml(text))

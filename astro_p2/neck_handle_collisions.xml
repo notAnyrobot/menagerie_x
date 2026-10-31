@@ -1,0 +1,12 @@
+<mujoco model="neck_handle_collisions">
+  <!-- SPDX-License-Identifier: Apache-2.0 -->
+  <compiler angle="radian" inertiafromgeom="false" fusestatic="false"/>
+  <worldbody>
+    <geom name="waist_roll_link_4_capsule_collision" size="0.0075" type="capsule" rgba="0.1 0.65 0.95 0.65"
+      fromto="-0.116 0.0375 0.337 -0.116 -0.0375 0.337" group="3"/>
+    <geom name="neck_handle_left_support_capsule" size="0.0075" type="capsule" rgba="0.1 0.65 0.95 0.65"
+      fromto="-0.106 0.051 0.337 -0.071 0.051 0.337" group="3"/>
+    <geom name="neck_handle_right_support_capsule" size="0.0075" type="capsule" rgba="0.1 0.65 0.95 0.65"
+      fromto="-0.106 -0.051 0.337 -0.071 -0.051 0.337" group="3"/>
+  </worldbody>
+</mujoco>

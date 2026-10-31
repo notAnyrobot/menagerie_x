@@ -2,6 +2,15 @@
 
 ## 2026-10-31
 
+- Extract the default neck-handle crossbar and two support capsules into
+  `neck_handle_collisions.xml`. Attach them directly to `waist_roll_link`,
+  preserving geom names, geometry, body ownership and contact settings.
+- Extract the default model's symmetric foot colliders into one reusable
+  `foot_collisions.xml` model asset. Attach it inside both ankle-roll bodies
+  with `left_` / `right_` name prefixes, retaining 22 foot geoms, body frames
+  and contact settings. Standardize right-foot sole-row numbering on the left.
+- Assemble the default scene through a model asset and attachment to avoid
+  MuJoCo duplicating the foot asset directory when loading relative scene paths.
 - Accept the maintainer-tuned default collision design, including 0.120 m
   upper-arm centerlines on shoulder-roll. Preserve the approved XML unchanged.
 - Retire the separate simplified model/scene from the native catalog and

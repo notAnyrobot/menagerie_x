@@ -1,5 +1,10 @@
 <mujoco model="astro_p2 scene">
-  <include file="astro_p2.xml"/>
+  <asset>
+    <model name="astro_p2" file="astro_p2.xml"/>
+  </asset>
+  <worldbody>
+    <attach model="astro_p2" prefix=""/>
+  </worldbody>
 
   <visual>
     <headlight diffuse="0.6 0.6 0.6" ambient="0.1 0.1 0.1" specular="0.9 0.9 0.9"/>

@@ -31,7 +31,7 @@ initialization without simulation stepping.
 1. Retained the refined Astro/Dex3-1 MJCF body, including masses, inertias,
    joints and source coordinate frames; fixed the head for a 29-DoF body.
 2. Consolidated models and shared meshes into this self-contained family.
-   Each scene includes its sibling robot XML and a floor at `z=-0.75`.
+   Each scene assembles its sibling robot XML and a floor at `z=-0.75`.
 3. Restored original Astro hand meshes, fixed-joint transforms and inertias
    for the default model. The earlier G1 hand trial was superseded.
 4. Preserved the articulated model's 14 finger joints, physics and `fist`
@@ -51,6 +51,24 @@ The approved default has **52 collision geoms** and **37 visual mesh geoms**.
 Group 1 contains visual meshes with collision disabled; group 3 contains
 collision primitives with automatic contact masks enabled. Viewer visibility
 changes do not disable contact.
+
+The default assembles both feet from one shared [foot_collisions.xml](foot_collisions.xml)
+model. `astro_p2.xml` declares it as a model asset and attaches its `foot_link`
+body inside each ankle-roll body with `left_` / `right_` name prefixes. The shared
+definition has 11 collision geoms: eight sole capsules, two side cylinders and one
+bridge box. Edit this file to tune both feet together, separately from the body
+colliders. The existing symmetric collision envelope, body frames and contact
+settings are preserved; right-foot sole-row numbering now follows the left foot.
+Keep `foot_collisions.xml` alongside `astro_p2.xml` when copying the model.
+The default scene also uses a model asset and attachment for the whole robot,
+so its nested collision assets resolve correctly when loading a relative scene path
+with the pinned MuJoCo version.
+
+The neck-handle crossbar and its two supports live in
+[neck_handle_collisions.xml](neck_handle_collisions.xml). The default attaches
+this model's geoms directly to `waist_roll_link`, preserving their original
+names, local coordinates and body ownership. Edit this file to tune the handle
+independently, and keep it alongside `astro_p2.xml` when copying the model.
 
 Each continuous upper-arm capsule belongs to the shoulder-roll body. A real
 shoulder-yaw body separates it from the forearm-owning elbow body, allowing
@@ -87,8 +105,9 @@ Mesh hashes, hand inertias and current collision provenance are recorded in
 [provenance/rubber_hands.json](provenance/rubber_hands.json). Original conversion
 notes under [provenance/29dof/](provenance/29dof/MJCF.md) and
 [provenance/dex3_1/](provenance/dex3_1/DERIVATION.md) are historical evidence;
-their old build commands are not supported regeneration steps. Edit root XML
-directly. [Final verification](../docs/astro-p2-collision-retirement.md) records
+their old build commands are not supported regeneration steps. Edit the root XML
+and shared collision models directly.
+[Final verification](../docs/astro-p2-collision-retirement.md) records
 approval preservation and retirement checks.
 
 Workbench, URDF compatibility and MJX runtime remain deferred.

@@ -18,6 +18,8 @@ from pathlib import Path
 import hashlib
 import json
 import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 import xml.etree.ElementTree as ET
@@ -28,6 +30,21 @@ import numpy as np
 from catalog import model_entries
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def parse_mjcf(path):
+    """Inspect the compiled MJCF tree, including attached child models."""
+    spec = mujoco.MjSpec.from_file(str(path))
+    spec.compile()
+    return ET.fromstring(spec.to_xml())
+
+
+def shared_foot_geom_name(name):
+    # The retained articulated model numbers symmetric sole rows in reverse.
+    return {"right_foot_2_capsule_collision": "right_foot_4_capsule_collision",
+            "right_foot_3_capsule_collision": "right_foot_5_capsule_collision",
+            "right_foot_4_capsule_collision": "right_foot_2_capsule_collision",
+            "right_foot_5_capsule_collision": "right_foot_3_capsule_collision"}.get(name, name)
 
 
 def step_scene(model, data):
@@ -79,11 +96,23 @@ class ModelTests(unittest.TestCase):
                 # Some retained descriptions use a family-local relative mesh alias.
                 if (ROOT / family / "meshes").is_symlink():
                     (bundle / "meshes").symlink_to("assets", target_is_directory=True)
-                paths = {entry[k] for entry in entries if entry["family"] == family
-                         for k in ("model", "scene")}
+                runtime_paths = {entry[k] for entry in entries if entry["family"] == family
+                                 for k in ("model", "scene")}
+                paths = set(runtime_paths)
+                pending = list(paths)
+                while pending:
+                    path = pending.pop()
+                    xml = ET.parse(path).getroot()
+                    for include in [*xml.iter("include"), *xml.findall("asset/model")]:
+                        dependency = ROOT / family / include.get("file")
+                        if dependency not in paths:
+                            paths.add(dependency)
+                            pending.append(dependency)
                 for path in paths:
-                    shutil.copy2(path, bundle / path.name)
-                for path in paths:
+                    destination = bundle / path.relative_to(ROOT / family)
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(path, destination)
+                for path in runtime_paths:
                     with self.subTest(path=path.name):
                         model = mujoco.MjModel.from_xml_path(str(bundle / path.name))
                         self.assertGreater(model.nq, 0)
@@ -152,9 +181,47 @@ class G1PrimitiveTests(unittest.TestCase):
 
 
 class AstroP2CollisionTests(unittest.TestCase):
+    def test_relative_scene_paths_resolve_collision_models(self):
+        script = """
+import mujoco
+import sys
+for path, ngeom in ((sys.argv[1], 89), (sys.argv[2], 90)):
+    model = mujoco.MjModel.from_xml_path(path)
+    assert model.ngeom == ngeom
+    for side in ('left', 'right'):
+        assert model.body(f'{side}_foot_link').id > 0
+    for name in ('waist_roll_link_4_capsule_collision', 'neck_handle_left_support_capsule',
+                 'neck_handle_right_support_capsule'):
+        assert model.body(int(model.geom(name).bodyid[0])).name == 'waist_roll_link'
+"""
+        for directory in (ROOT, ROOT.parent, ROOT / "astro_p2"):
+            paths = [str((ROOT / "astro_p2" / name).relative_to(directory))
+                     for name in ("astro_p2.xml", "scene.xml")]
+            with self.subTest(directory=str(directory)):
+                result = subprocess.run([sys.executable, "-c", script, *paths], cwd=directory,
+                                        capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_shared_foot_model_preserves_attachments_and_geometry(self):
+        template = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/foot_collisions.xml"))
+        robot = mujoco.MjModel.from_xml_path(str(ROOT / "astro_p2/astro_p2.xml"))
+        self.assertEqual(template.ngeom, 11)
+        for side in ("left", "right"):
+            foot = robot.body(f"{side}_foot_link")
+            self.assertEqual(robot.body(int(robot.body_parentid[foot.id])).name, f"{side}_ankle_roll_link")
+            self.assertEqual(float(foot.mass[0]), 0)
+            self.assertEqual(int((robot.geom_bodyid == foot.id).sum()), template.ngeom)
+            for i in range(template.ngeom):
+                source = template.geom(i)
+                attached = robot.geom(f"{side}_{source.name}")
+                self.assertEqual(int(attached.bodyid[0]), foot.id)
+                for attribute in ("type", "size", "pos", "quat", "group", "contype", "conaffinity",
+                                  "condim", "friction", "solref", "solimp"):
+                    np.testing.assert_array_equal(getattr(attached, attribute), getattr(source, attribute))
+
     @staticmethod
     def _non_arm_colliders(path):
-        root = ET.parse(path).getroot()
+        root = parse_mjcf(path)
         arm_bodies = set()
         for side in ("left", "right"):
             shoulder = root.find(f".//body[@name='{side}_shoulder_pitch_link']")
@@ -167,12 +234,10 @@ class AstroP2CollisionTests(unittest.TestCase):
         path = ROOT / "astro_p2/astro_p2.xml"
         current = mujoco.MjModel.from_xml_path(str(path))
         # Counterfactual preserves every manual edit except the 3 mm knee stop.
-        root = ET.parse(path).getroot()
-        root.find("compiler").set("meshdir", str(path.parent / "assets"))
+        spec = mujoco.MjSpec.from_file(str(path))
         for side in ("left", "right"):
-            root.find(f".//geom[@name='{side}_knee_link_1_capsule_collision']").set(
-                "fromto", "0.015 0 -0.24 0.015 0 0")
-        before = mujoco.MjModel.from_xml_string(ET.tostring(root, encoding="unicode"))
+            spec.geom(f"{side}_knee_link_1_capsule_collision").fromto = [0.015, 0, -0.24, 0.015, 0, 0]
+        before = spec.compile()
         for side in ("left", "right"):
             pair = {current.geom(f"{side}_hip_roll_link_1_capsule_collision").id,
                     current.geom(f"{side}_knee_link_1_capsule_collision").id}
@@ -215,11 +280,15 @@ class AstroP2CollisionTests(unittest.TestCase):
                 for contact in data.contact:
                     names = tuple(sorted((model.geom(int(contact.geom1)).name,
                                           model.geom(int(contact.geom2)).name)))
+                    if filename == "scene_with_hands.xml":
+                        names = tuple(sorted(shared_foot_geom_name(name) for name in names))
                     if set(names).issubset(retained):
                         values = np.concatenate(([contact.dist], contact.pos, contact.friction,
                                                  contact.solref, contact.solimp))
                         contacts.append((names, int(contact.dim), values))
-                records.append(sorted(contacts, key=lambda item: (item[0], tuple(item[2]))))
+                # Canonical endpoint ordering avoids sub-picometer roundoff
+                # changing the order of otherwise equivalent capsule contacts.
+                records.append(sorted(contacts, key=lambda item: (item[0], tuple(np.round(item[2], 10)))))
             self.assertGreater(len(records[0]), 0)
             self.assertEqual(len(records[0]), len(records[1]))
             for old, new in zip(*records):
@@ -277,9 +346,14 @@ class AstroP2VariantTests(unittest.TestCase):
             geom = rubber.geom(i)
             if "rubber_hand" in geom.name or geom.name in calibrated:
                 continue
-            other = dex.geom(geom.name)
+            other = dex.geom(shared_foot_geom_name(geom.name))
             for attribute in ("type", "size", "pos", "quat", "friction", "contype", "conaffinity"):
                 if attribute == "quat":
+                    if geom.name.startswith("right_foot_"):
+                        # Reversing a symmetric sole capsule's endpoints leaves
+                        # its shape intact, but flips its quaternion axis.
+                        np.testing.assert_allclose(np.abs(geom.quat), np.abs(other.quat), rtol=0, atol=1e-11)
+                        continue
                     # Manual cleanup of near-zero fromto coordinates changes the
                     # compiled capsule quaternion by about 2e-12, not its shape.
                     np.testing.assert_allclose(geom.quat, other.quat, rtol=0, atol=1e-11)
